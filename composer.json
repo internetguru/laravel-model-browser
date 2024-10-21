@@ -1,0 +1,35 @@
+{
+    "name": "internetguru/laravel-model-browser",
+    "description": "A Laravel package to browse models and show them in a table, autocmplete, etc.",
+    "type": "library",
+    "require": {
+        "livewire/livewire": "^3.0",
+        "laravel/framework": "^9.0 || ^10.0 || ^11.0",
+        "internetguru/blade-components": "^0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Internetguru\\ModelBrowser\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Internetguru\\ModelBrowser\\ModelBrowserServiceProvider"
+            ]
+        }
+    },
+    "authors": [
+        {
+            "name": "petrzpav",
+            "email": "pavel.petrzela@internetguru.cz"
+        }
+    ],
+    "require-dev": {
+        "laravel/pint": "^1.17"
+    }
+}
