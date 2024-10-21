@@ -5,7 +5,7 @@
     "require": {
         "livewire/livewire": "^3.0",
         "laravel/framework": "^9.0 || ^10.0 || ^11.0",
-        "internetguru/blade-components": "^0"
+        "internetguru/laravel-common": "^0.3.1"
     },
     "license": "MIT",
     "autoload": {
