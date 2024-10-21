@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8b5f3a8dd538251d7f5d9d7c76ac9c48",
+    "content-hash": "c3e87df47123950ab5d77733da8727e0",
     "packages": [
         {
             "name": "brick/math",
@@ -1056,19 +1056,21 @@
         },
         {
             "name": "internetguru/laravel-common",
-            "version": "v0.3.1",
+            "version": "dev-dev",
             "source": {
                 "type": "git",
                 "url": "https://github.com/internetguru/laravel-common.git",
-                "reference": "6dc584eb3954460baa03bcd8abd14edc8bf261d8"
+                "reference": "19946f33b07b232c177ec1384914646c36b2935a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/internetguru/laravel-common/zipball/6dc584eb3954460baa03bcd8abd14edc8bf261d8",
-                "reference": "6dc584eb3954460baa03bcd8abd14edc8bf261d8",
+                "url": "https://api.github.com/repos/internetguru/laravel-common/zipball/19946f33b07b232c177ec1384914646c36b2935a",
+                "reference": "19946f33b07b232c177ec1384914646c36b2935a",
                 "shasum": ""
             },
             "require-dev": {
+                "laravel/pint": "^1.18",
+                "mockery/mockery": "^1.6",
                 "orchestra/testbench": "^8.26",
                 "phpunit/phpunit": "^9.0"
             },
@@ -1095,9 +1097,9 @@
             ],
             "support": {
                 "issues": "https://github.com/internetguru/laravel-common/issues",
-                "source": "https://github.com/internetguru/laravel-common/tree/v0.3.1"
+                "source": "https://github.com/internetguru/laravel-common/tree/dev"
             },
-            "time": "2024-09-12T12:59:31+00:00"
+            "time": "2024-10-21T06:57:32+00:00"
         },
         {
             "name": "laravel/framework",
@@ -5600,7 +5602,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "internetguru/laravel-common": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": [],
