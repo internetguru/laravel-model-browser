@@ -1,0 +1,28 @@
+# Ignore vendor directory
+/vendor
+
+# Ignore node_modules directory
+/node_modules
+
+# Ignore Composer PHAR
+composer.phar
+
+# Ignore logs and temporary files
+*.log
+*.cache
+*.tmp
+
+# Ignore IDE specific files
+/.idea
+/.vscode
+
+# Ignore OS specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Ignore PHPUnit result cache
+.phpunit.result.cache
+
+# Ignore environment files
+.env
