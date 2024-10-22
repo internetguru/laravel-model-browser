@@ -63,7 +63,11 @@
                     @foreach($data as $row)
                         <tr @class(['table-light' => ($loop->index / $lightDarkStep) % 2 >= 1])>
                             @foreach($viewAttributes as $column)
-                                <td>{!! isset($formats[$column]) ? $formats[$column]($row->column) : prettyPrint($row->$column) !!}</td>
+                                <td>{!!
+                                    isset($formats[$column]) && Arr::get($row, $column)
+                                        ? $formats[$column](Arr::get($row, $column))
+                                        : prettyPrint(Arr::get($row, $column))
+                                !!}</td>
                             @endforeach
                         </tr>
                     @endforeach

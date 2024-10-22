@@ -15,6 +15,9 @@ class BaseModelBrowser extends Component
     public string $model;
 
     #[Locked]
+    public string $modelMethod;
+
+    #[Locked]
     public array $viewAttributes;
 
     #[Locked]
@@ -41,7 +44,13 @@ class BaseModelBrowser extends Component
         array $viewAttributes = [],
         array $formats = []
     ) {
+        // if model contains @, split it into model and method
+        if (str_contains($model, '@')) {
+            [$model, $modelMethod] = explode('@', $model);
+            $this->modelMethod = $modelMethod;
+        }
         $this->model = $model;
+        // Defaults to the first model's fillable attributes
         $this->viewAttributes = $viewAttributes ?? $model::first()?->getFillable() ?? [];
         $this->formats = $formats;
         $this->updatedPerPage();
@@ -81,8 +90,13 @@ class BaseModelBrowser extends Component
         $escapedFilter = preg_quote($filter, '/');
 
         // Query the model with the filter
-        $modelQuery = $this->model::query();
+        $modelQuery = $this->modelMethod
+            ? $this->model::{$this->modelMethod}()
+            : $this->model::query();
         $modelQuery->where(function ($query) use ($filter) {
+            if (! $filter) {
+                return $query;
+            }
             foreach ($this->filterAttributes as $attribute) {
                 $query->orWhere($attribute, 'like', '%' . $filter . '%');
             }
