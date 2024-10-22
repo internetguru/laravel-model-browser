@@ -65,7 +65,7 @@
                             @foreach($viewAttributes as $column)
                                 <td>{!!
                                     isset($formats[$column]) && Arr::get($row, $column)
-                                        ? $formats[$column](Arr::get($row, $column))
+                                        ? $formats[$column](Arr::get($row, $column), $row)
                                         : prettyPrint(Arr::get($row, $column))
                                 !!}</td>
                             @endforeach
