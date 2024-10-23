@@ -15,7 +15,7 @@ class BaseModelBrowser extends Component
     public string $model;
 
     #[Locked]
-    public string $modelMethod;
+    public string $modelMethod = '';
 
     #[Locked]
     public array $viewAttributes;
