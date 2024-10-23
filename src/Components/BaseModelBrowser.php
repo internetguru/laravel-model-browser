@@ -132,13 +132,11 @@ class BaseModelBrowser extends Component
 
     protected function highlightMatches($data)
     {
-        $escapedFilter = preg_quote($this->filter, '/');
-
-        if (! $escapedFilter) {
+        if (! $this->filter) {
             return $data;
         }
 
-        $normalizedFilter = mb_strtolower($this->removeAccents($escapedFilter));
+        $normalizedFilter = mb_strtolower($this->removeAccents($this->filter));
         $data->getCollection()->transform(function ($item) use ($normalizedFilter) {
             // Highlight matches in each filter attribute
             foreach ($this->filterAttributes as $attribute) {
