@@ -87,7 +87,6 @@ class BaseModelBrowser extends Component
     protected function getData()
     {
         $filter = $this->filter;
-        $escapedFilter = preg_quote($filter, '/');
 
         // Query the model with the filter
         $modelQuery = $this->modelMethod
@@ -109,13 +108,32 @@ class BaseModelBrowser extends Component
 
         // Paginate the results and highlight matches
         $data = $modelQuery->paginate($this->perPage);
-        $data = $this->highlightMatches($data, $escapedFilter);
+        $data = $this->format($data);
+        $data = $this->highlightMatches($data);
 
         return $data;
     }
 
-    protected function highlightMatches($data, $escapedFilter)
+    protected function format($data)
     {
+        $data->getCollection()->transform(function ($item) {
+            foreach ($this->formats as $attribute => $format) {
+                if (! $item->{$attribute}) {
+                    continue;
+                }
+                $item->{$attribute} = $format($item->{$attribute}, $item);
+            }
+
+            return $item;
+        });
+
+        return $data;
+    }
+
+    protected function highlightMatches($data)
+    {
+        $escapedFilter = preg_quote($filter, '/');
+
         if (! $escapedFilter) {
             return $data;
         }

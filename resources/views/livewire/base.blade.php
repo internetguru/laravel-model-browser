@@ -18,7 +18,11 @@
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                     @foreach($viewAttributes as $column => $trans)
                         <dt>{{ $trans }}</dt>
-                        <dd>{!! prettyPrint(Arr::get($row, $column)) !!}</dd>
+                        <dd>{!!
+                            isset($formats[$column])
+                                ? Arr::get($row, $column)
+                                : prettyPrint(Arr::get($row, $column))
+                        !!}</dd>
                     @endforeach
                 </dl>
             @endforeach
