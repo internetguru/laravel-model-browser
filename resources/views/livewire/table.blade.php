@@ -39,7 +39,7 @@
 
         <table class="table table-borderless">
             <thead>
-                <tr class="table-light">
+                <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
                     @foreach($viewAttributes as $column => $trans)
                         <th x-on:click="sortColumn('{{ $column }}')">
                             <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
@@ -61,7 +61,10 @@
             <tbody>
                 @if (! empty($data->items()))
                     @foreach($data as $row)
-                        <tr @class(['table-light' => ($loop->index / $lightDarkStep) % 2 >= 1])>
+                        <tr style="--bs-border-color: #f2f5fa;" @class([
+                            'border-bottom',
+                            'table-light' => ($loop->index / $lightDarkStep) % 2 == 0,
+                        ])>
                             @foreach($viewAttributes as $column => $trans)
                                 <td>{!!
                                     Arr::get($row, $column . 'Highlighted')

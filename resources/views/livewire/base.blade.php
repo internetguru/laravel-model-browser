@@ -1,4 +1,4 @@
-t<div>
+<div>
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
         <x-model-browser::filter :$filter />
         <x-ig::input type="select" name="sort" name="sort" :options="$viewAttributes" wire:model.live="sortBy">@lang('model-browser::global.sort.by')</x-ig::input>
