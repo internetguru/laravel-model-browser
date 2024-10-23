@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use Illuminate\Support\Arr;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -84,7 +85,34 @@ class BaseModelBrowser extends Component
         ]);
     }
 
-    protected function getData()
+    public function downloadCsv()
+    {
+        $data = $this->getData(paginate: false, highlightMatches: false, applyFormats: false);
+        $headers = array_values($this->viewAttributes);
+        $handle = fopen('php://memory', 'w+');
+
+        // Write data to the memory stream
+        fputcsv($handle, $headers);
+        foreach ($data as $item) {
+            $row = [];
+            foreach ($this->viewAttributes as $attribute => $trans) {
+                $row[] = Arr::get($item, $attribute);
+            }
+            fputcsv($handle, $row);
+        }
+
+        // Rewind the memory stream to the beginning and capture the CSV content
+        rewind($handle);
+        $csvContent = stream_get_contents($handle);
+        fclose($handle);
+
+        // Stream the CSV content as a download
+        return response()->streamDownload(function () use ($csvContent) {
+            echo $csvContent;
+        }, 'data.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    protected function getData(bool $paginate = true, bool $highlightMatches = true, bool $applyFormats = true)
     {
         $filter = $this->filter;
 
@@ -107,16 +135,20 @@ class BaseModelBrowser extends Component
         }
 
         // Paginate the results and highlight matches
-        $data = $modelQuery->paginate($this->perPage);
-        $data = $this->format($data);
-        $data = $this->highlightMatches($data);
+        $data = $paginate ? $modelQuery->paginate($this->perPage) : $modelQuery->get();
+        if ($applyFormats) {
+            $data = $this->format($data);
+        }
+        if ($highlightMatches) {
+            $data = $this->highlightMatches($data);
+        }
 
         return $data;
     }
 
     protected function format($data)
     {
-        $data->getCollection()->transform(function ($item) {
+        $data->transform(function ($item) {
             foreach ($this->formats as $attribute => $format) {
                 if (! $item->{$attribute}) {
                     continue;

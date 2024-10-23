@@ -12,4 +12,5 @@ return [
     'no-results' => 'Žádné výsledky',
     'fullscreen' => 'Celá obrazovka',
     'fullscreen-exit' => 'Ukončit celou obrazovku',
+    'download-csv' => 'Stáhnout CSV',
 ];

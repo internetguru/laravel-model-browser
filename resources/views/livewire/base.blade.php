@@ -35,4 +35,6 @@
         <x-model-browser::pagination :$data />
     </div>
 
+    <x-model-browser::csv-buttons />
+
 </div>

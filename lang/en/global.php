@@ -12,4 +12,5 @@ return [
     'no-results' => 'No results',
     'fullscreen' => 'Fullscreen',
     'fullscreen-exit' => 'Exit fullscreen',
+    'download-csv' => 'Download CSV',
 ];
