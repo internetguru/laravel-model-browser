@@ -40,10 +40,10 @@
         <table class="table table-borderless">
             <thead>
                 <tr class="table-light">
-                    @foreach($viewAttributes as $column)
+                    @foreach($viewAttributes as $column => $trans)
                         <th x-on:click="sortColumn('{{ $column }}')">
                             <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
-                                {{ $column }}
+                                {{ $trans }}
                                 @if($sortBy === $column)
                                     <i @class([
                                         "fas fa-fw",
@@ -62,7 +62,7 @@
                 @if (! empty($data->items()))
                     @foreach($data as $row)
                         <tr @class(['table-light' => ($loop->index / $lightDarkStep) % 2 >= 1])>
-                            @foreach($viewAttributes as $column)
+                            @foreach($viewAttributes as $column => $trans)
                                 <td>{!!
                                     isset($formats[$column]) && Arr::get($row, $column)
                                         ? $formats[$column](Arr::get($row, $column), $row)

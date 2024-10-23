@@ -16,8 +16,8 @@
         @if (! empty($data->items()))
             @foreach($data as $row)
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
-                    @foreach($viewAttributes as $column)
-                        <dt>{{ $column }}</dt>
+                    @foreach($viewAttributes as $column => $trans)
+                        <dt>{{ $trans }}</dt>
                         <dd>{!! prettyPrint(Arr::get($row, $column)) !!}</dd>
                     @endforeach
                 </dl>
