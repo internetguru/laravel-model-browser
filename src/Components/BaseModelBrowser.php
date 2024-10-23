@@ -121,7 +121,7 @@ class BaseModelBrowser extends Component
                 if (! $item->{$attribute}) {
                     continue;
                 }
-                $item->{$attribute} = $format($item->{$attribute}, $item);
+                $item->{$attribute . 'Formatted'} = $format($item->{$attribute}, $item);
             }
 
             return $item;
@@ -132,7 +132,7 @@ class BaseModelBrowser extends Component
 
     protected function highlightMatches($data)
     {
-        $escapedFilter = preg_quote($filter, '/');
+        $escapedFilter = preg_quote($this->filter, '/');
 
         if (! $escapedFilter) {
             return $data;
@@ -142,7 +142,7 @@ class BaseModelBrowser extends Component
         $data->getCollection()->transform(function ($item) use ($normalizedFilter) {
             // Highlight matches in each filter attribute
             foreach ($this->filterAttributes as $attribute) {
-                $originalValue = $item->{$attribute};
+                $originalValue = $item->{$attribute . 'Formatted'} ?? $item->{$attribute};
                 $normalizedValue = mb_strtolower($this->removeAccents($originalValue));
 
                 // Find positions of the filter in the normalized text
@@ -156,7 +156,7 @@ class BaseModelBrowser extends Component
 
                 // Highlight matches in the original text
                 if (! empty($positions)) {
-                    $item->{$attribute} = $this->addMarksAroundMatches($originalValue, $positions, $filterLength);
+                    $item->{$attribute . 'Highlighted'} = $this->addMarksAroundMatches($originalValue, $positions, $filterLength);
                 }
             }
 

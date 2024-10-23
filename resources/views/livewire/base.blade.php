@@ -1,4 +1,4 @@
-<div>
+t<div>
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
         <x-model-browser::filter :$filter />
         <x-ig::input type="select" name="sort" name="sort" :options="$viewAttributes" wire:model.live="sortBy">@lang('model-browser::global.sort.by')</x-ig::input>
@@ -19,9 +19,9 @@
                     @foreach($viewAttributes as $column => $trans)
                         <dt>{{ $trans }}</dt>
                         <dd>{!!
-                            isset($formats[$column])
-                                ? Arr::get($row, $column)
-                                : prettyPrint(Arr::get($row, $column))
+                                Arr::get($row, $column . 'Highlighted')
+                                ?? Arr::get($row, $column . 'Formatted')
+                                ?? prettyPrint(Arr::get($row, $column))
                         !!}</dd>
                     @endforeach
                 </dl>
