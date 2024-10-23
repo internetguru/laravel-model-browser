@@ -61,7 +61,7 @@ class BaseModelBrowser extends Component
 
     public function updatedSortBy()
     {
-        if (! in_array($this->sortBy, $this->viewAttributes)) {
+        if (! array_key_exists($this->sortBy, $this->viewAttributes)) {
             $this->sortBy = '';
         }
     }
