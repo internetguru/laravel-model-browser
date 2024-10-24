@@ -246,7 +246,7 @@ class BaseModelBrowser extends Component
 
             if (mb_strpos($normalizedText, $normalizedFilter) !== false) {
                 // Split the text and insert <mark> tags
-                $newHtml = $this->addMarksAroundMatches($originalText, $normalizedFilter);
+                $newHtml = $this->addMarksAroundMatches($originalText, $normalizedText, $normalizedFilter);
                 $fragment = $dom->createDocumentFragment();
                 $fragment->appendXML($newHtml);
                 $node->parentNode->replaceChild($fragment, $node);
@@ -258,18 +258,21 @@ class BaseModelBrowser extends Component
         }
     }
 
-    protected function addMarksAroundMatches($text, $normalizedFilter)
+    protected function addMarksAroundMatches($text, $normalizedText, $normalizedFilter)
     {
-        // Escape special HTML characters
         $escapedText = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $normalizedEscapedText = mb_strtolower($this->removeAccents($escapedText));
 
-        // Prepare the regex pattern
-        $pattern = '/' . preg_quote($normalizedFilter, '/') . '/i';
+        $highlightedText = '';
+        $offset = 0;
 
-        // Replace matches with <mark> tags
-        $highlightedText = preg_replace_callback($pattern, function ($matches) {
-            return '<mark>' . htmlspecialchars($matches[0], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</mark>';
-        }, $escapedText);
+        while (($pos = mb_strpos($normalizedEscapedText, $normalizedFilter, $offset)) !== false) {
+            $highlightedText .= mb_substr($escapedText, $offset, $pos - $offset);
+            $highlightedText .= '<mark>' . mb_substr($escapedText, $pos, mb_strlen($normalizedFilter)) . '</mark>';
+            $offset = $pos + mb_strlen($normalizedFilter);
+        }
+
+        $highlightedText .= mb_substr($escapedText, $offset);
 
         return $highlightedText;
     }
