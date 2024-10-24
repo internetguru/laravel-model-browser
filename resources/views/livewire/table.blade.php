@@ -37,52 +37,54 @@
             <x-model-browser::pagination :$data />
         </div>
 
-        <table class="table table-borderless">
-            <thead>
-                <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
-                    @foreach($viewAttributes as $column => $trans)
-                        <th x-on:click="sortColumn('{{ $column }}')">
-                            <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
-                                {{ $trans }}
-                                @if($sortBy === $column)
-                                    <i @class([
-                                        "fas fa-fw",
-                                        "fa-up-long" => $sortDirection === 'asc',
-                                        "fa-down-long" => $sortDirection === 'desc',
-                                    ])></i>
-                                @else
-                                    <i class="fas fa-fw fa-up-down text-black" style="--bs-text-opacity: .2;"></i>
-                                @endif
-                            </span>
-                        </th>
-                    @endforeach
-                </tr>
-            </thead>
-            <tbody>
-                @if (! empty($data->items()))
-                    @foreach($data as $row)
-                        <tr style="--bs-border-color: #f2f5fa;" @class([
-                            'border-bottom',
-                            'table-light' => ($loop->index / $lightDarkStep) % 2 == 0,
-                        ])>
-                            @foreach($viewAttributes as $column => $trans)
-                                <td @class([
-                                    'text-' . $this->getAlignment($column, Arr::get($row, $column)),
-                                ])>{!!
-                                    Arr::get($row, $column . 'Highlighted')
-                                    ?? Arr::get($row, $column . 'Formatted')
-                                    ?? prettyPrint(Arr::get($row, $column))
-                                !!}</td>
-                            @endforeach
-                        </tr>
-                    @endforeach
-                @else
-                    <tr>
-                        <td colspan="{{ count($viewAttributes) }}">@lang('model-browser::global.no-results')</td>
+        <div class="table-responsive">
+            <table class="table table-borderless">
+                <thead>
+                    <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
+                        @foreach($viewAttributes as $column => $trans)
+                            <th x-on:click="sortColumn('{{ $column }}')">
+                                <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
+                                    {{ $trans }}
+                                    @if($sortBy === $column)
+                                        <i @class([
+                                            "fas fa-fw",
+                                            "fa-up-long" => $sortDirection === 'asc',
+                                            "fa-down-long" => $sortDirection === 'desc',
+                                        ])></i>
+                                    @else
+                                        <i class="fas fa-fw fa-up-down text-black" style="--bs-text-opacity: .2;"></i>
+                                    @endif
+                                </span>
+                            </th>
+                        @endforeach
                     </tr>
-                @endif
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @if (! empty($data->items()))
+                        @foreach($data as $row)
+                            <tr style="--bs-border-color: #f2f5fa;" @class([
+                                'border-bottom',
+                                'table-light' => ($loop->index / $lightDarkStep) % 2 == 0,
+                            ])>
+                                @foreach($viewAttributes as $column => $trans)
+                                    <td @class([
+                                        'text-' . $this->getAlignment($column, Arr::get($row, $column)),
+                                    ])>{!!
+                                        Arr::get($row, $column . 'Highlighted')
+                                        ?? Arr::get($row, $column . 'Formatted')
+                                        ?? prettyPrint(Arr::get($row, $column))
+                                    !!}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    @else
+                        <tr>
+                            <td colspan="{{ count($viewAttributes) }}">@lang('model-browser::global.no-results')</td>
+                        </tr>
+                    @endif
+                </tbody>
+            </table>
+        </div>
 
         <div class="my-5">
             <x-model-browser::pagination :$data />
