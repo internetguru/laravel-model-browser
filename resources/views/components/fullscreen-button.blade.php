@@ -1,6 +1,6 @@
 <div>
     <button
-        class="fullscreen btn btn-icon btn-primary"
+        class="fullscreen btn btn-icon btn-secondary"
         x-data="{
             fullscreen: false,
             toggleFullscreen: function() {
