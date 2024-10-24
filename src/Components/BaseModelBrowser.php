@@ -13,6 +13,12 @@ class BaseModelBrowser extends Component
 {
     use WithPagination;
 
+    public const PER_PAGE_MIN = 3;
+
+    public const PER_PAGE_MAX = 150;
+
+    public const PER_PAGE_DEFAULT = 50;
+
     #[Locked]
     public string $model;
 
@@ -29,7 +35,7 @@ class BaseModelBrowser extends Component
     public array $formats;
 
     #[Url(as: 'per-page')]
-    public int $perPage = 9;
+    public int $perPage = self::PER_PAGE_DEFAULT;
 
     #[Url(except: '')]
     public string $filter = '';
@@ -79,7 +85,7 @@ class BaseModelBrowser extends Component
 
     public function updatedPerPage()
     {
-        $this->perPage = min(120, max(3, $this->perPage));
+        $this->perPage = min(self::PER_PAGE_MAX, max(self::PER_PAGE_MIN, $this->perPage));
     }
 
     public function render()
