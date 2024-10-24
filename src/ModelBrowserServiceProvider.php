@@ -21,5 +21,9 @@ class ModelBrowserServiceProvider extends ServiceProvider
 
         Livewire::component('base-model-browser', BaseModelBrowser::class);
         Livewire::component('table-model-browser', TableModelBrowser::class);
+
+        $this->publishes([
+            __DIR__ . '/../resources/views' => resource_path('views/vendor/model-browser'),
+        ], 'views');
     }
 }
