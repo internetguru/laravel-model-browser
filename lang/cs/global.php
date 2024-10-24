@@ -2,7 +2,10 @@
 
 return [
 
-    'filter' => 'Filtr',
+    'filter' => [
+        'button' => 'Aplikovat',
+        'placeholder' => 'Filtr',
+    ],
     'sort' => [
         'by' => 'Řadit podle',
         'direction' => 'Směr',

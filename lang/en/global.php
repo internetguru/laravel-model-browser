@@ -2,7 +2,10 @@
 
 return [
 
-    'filter' => 'Filter',
+    'filter' => [
+        'button' => 'Apply',
+        'placeholder' => 'Filter',
+    ],
     'sort' => [
         'by' => 'Sort by',
         'direction' => 'Direction',
