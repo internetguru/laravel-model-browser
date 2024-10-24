@@ -178,25 +178,19 @@ class BaseModelBrowser extends Component
         }
 
         $normalizedFilter = mb_strtolower($this->removeAccents($this->filter));
+        $filterLength = mb_strlen($normalizedFilter);
+
         $data->getCollection()->transform(function ($item) use ($normalizedFilter) {
             // Highlight matches in each filter attribute
             foreach ($this->filterAttributes as $attribute) {
                 $originalValue = $item->{$attribute . 'Formatted'} ?? $item->{$attribute};
-                $normalizedValue = mb_strtolower($this->removeAccents($originalValue));
 
-                // Find positions of the filter in the normalized text
-                $positions = [];
-                $offset = 0;
-                $filterLength = mb_strlen($normalizedFilter);
-                while (($pos = mb_strpos($normalizedValue, $normalizedFilter, $offset)) !== false) {
-                    $positions[] = $pos;
-                    $offset = $pos + $filterLength;
+                if (! $originalValue) {
+                    continue;
                 }
 
-                // Highlight matches in the original text
-                if (! empty($positions)) {
-                    $item->{$attribute . 'Highlighted'} = $this->addMarksAroundMatches($originalValue, $positions, $filterLength);
-                }
+                // Apply highlighting while preserving HTML structure
+                $item->{$attribute . 'Highlighted'} = $this->highlightText($originalValue, $normalizedFilter);
             }
 
             return $item;
@@ -205,25 +199,67 @@ class BaseModelBrowser extends Component
         return $data;
     }
 
+    protected function highlightText($htmlContent, $normalizedFilter)
+    {
+        $dom = new \DOMDocument;
+
+        // Suppress errors due to invalid HTML snippets
+        libxml_use_internal_errors(true);
+        // Load the HTML content
+        $dom->loadHTML(mb_convert_encoding($htmlContent, 'HTML-ENTITIES', 'UTF-8'));
+        libxml_clear_errors();
+
+        // Traverse text nodes and apply highlighting
+        $this->highlightDomNode($dom, $dom->documentElement, $normalizedFilter);
+
+        // Save and return the modified HTML
+        $body = $dom->getElementsByTagName('body')->item(0);
+        $innerHTML = '';
+        foreach ($body->childNodes as $child) {
+            $innerHTML .= $dom->saveHTML($child);
+        }
+
+        return $innerHTML;
+    }
+
+    protected function highlightDomNode($dom, $node, $normalizedFilter)
+    {
+        if ($node->nodeType === XML_TEXT_NODE) {
+            $originalText = $node->nodeValue;
+            $normalizedText = mb_strtolower($this->removeAccents($originalText));
+
+            if (mb_strpos($normalizedText, $normalizedFilter) !== false) {
+                // Split the text and insert <mark> tags
+                $newHtml = $this->addMarksAroundMatches($originalText, $normalizedFilter);
+                $fragment = $dom->createDocumentFragment();
+                $fragment->appendXML($newHtml);
+                $node->parentNode->replaceChild($fragment, $node);
+            }
+        } elseif ($node->hasChildNodes()) {
+            foreach ($node->childNodes as $child) {
+                $this->highlightDomNode($dom, $child, $normalizedFilter);
+            }
+        }
+    }
+
+    protected function addMarksAroundMatches($text, $normalizedFilter)
+    {
+        // Escape special HTML characters
+        $escapedText = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        // Prepare the regex pattern
+        $pattern = '/' . preg_quote($normalizedFilter, '/') . '/i';
+
+        // Replace matches with <mark> tags
+        $highlightedText = preg_replace_callback($pattern, function ($matches) {
+            return '<mark>' . htmlspecialchars($matches[0], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</mark>';
+        }, $escapedText);
+
+        return $highlightedText;
+    }
+
     protected function removeAccents($string)
     {
         return iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string);
-    }
-
-    protected function addMarksAroundMatches($text, $positions, $length)
-    {
-        $result = '';
-        $prevEnd = 0;
-        foreach ($positions as $pos) {
-            // Append the text before the match
-            $result .= mb_substr($text, $prevEnd, $pos - $prevEnd);
-            // Append the highlighted match
-            $result .= '<mark>' . mb_substr($text, $pos, $length) . '</mark>';
-            $prevEnd = $pos + $length;
-        }
-        // Append the remaining text
-        $result .= mb_substr($text, $prevEnd);
-
-        return $result;
     }
 }
