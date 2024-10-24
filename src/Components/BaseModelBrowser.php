@@ -140,7 +140,11 @@ class BaseModelBrowser extends Component
                 return $query;
             }
             foreach ($this->filterAttributes as $attribute) {
-                $query->orWhere($attribute, 'like', '%' . $filter . '%');
+                $attributeFilter = $filter;
+                if (isset($this->formats[$attribute]) && is_array($this->formats[$attribute]) && isset($this->formats[$attribute]['down'])) {
+                    $attributeFilter = $this->formats[$attribute]['down']($filter);
+                }
+                $query->orWhere($attribute, 'like', '%' . $attributeFilter . '%');
             }
         });
 
@@ -165,6 +169,12 @@ class BaseModelBrowser extends Component
     {
         $data->transform(function ($item) {
             foreach ($this->formats as $attribute => $format) {
+                if (is_array($format)) {
+                    if (! isset($format['up'])) {
+                        continue;
+                    }
+                    $format = $format['up'];
+                }
                 if (! $item->{$attribute}) {
                     continue;
                 }
