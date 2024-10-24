@@ -7,6 +7,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BaseModelBrowser extends Component
 {
@@ -43,7 +44,8 @@ class BaseModelBrowser extends Component
         string $model,
         array $filterAttributes = [],
         array $viewAttributes = [],
-        array $formats = []
+        array $formats = [],
+        array $alignments = [],
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -53,7 +55,9 @@ class BaseModelBrowser extends Component
         $this->model = $model;
         // Defaults to the first model's fillable attributes
         $this->viewAttributes = $viewAttributes ?? $model::first()?->getFillable() ?? [];
+        $this->filterAttributes = $filterAttributes;
         $this->formats = $formats;
+        $this->alignments = $alignments;
         $this->updatedPerPage();
         $this->updatedSortBy();
         $this->updatedSortByDirection();
@@ -85,7 +89,12 @@ class BaseModelBrowser extends Component
         ]);
     }
 
-    public function downloadCsv()
+    public function getAlignment(string $attribute, mixed $value): string
+    {
+        return $this->alignments[$attribute] ?? (is_numeric($value) ? 'end' : 'start');
+    }
+
+    public function downloadCsv(): StreamedResponse
     {
         $data = $this->getData(paginate: false, highlightMatches: false, applyFormats: false);
         $headers = array_values($this->viewAttributes);

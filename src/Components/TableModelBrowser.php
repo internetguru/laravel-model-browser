@@ -14,9 +14,10 @@ class TableModelBrowser extends BaseModelBrowser
         array $filterAttributes = [],
         array $viewAttributes = [],
         array $formats = [],
+        array $alignments = [],
         int $lightDarkStep = 1,
     ) {
-        parent::mount($model, $filterAttributes, $viewAttributes, $formats);
+        parent::mount($model, $filterAttributes, $viewAttributes, $formats, $alignments);
         $this->lightDarkStep = $lightDarkStep;
     }
 
