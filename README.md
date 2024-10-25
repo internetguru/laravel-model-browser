@@ -23,6 +23,17 @@ A Laravel package to browse models and show them in cards, tables, etc.
     php artisan vendor:publish --provider="Internetguru\ModelBrowser\ModelBrowserServiceProvider"
     ```
 
+## Run Tests Locally
+
+```sh
+# Build the Docker image
+docker build -t laravel-model-browser-test .
+# Run the tests
+docker run --rm laravel-model-browser-test
+# Both steps combined
+docker build -t laravel-model-browser-test . && docker run --rm laravel-model-browser-test
+```
+
 ## Basic Usage
 
 1. Add the `ModelBrowser` trait to your models:
