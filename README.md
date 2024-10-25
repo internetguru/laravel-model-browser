@@ -31,6 +31,10 @@ A Laravel package to browse models and show them in cards, tables, etc.
 
 ## Run Tests Locally
 
+In Visual Studio Code you can simpy use `Ctrl+Shift+B` to run the tests.
+
+To run the tests manually, you can use the following commands:
+
 ```sh
 # Build the Docker image
 docker build -t laravel-model-browser-test .
@@ -39,6 +43,7 @@ docker run --rm laravel-model-browser-test
 # Both steps combined
 docker build -t laravel-model-browser-test . && docker run --rm laravel-model-browser-test
 ```
+
 
 ## Basic Usage
 
