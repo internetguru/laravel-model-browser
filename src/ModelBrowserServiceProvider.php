@@ -25,5 +25,8 @@ class ModelBrowserServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../resources/views' => resource_path('views/vendor/model-browser'),
         ], 'views');
+        $this->publishes([
+            __DIR__ . '/../lang' => resource_path('lang/vendor/model-browser'),
+        ], 'translations');
     }
 }
