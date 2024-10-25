@@ -5,6 +5,7 @@
          cacheDirectory=".phpunit.cache"
          executionOrder="depends,defects"
          shortenArraysForExportThreshold="10"
+         stopOnFailure="true"
          requireCoverageMetadata="false"
          beStrictAboutCoverageMetadata="true"
          beStrictAboutOutputDuringTests="true"

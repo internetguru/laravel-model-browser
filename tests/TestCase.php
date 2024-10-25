@@ -30,7 +30,6 @@ abstract class TestCase extends Orchestra
     {
         parent::setUp();
 
-        // Run Laravel's default migrations
         $this->loadLaravelMigrations(['--database' => 'testing']);
 
         // Load your package's migrations if needed
@@ -42,6 +41,9 @@ abstract class TestCase extends Orchestra
 
     protected function setUpTestData()
     {
+        // remove all users
+        \App\Models\User::query()->delete();
+        // create 10 users
         \App\Models\User::factory()->count(10)->create();
     }
 }
