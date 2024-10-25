@@ -47,18 +47,7 @@ docker build -t laravel-model-browser-test . && docker run --rm laravel-model-br
 
 ## Basic Usage
 
-1. Add the `ModelBrowser` trait to your models:
-
-    ```php
-    use Internetguru\ModelBrowser\Traits\ModelBrowser;
-
-    class User extends Model
-    {
-        use ModelBrowser;
-    }
-    ```
-
-2. Show the model browser in your views:
+1. Show the model browser in your views:
 
     ```html
     <!-- Show the model browser in base view (cards) -->
