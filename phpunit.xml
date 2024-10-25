@@ -19,6 +19,11 @@
             <clover outputFile="clover.xml" />
         </report>
     </coverage>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./src</directory>
+        </whitelist>
+    </filter>
     <php>
         <env name="APP_KEY" value="base64:NmnIgTdkzACy357TvSp2DOmad5Ac1gPQG7ox5lCstnQ="/>
         <env name="DB_CONNECTION" value="sqlite"/>
