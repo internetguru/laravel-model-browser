@@ -1,6 +1,6 @@
 @php
-    $prevContent = '<i class="fas fa-fw fa-chevron-left me-1"></i>' . __('model-browser::pagination.previous');
-    $nextContent = __('model-browser::pagination.next') . '<i class="fas fa-fw fa-chevron-right ms-1"></i>';
+    $prevContent = '<i class="fas fa-fw fa-chevron-left me-1" title="' . __('model-browser::pagination.previous') . '"></i>';
+    $nextContent = '<i class="fas fa-fw fa-chevron-right ms-1" title="' . __('model-browser::pagination.next') . '"></i>';
 
     $from = ($data->currentPage() - 1) * $data->perPage() + 1;
     $to = min($data->currentPage() * $data->perPage(), $data->total());
