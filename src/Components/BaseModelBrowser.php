@@ -191,7 +191,7 @@ class BaseModelBrowser extends Component
                     }
                     $format = $format['up'];
                 }
-                if (! $item->{$attribute}) {
+                if (! isset($item->{$attribute})) {
                     continue;
                 }
                 $item->{$attribute . 'Formatted'} = $format($item->{$attribute}, $item);
