@@ -1,6 +1,6 @@
 @php
-    $prevContent = '<i class="fas fa-fw fa-chevron-left me-1" title="' . __('model-browser::pagination.previous') . '"></i>';
-    $nextContent = '<i class="fas fa-fw fa-chevron-right ms-1" title="' . __('model-browser::pagination.next') . '"></i>';
+    $prevContent = '<i class="fas fa-fw fa-chevron-left" title="' . __('model-browser::pagination.previous') . '"></i>';
+    $nextContent = '<i class="fas fa-fw fa-chevron-right" title="' . __('model-browser::pagination.next') . '"></i>';
 
     $from = ($data->currentPage() - 1) * $data->perPage() + 1;
     $to = min($data->currentPage() * $data->perPage(), $data->total());
@@ -11,7 +11,7 @@
     <div>
         @lang('model-browser::pagination.range', ['from' => $from, 'to' => $to, 'total' => $total])
     </div>
-    <div>
+    <div class="me-3">
         @if ($data->onFirstPage())
             <button class="btn btn-light btn-sm" disabled>{!! $prevContent !!}</button>
         @else
