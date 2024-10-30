@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -160,6 +161,21 @@ class BaseModelBrowser extends Component
         }
         if ($highlightMatches) {
             $data = $this->highlightMatches($data);
+        }
+
+        // Transform data items to Eloquent models if SplObject
+        if ($data->first() instanceof \stdClass) {
+            $data->transform(function ($item) {
+                return new class($item) extends Model
+                {
+                    protected $guarded = [];
+
+                    public function __construct($attributes)
+                    {
+                        parent::__construct((array) $attributes);
+                    }
+                };
+            });
         }
 
         return $data;
