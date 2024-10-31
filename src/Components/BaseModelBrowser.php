@@ -75,8 +75,6 @@ class BaseModelBrowser extends Component
         $this->alignments = $alignments;
         if (! $this->sortBy) {
             $this->sortBy = $defaultSortBy;
-        }
-        if (! $this->sortDirection) {
             $this->sortDirection = $defaultSortDirection;
         }
         $this->updatedPerPage();
