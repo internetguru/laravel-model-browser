@@ -35,6 +35,12 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $formats;
 
+    #[Locked]
+    public string $defaultSortBy;
+
+    #[Locked]
+    public string $defaultSortDirection;
+
     #[Url(as: 'per-page')]
     public int $perPage = self::PER_PAGE_DEFAULT;
 
@@ -53,6 +59,8 @@ class BaseModelBrowser extends Component
         array $viewAttributes = [],
         array $formats = [],
         array $alignments = [],
+        string $defaultSortBy = '',
+        string $defaultSortDirection = 'asc',
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -65,6 +73,12 @@ class BaseModelBrowser extends Component
         $this->filterAttributes = $filterAttributes;
         $this->formats = $formats;
         $this->alignments = $alignments;
+        if (! $this->sortBy) {
+            $this->sortBy = $defaultSortBy;
+        }
+        if (! $this->sortDirection) {
+            $this->sortDirection = $defaultSortDirection;
+        }
         $this->updatedPerPage();
         $this->updatedSortBy();
         $this->updatedSortByDirection();

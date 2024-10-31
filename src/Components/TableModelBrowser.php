@@ -15,9 +15,11 @@ class TableModelBrowser extends BaseModelBrowser
         array $viewAttributes = [],
         array $formats = [],
         array $alignments = [],
+        string $defaultSortBy = '',
+        string $defaultSortDirection = 'asc',
         int $lightDarkStep = 1,
     ) {
-        parent::mount($model, $filterAttributes, $viewAttributes, $formats, $alignments);
+        parent::mount($model, $filterAttributes, $viewAttributes, $formats, $alignments, $defaultSortBy, $defaultSortDirection);
         $this->lightDarkStep = $lightDarkStep;
     }
 
