@@ -42,17 +42,15 @@
                 <thead>
                     <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
                         @foreach($viewAttributes as $column => $trans)
-                            <th x-on:click="sortColumn('{{ $column }}')">
+                            <th @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
                                 <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
                                     {{ $trans }}
-                                    @if($sortBy === $column)
+                                    @if($enableSort && $sortBy === $column)
                                         <i @class([
                                             "fas fa-fw",
                                             "fa-up-long" => $sortDirection === 'asc',
                                             "fa-down-long" => $sortDirection === 'desc',
                                         ])></i>
-                                    @else
-                                        <i class="fas fa-fw fa-up-down text-black" style="--bs-text-opacity: .2;"></i>
                                     @endif
                                 </span>
                             </th>

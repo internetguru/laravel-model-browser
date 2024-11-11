@@ -39,6 +39,9 @@ class BaseModelBrowser extends Component
     public string $defaultSortBy;
 
     #[Locked]
+    public string $enableSort;
+
+    #[Locked]
     public string $defaultSortDirection;
 
     #[Url(as: 'per-page')]
@@ -61,6 +64,7 @@ class BaseModelBrowser extends Component
         array $alignments = [],
         string $defaultSortBy = '',
         string $defaultSortDirection = 'asc',
+        bool $enableSort = true,
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -77,13 +81,18 @@ class BaseModelBrowser extends Component
         $this->filterAttributes = $filterAttributes;
         $this->formats = $formats;
         $this->alignments = $alignments;
-        if (! $this->sortBy) {
+        $this->enableSort = $enableSort;
+        if (! $this->sortBy && $this->enableSort) {
             $this->sortBy = $defaultSortBy;
             $this->sortDirection = $defaultSortDirection;
         }
         $this->updatedPerPage();
-        $this->updatedSortBy();
-        $this->updatedSortByDirection();
+        if ($this->enableSort) {
+            $this->updatedSortBy();
+            $this->updatedSortByDirection();
+        } else {
+            $this->sortDirection = '';
+        }
     }
 
     public function updatedSortBy()
