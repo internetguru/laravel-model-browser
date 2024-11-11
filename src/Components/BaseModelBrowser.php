@@ -69,7 +69,11 @@ class BaseModelBrowser extends Component
         }
         $this->model = $model;
         // Defaults to the first model's fillable attributes
-        $this->viewAttributes = $viewAttributes ?: $model::first()?->getFillable();
+        $this->viewAttributes = $viewAttributes;
+        if (! $viewAttributes) {
+            $defaultFillables = (new $model)->getFillable();
+            $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
+        }
         $this->filterAttributes = $filterAttributes;
         $this->formats = $formats;
         $this->alignments = $alignments;
