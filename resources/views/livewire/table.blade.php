@@ -42,7 +42,7 @@
                 <thead>
                     <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
                         @foreach($viewAttributes as $column => $trans)
-                            <th @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
+                            <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
                                 <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
                                     {{ $trans }}
                                     @if($enableSort && $sortBy === $column)
@@ -62,7 +62,7 @@
                         @foreach($data as $row)
                             <tr style="--bs-border-color: #f2f5fa;" @class([
                                 'border-bottom',
-                                'table-light' => ($loop->index / $lightDarkStep) % 2 == 0,
+                                'table-light' => ($loop->index / $lightDarkStep) % 2 == 1,
                             ])>
                                 @foreach($viewAttributes as $column => $trans)
                                     <td @class([
