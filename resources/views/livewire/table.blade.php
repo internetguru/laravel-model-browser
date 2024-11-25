@@ -43,7 +43,7 @@
                     <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
                         @foreach($viewAttributes as $column => $trans)
                             <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
-                                <span class="d-flex align-items-center gap-1" style="cursor: pointer;">
+                                <span class="d-flex align-items-center gap-1" @if($enableSort)style="cursor: pointer;"@endif>
                                     {{ $trans }}
                                     @if($enableSort && $sortBy === $column)
                                         <i @class([
