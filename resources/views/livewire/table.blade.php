@@ -51,6 +51,8 @@
                                             "fa-up-long" => $sortDirection === 'asc',
                                             "fa-down-long" => $sortDirection === 'desc',
                                         ])></i>
+                                    @elseif($enableSort)
+                                        <i class="fas fa-fw fa-arrows-up-down"></i>
                                     @endif
                                 </span>
                             </th>
