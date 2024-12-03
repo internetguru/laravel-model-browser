@@ -104,6 +104,11 @@ class BaseModelBrowser extends Component
 
     public function updatedSortByDirection()
     {
+        if (! $this->sortBy) {
+            $this->sortDirection = '';
+
+            return;
+        }
         if (! in_array($this->sortDirection, ['asc', 'desc'])) {
             $this->sortDirection = 'asc';
         }
