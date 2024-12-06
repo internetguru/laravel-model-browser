@@ -142,7 +142,7 @@ class BaseModelBrowser extends Component
         foreach ($data as $item) {
             $row = [];
             foreach ($this->viewAttributes as $attribute => $trans) {
-                $row[] = Arr::get($item, $attribute);
+                $row[] = prettyPrint(Arr::get($item, $attribute));
             }
             fputcsv($handle, $row);
         }
