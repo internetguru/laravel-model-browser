@@ -1,6 +1,6 @@
 <div class="d-flex justify-content-center">
     <button
-        class="btn btn-icon btn-secondary"
+        class="btn btn-icon btn-white btn-shadow"
         wire:click="downloadCsv"
         @if ($this->filter != '')
             wire:confirm="{{ __('model-browser::global.download-csv.confirm-filter') }}"
