@@ -95,6 +95,11 @@ class BaseModelBrowser extends Component
         }
     }
 
+    public function paginationView()
+    {
+        return 'model-browser::empty';
+    }
+
     public function updatedSortBy()
     {
         if (! array_key_exists($this->sortBy, $this->viewAttributes)) {
