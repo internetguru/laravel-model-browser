@@ -1,4 +1,4 @@
-<div wire:lazy>
+<div wire:lazy class="model-browser model-browser-table">
     <div
         wire:ignore.self
         class="table-wrapper"
