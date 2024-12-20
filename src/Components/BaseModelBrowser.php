@@ -197,14 +197,7 @@ class BaseModelBrowser extends Component
             $data = $this->format($data);
         }
         if ($highlightMatches) {
-            $data = $this->highlightMatches(
-                $data,
-                $this->filter,
-                $this->filterAttributes,
-                function ($string) {
-                    return $this->removeAccents($string);
-                }
-            );
+            $data = $this->highlightMatches($data, $this->filter, $this->filterAttributes);
         }
 
         // Transform data items to Eloquent models if SplObject

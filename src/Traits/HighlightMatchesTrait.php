@@ -4,13 +4,13 @@ namespace Internetguru\ModelBrowser\Traits;
 
 trait HighlightMatchesTrait
 {
-    protected function highlightMatches($data, string $filter, array $filterAttributes, callable $removeAccents): mixed
+    protected function highlightMatches($data, string $filter, array $filterAttributes): mixed
     {
         if (! $filter) {
             return $data;
         }
 
-        $normalizedFilter = mb_strtolower($removeAccents($filter));
+        $normalizedFilter = mb_strtolower($this->removeAccents($filter));
         $filterLength = mb_strlen($normalizedFilter);
 
         $data->getCollection()->transform(function ($item) use ($normalizedFilter, $filterAttributes) {
