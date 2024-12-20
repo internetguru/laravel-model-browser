@@ -13,7 +13,7 @@ trait HighlightMatchesTrait
         $normalizedFilter = mb_strtolower($this->removeAccents($filter));
         $filterLength = mb_strlen($normalizedFilter);
 
-        $data->getCollection()->transform(function ($item) use ($normalizedFilter, $filterAttributes) {
+        $data->transform(function ($item) use ($normalizedFilter, $filterAttributes) {
             // Highlight matches in each filter attribute
             foreach ($filterAttributes as $attribute) {
                 $originalValue = $item->{$attribute . 'Formatted'} ?? $item->{$attribute};

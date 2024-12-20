@@ -197,7 +197,7 @@ class BaseModelBrowser extends Component
             $data = $this->format($data);
         }
         if ($highlightMatches) {
-            $data = $this->highlightMatches($data, $this->filter, $this->filterAttributes);
+            $data = $this->highlightMatches($data->getCollection(), $this->filter, $this->filterAttributes);
         }
 
         // Transform data items to Eloquent models if SplObject
