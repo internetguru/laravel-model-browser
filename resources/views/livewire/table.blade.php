@@ -44,7 +44,6 @@
                         @foreach($viewAttributes as $column => $trans)
                             <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
                                 <span class="d-flex align-items-center gap-1" @if($enableSort)style="cursor: pointer;"@endif>
-                                    {{ $trans }}
                                     @if($enableSort && $sortBy === $column)
                                         <i @class([
                                             "fas fa-fw",
@@ -54,6 +53,7 @@
                                     @elseif($enableSort)
                                         <i class="fas fa-fw fa-up-down"></i>
                                     @endif
+                                    {{ $trans }}
                                 </span>
                             </th>
                         @endforeach
