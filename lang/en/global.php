@@ -17,6 +17,6 @@ return [
     'fullscreen-exit' => 'Exit fullscreen',
     'download-csv' => [
         'label' => 'Download CSV',
-        'confirm-filter' => 'Warning, items are filtered. Do you really want to download only the displayed data?',
+        'confirm-filter' => 'Warning, items are filtered. Do you really want to download only filtered data?',
     ],
 ];

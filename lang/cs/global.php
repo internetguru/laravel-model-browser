@@ -17,6 +17,6 @@ return [
     'fullscreen-exit' => 'Ukončit celou obrazovku',
     'download-csv' => [
         'label' => 'Stáhnout CSV',
-        'confirm-filter' => 'Pozor, data jsou filtrována. Opravdu chcete stáhnout pouze zobrazená data?',
+        'confirm-filter' => 'Pozor, data jsou filtrována. Opravdu chcete stáhnout pouze filtrovaná data?',
     ],
 ];
