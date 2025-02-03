@@ -67,12 +67,15 @@
                                 'table-light' => ($loop->index / $lightDarkStep) % 2 == 1,
                             ])>
                                 @foreach($viewAttributes as $column => $trans)
+                                    @php
+                                        $value = Arr::get($row, $column . 'Highlighted')
+                                            ?? Arr::get($row, $column . 'Formatted')
+                                            ?? prettyPrint(Arr::get($row, $column));
+                                    @endphp
                                     <td @class([
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
                                     ])>{!!
-                                        Arr::get($row, $column . 'Highlighted')
-                                        ?? Arr::get($row, $column . 'Formatted')
-                                        ?? prettyPrint(Arr::get($row, $column))
+                                        $value ?: '-'
                                     !!}</td>
                                 @endforeach
                             </tr>
