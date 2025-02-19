@@ -7,7 +7,7 @@
     "require": {
         "livewire/livewire": "^3.5",
         "laravel/framework": "^9.0 || ^10.0 || ^11.0",
-        "internetguru/laravel-common": "dev-dev"
+        "internetguru/laravel-common": "^0.4"
     },
     "require-dev": {
         "laravel/pint": "^1.17",
