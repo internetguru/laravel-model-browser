@@ -1,4 +1,4 @@
-<div>
+<div class="model-browser model-browser-base">
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
         <x-model-browser::filter :$filter />
         <x-ig::input type="select" name="sort" name="sort" :options="$viewAttributes" wire:model.live="sortBy">@lang('model-browser::global.sort.by')</x-ig::input>
@@ -16,9 +16,13 @@
         @if (! empty($data->items()))
             @foreach($data as $row)
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
-                    @foreach($viewAttributes as $column)
-                        <dt>{{ $column }}</dt>
-                        <dd>{!! prettyPrint($row->$column) !!}</dd>
+                    @foreach($viewAttributes as $column => $trans)
+                        <dt>{{ $trans }}</dt>
+                        <dd>{!!
+                                Arr::get($row, $column . 'Highlighted')
+                                ?? Arr::get($row, $column . 'Formatted')
+                                ?? prettyPrint(Arr::get($row, $column))
+                        !!}</dd>
                     @endforeach
                 </dl>
             @endforeach
@@ -30,5 +34,7 @@
     <div class="my-5">
         <x-model-browser::pagination :$data />
     </div>
+
+    <x-model-browser::csv-buttons />
 
 </div>
