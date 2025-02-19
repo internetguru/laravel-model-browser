@@ -1,0 +1,37 @@
+.fullscreen--active {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: #fff;
+    width: 100vw;
+    height: 100vh;
+    overflow-y: auto;
+
+    // hide body scrollbar
+    @at-root {
+        body:has(.fullscreen--active) {
+            overflow: hidden;
+        }
+    }
+
+    table {
+        max-height: 90vh;
+        margin-bottom: 0;
+    }
+
+    &.table-wrapper {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .fullscreen.btn span {
+        display: initial;
+    }
+
+    .fullscreen.btn span:first-child {
+        display: none;
+    }
+}
