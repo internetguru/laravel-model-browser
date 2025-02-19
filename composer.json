@@ -2,6 +2,8 @@
     "name": "internetguru/laravel-model-browser",
     "description": "A Laravel package to browse models and show them in a table, autocmplete, etc.",
     "type": "library",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "require": {
         "livewire/livewire": "^3.5",
         "laravel/framework": "^9.0 || ^10.0 || ^11.0",
@@ -12,7 +14,7 @@
         "orchestra/testbench": "^9.5",
         "phpunit/php-code-coverage": "^11.0",
         "livewire/livewire": "^3.5",
-        "internetguru/laravel-common": "dev-dev"
+        "internetguru/laravel-common": "^0.4"
     },
     "license": "MIT",
     "autoload": {
