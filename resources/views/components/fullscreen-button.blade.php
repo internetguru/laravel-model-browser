@@ -1,6 +1,6 @@
 <div>
     <button
-        class="fullscreen btn btn-icon btn-primary"
+        class="fullscreen btn btn-icon btn-secondary"
         x-data="{
             fullscreen: false,
             toggleFullscreen: function() {
@@ -9,7 +9,7 @@
             }
         }"
         x-on:click.stop="toggleFullscreen()"
-        x-on:keydown.escape.document="toggleFullscreen()"
+        x-on:keydown.escape.document="fullscreen = true; toggleFullscreen()"
         x-on:fullscreen.window="$el.classList.toggle('active', $event.detail.fullscreen)"
     >
         <span x-show="! fullscreen"><i class="fa-solid fa-fw fa-expand pe-2"></i> @lang('model-browser::global.fullscreen')</span>

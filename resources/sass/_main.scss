@@ -1,0 +1,13 @@
+.model-browser {
+    &-table {
+        th svg {
+            color: #bcbcbc;
+            width: 0.5em !important;
+            padding-right: 0.25em;
+        }
+        th svg.fa-up-long,
+        th svg.fa-down-long {
+            color: #333;
+        }
+    }
+}

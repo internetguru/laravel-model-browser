@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build and Run Tests",
+            "type": "shell",
+            "command": "docker build -t laravel-model-browser-test . && docker run --rm laravel-model-browser-test",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}
