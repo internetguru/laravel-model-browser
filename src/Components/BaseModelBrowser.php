@@ -10,6 +10,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BaseModelBrowser extends Component
 {
@@ -169,52 +170,78 @@ class BaseModelBrowser extends Component
     {
         $filter = $this->filter;
 
-        // Query the model with the filter
+        // Retrieve all items from the model
         $modelQuery = $this->modelMethod
             ? $this->model::{$this->modelMethod}()
             : $this->model::query();
-        $modelQuery->where(function ($query) use ($filter) {
-            if (! $filter) {
-                return $query;
-            }
-            foreach ($this->filterAttributes as $attribute) {
-                $attributeFilter = $filter;
-                if (isset($this->formats[$attribute]) && is_array($this->formats[$attribute]) && isset($this->formats[$attribute]['down'])) {
-                    $attributeFilter = $this->formats[$attribute]['down']($filter);
-                }
-                $query->orWhere($attribute, 'like', '%' . $attributeFilter . '%');
-            }
-        });
 
-        // Sort the results
-        if ($this->sortBy) {
-            $modelQuery->orderBy($this->sortBy, $this->sortDirection);
+        $data = $modelQuery->get();
+
+        if ($data->count() === 0) {
+            return $data;
         }
 
-        // Paginate the results and highlight matches
-        $data = $paginate ? $modelQuery->paginate($this->perPage) : $modelQuery->get();
         if ($applyFormats) {
             $data = $this->format($data);
         }
-        if ($highlightMatches) {
-            $data->setCollection(
-                $this->highlightMatches($data->getCollection(), $this->filter, $this->filterAttributes)
+
+        // Filter the collection
+        if ($filter) {
+            $data = $data->filter(function ($item) use ($filter) {
+                foreach ($this->filterAttributes as $attribute) {
+                    $attributeFilter = $filter;
+                    if (
+                        isset($this->formats[$attribute])
+                        && is_array($this->formats[$attribute])
+                        && isset($this->formats[$attribute]['down'])
+                    ) {
+                        $attributeFilter = $this->formats[$attribute]['down']($filter);
+                    }
+                    $value = isset($item->{$attribute . 'Formatted'})
+                        ? strip_tags($item->{$attribute . 'Formatted'})
+                        : $item->{$attribute};
+                    if (stripos(str($value)->ascii(), str($attributeFilter)->ascii()) !== false) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Sort the collection
+        if ($this->sortBy) {
+            if ($this->sortDirection === 'desc') {
+                $data = $data->sortByDesc(function ($item) {
+                    return $item->{$this->sortBy};
+                });
+            } else {
+                $data = $data->sortBy(function ($item) {
+                    return $item->{$this->sortBy};
+                });
+            }
+        }
+
+        // Paginate manually if required
+        if ($paginate) {
+            $currentPage = $this->getPage();
+            $currentItems = $data->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
+            $data = new LengthAwarePaginator(
+                $currentItems,
+                $data->count(),
+                $this->perPage,
+                $currentPage
             );
         }
 
-        // Transform data items to Eloquent models if SplObject
-        if ($data->first() instanceof \stdClass) {
-            $data->transform(function ($item) {
-                return new class($item) extends Model
-                {
-                    protected $guarded = [];
-
-                    public function __construct($attributes)
-                    {
-                        parent::__construct((array) $attributes);
-                    }
-                };
-            });
+        if ($highlightMatches) {
+            // When paginated, highlight on the underlying collection
+            if ($paginate) {
+                $data->setCollection(
+                    $this->highlightMatches($data->getCollection(), $this->filter, $this->filterAttributes)
+                );
+            } else {
+                $data = $this->highlightMatches($data, $this->filter, $this->filterAttributes);
+            }
         }
 
         return $data;
