@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.3.0-rc.1] - 2025-02-23
 
+### Changed
+
+- Refactor database filter, sort and pagination to PHP level.
+
 ## [0.2.3] - 2025-02-23
 
 ### Fixed
