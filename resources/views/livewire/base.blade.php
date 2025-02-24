@@ -1,11 +1,6 @@
 <div class="model-browser model-browser-base">
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
         <x-model-browser::filter :$filter />
-        <x-ig::input type="select" name="sort" name="sort" :options="$viewAttributes" wire:model.live="sortBy">@lang('model-browser::global.sort.by')</x-ig::input>
-        <x-ig::input type="select" name="order" name="order" :options="[
-            ['name' => __('model-browser::global.sort.ascending'), 'id' => 'asc'],
-            ['name' => __('model-browser::global.sort.descending'), 'id' => 'desc'],
-        ]" wire:model.live="sortDirection">@lang('model-browser::global.sort.direction')</x-ig::input>
     </div>
 
     <div class="my-5">
@@ -18,11 +13,7 @@
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                     @foreach($viewAttributes as $column => $trans)
                         <dt>{{ $trans }}</dt>
-                        <dd>{!!
-                                Arr::get($row, $column . 'Highlighted')
-                                ?? Arr::get($row, $column . 'Formatted')
-                                ?? prettyPrint(Arr::get($row, $column))
-                        !!}</dd>
+                        <dd>{!! $this->itemValue($row, $column) ?: '-' !!}</dd>
                     @endforeach
                 </dl>
             @endforeach
