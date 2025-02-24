@@ -18,9 +18,7 @@ class BaseModelBrowser extends Component
     use WithPagination;
 
     public const PER_PAGE_MIN = 3;
-
     public const PER_PAGE_MAX = 150;
-
     public const PER_PAGE_DEFAULT = 50;
 
     #[Locked]
@@ -36,16 +34,16 @@ class BaseModelBrowser extends Component
     public array $filterAttributes;
 
     #[Locked]
+    public array $alignments;
+
+    #[Locked]
     public array $formats;
 
     #[Locked]
-    public string $defaultSortBy;
+    public bool $enableSort = true;
 
     #[Locked]
-    public string $enableSort;
-
-    #[Locked]
-    public string $defaultSortDirection;
+    public array $defaultSort = [];  // new property
 
     #[Url(as: 'per-page')]
     public int $perPage = self::PER_PAGE_DEFAULT;
@@ -54,10 +52,7 @@ class BaseModelBrowser extends Component
     public string $filter = '';
 
     #[Url(except: '', as: 'sort')]
-    public string $sortBy = '';
-
-    #[Url(except: '', as: 'direction')]
-    public string $sortDirection = 'asc';
+    public array $sort = [];
 
     public function mount(
         string $model,
@@ -65,8 +60,7 @@ class BaseModelBrowser extends Component
         array $viewAttributes = [],
         array $formats = [],
         array $alignments = [],
-        string $defaultSortBy = '',
-        string $defaultSortDirection = 'asc',
+        array $defaultSort = [],
         bool $enableSort = true,
     ) {
         // if model contains @, split it into model and method
@@ -75,6 +69,7 @@ class BaseModelBrowser extends Component
             $this->modelMethod = $modelMethod;
         }
         $this->model = $model;
+
         // Defaults to the first model's fillable attributes
         $this->viewAttributes = $viewAttributes;
         if (! $viewAttributes) {
@@ -85,17 +80,8 @@ class BaseModelBrowser extends Component
         $this->formats = $formats;
         $this->alignments = $alignments;
         $this->enableSort = $enableSort;
-        if (! $this->sortBy && $this->enableSort) {
-            $this->sortBy = $defaultSortBy;
-            $this->sortDirection = $defaultSortDirection;
-        }
+        $this->defaultSort = $defaultSort;
         $this->updatedPerPage();
-        if ($this->enableSort) {
-            $this->updatedSortBy();
-            $this->updatedSortByDirection();
-        } else {
-            $this->sortDirection = '';
-        }
     }
 
     public function paginationView()
@@ -103,22 +89,15 @@ class BaseModelBrowser extends Component
         return 'model-browser::empty';
     }
 
-    public function updatedSortBy()
+    public function updatedSort()
     {
-        if (! array_key_exists($this->sortBy, $this->viewAttributes)) {
-            $this->sortBy = '';
-        }
-    }
-
-    public function updatedSortByDirection()
-    {
-        if (! $this->sortBy) {
-            $this->sortDirection = '';
-
-            return;
-        }
-        if (! in_array($this->sortDirection, ['asc', 'desc'])) {
-            $this->sortDirection = 'asc';
+        $validAttributes = array_keys($this->viewAttributes);
+        $validDirections = ['asc', 'desc'];
+        foreach ($this->sort as $attribute => $direction) {
+            if (in_array($attribute, $validAttributes) && in_array($direction, $validDirections)) {
+                continue;
+            }
+            unset($this->sort[$attribute]);
         }
     }
 
@@ -195,9 +174,7 @@ class BaseModelBrowser extends Component
                     ) {
                         $attributeFilter = $this->formats[$attribute]['down']($this->filter);
                     }
-                    $value = isset($item->{$attribute . 'Formatted'})
-                        ? strip_tags($item->{$attribute . 'Formatted'})
-                        : $item->{$attribute};
+                    $value = $this->itemValueStripped($item, $attribute);
                     // if filter containing asscetic characters, use as it is, otherwise remove asscent
                     if (str($attributeFilter)->ascii() == $attributeFilter) {
                         $value = str($value)->ascii();
@@ -210,17 +187,21 @@ class BaseModelBrowser extends Component
             });
         }
 
-        // Sort the collection
-        if ($this->sortBy) {
-            if ($this->sortDirection === 'desc') {
-                $data = $data->sortByDesc(function ($item) {
-                    return $item->{$this->sortBy};
-                });
-            } else {
-                $data = $data->sortBy(function ($item) {
-                    return $item->{$this->sortBy};
-                });
+        // Multi-column sort
+        $sort = $this->sort;
+        foreach ($this->defaultSort as $attribute => $direction) {
+            if (! isset($sort[$attribute])) {
+                $sort[$attribute] = $direction;
             }
+        }
+        if (! empty($sort)) {
+            $sortByArg = [];
+            foreach ($sort as $attribute => $direction) {
+                $sortByArg[] = fn ($a, $b) => $direction === 'desc'
+                    ? $this->itemValueStripped($b, $attribute) <=> $this->itemValueStripped($a, $attribute)
+                    : $this->itemValueStripped($a, $attribute) <=> $this->itemValueStripped($b, $attribute);
+            }
+            $data = $data->sortBy($sortByArg);
         }
 
         // Paginate manually if required
@@ -236,7 +217,6 @@ class BaseModelBrowser extends Component
         }
 
         if ($highlightMatches) {
-            // When paginated, highlight on the underlying collection
             if ($paginate) {
                 $data->setCollection(
                     $this->highlightMatches($data->getCollection(), $this->filter, $this->filterAttributes)
@@ -247,6 +227,18 @@ class BaseModelBrowser extends Component
         }
 
         return $data;
+    }
+
+    public function itemValue($item, $attribute)
+    {
+        return isset($item->{$attribute . 'Formatted'})
+            ? $item->{$attribute . 'Formatted'}
+            : $item->{$attribute};
+    }
+
+    public function itemValueStripped($item, $attribute)
+    {
+        return strip_tags($this->itemValue($item, $attribute));
     }
 
     protected function format($data)
