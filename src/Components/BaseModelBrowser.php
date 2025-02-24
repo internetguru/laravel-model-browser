@@ -168,8 +168,6 @@ class BaseModelBrowser extends Component
 
     protected function getData(bool $paginate = true, bool $highlightMatches = true, bool $applyFormats = true)
     {
-        $filter = $this->filter;
-
         // Retrieve all items from the model
         $modelQuery = $this->modelMethod
             ? $this->model::{$this->modelMethod}()
@@ -186,21 +184,25 @@ class BaseModelBrowser extends Component
         }
 
         // Filter the collection
-        if ($filter) {
-            $data = $data->filter(function ($item) use ($filter) {
+        if ($this->filter) {
+            $data = $data->filter(function ($item) {
                 foreach ($this->filterAttributes as $attribute) {
-                    $attributeFilter = $filter;
+                    $attributeFilter = $this->filter;
                     if (
                         isset($this->formats[$attribute])
                         && is_array($this->formats[$attribute])
                         && isset($this->formats[$attribute]['down'])
                     ) {
-                        $attributeFilter = $this->formats[$attribute]['down']($filter);
+                        $attributeFilter = $this->formats[$attribute]['down']($this->filter);
                     }
                     $value = isset($item->{$attribute . 'Formatted'})
                         ? strip_tags($item->{$attribute . 'Formatted'})
                         : $item->{$attribute};
-                    if (stripos(str($value)->ascii(), str($attributeFilter)->ascii()) !== false) {
+                    // if filter containing asscetic characters, use as it is, otherwise remove asscent
+                    if (str($attributeFilter)->ascii() == $attributeFilter) {
+                        $value = str($value)->ascii();
+                    }
+                    if (stripos($value, $attributeFilter) !== false) {
                         return true;
                     }
                 }
