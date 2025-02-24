@@ -164,22 +164,23 @@ class BaseModelBrowser extends Component
 
         // Filter the collection
         if ($this->filter) {
-            $data = $data->filter(function ($item) {
+            $filter = $this->filter;
+            $data = $data->filter(function ($item) use ($filter) {
                 foreach ($this->filterAttributes as $attribute) {
-                    $attributeFilter = $this->filter;
+                    $attributeFilter = $filter;
                     if (
                         isset($this->formats[$attribute])
                         && is_array($this->formats[$attribute])
                         && isset($this->formats[$attribute]['down'])
                     ) {
-                        $attributeFilter = $this->formats[$attribute]['down']($this->filter);
+                        $attributeFilter = $this->formats[$attribute]['down']($filter);
                     }
                     $value = $this->itemValueStripped($item, $attribute);
                     // if filter containing asscetic characters, use as it is, otherwise remove asscent
                     if (str($attributeFilter)->ascii() == $attributeFilter) {
                         $value = str($value)->ascii();
                     }
-                    if (stripos($value, $attributeFilter) !== false) {
+                    if (mb_stripos($value, $attributeFilter) !== false) {
                         return true;
                     }
                 }
@@ -234,6 +235,13 @@ class BaseModelBrowser extends Component
         return isset($item->{$attribute . 'Formatted'})
             ? $item->{$attribute . 'Formatted'}
             : $item->{$attribute};
+    }
+
+    public function itemValueHighlighted($item, $attribute)
+    {
+        return Arr::get($item, $attribute . 'Highlighted')
+            ?? Arr::get($item, $attribute . 'Formatted')
+            ?? prettyPrint(Arr::get($item, $attribute));
     }
 
     public function itemValueStripped($item, $attribute)
