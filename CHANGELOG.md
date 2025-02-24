@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.4.0-rc.1] - 2025-02-24
 
+### Added
+
+- Allow multiple default sort entries applied after user sort.
+
+### Changed
+
+- Merge `deafultSortBy` and `defaultSortDirection` into `defaultSort` array attribute.
+
 ## [0.3.0] - 2025-02-23
 
 _Stable release based on [0.3.0-rc.1]._
