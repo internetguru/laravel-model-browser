@@ -68,7 +68,7 @@
                                     <td @class([
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
                                     ])>{!!
-                                        $this->itemValue($row, $column) ?: '-'
+                                        $this->itemValueHighlighted($row, $column) ?: '-'
                                     !!}</td>
                                 @endforeach
                             </tr>
