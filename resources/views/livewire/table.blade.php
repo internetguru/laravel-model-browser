@@ -9,18 +9,13 @@
         "
         x-data="{
             sortColumn: function(column) {
-                if (column === $wire.sortBy) {
-                    if ($wire.sortDirection === 'asc') {
-                        $wire.set('sortDirection', 'desc');
-                    } else if ($wire.sortDirection === 'desc') {
-                        $wire.set('sortDirection', '');
-                        $wire.set('sortBy', '');
-                    } else {
-                        $wire.set('sortDirection', 'asc');
-                    }
+                let current = $wire.sort ? $wire.sort[column] : null;
+                if (current === 'asc') {
+                    $wire.set('sort', { [column]: 'desc' });
+                } else if (current === 'desc') {
+                    $wire.set('sort', {} );
                 } else {
-                    $wire.set('sortBy', column);
-                    $wire.set('sortDirection', 'asc');
+                    $wire.set('sort', { [column]: 'asc' });
                 }
             }
         }"
@@ -43,12 +38,15 @@
                     <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
                         @foreach($viewAttributes as $column => $trans)
                             <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
-                                <span class="d-flex align-items-center gap-1" @if($enableSort)style="cursor: pointer;"@endif>
-                                    @if($enableSort && $sortBy === $column)
+                                <span class="d-flex align-items-center gap-1" @if($enableSort) style="cursor: pointer;" @endif>
+                                    @php
+                                        $currentDirection = $sort[$column] ?? null;
+                                    @endphp
+                                    @if($enableSort && $currentDirection)
                                         <i @class([
                                             "fas fa-fw",
-                                            "fa-up-long" => $sortDirection === 'asc',
-                                            "fa-down-long" => $sortDirection === 'desc',
+                                            "fa-up-long" => $currentDirection === 'asc',
+                                            "fa-down-long" => $currentDirection === 'desc',
                                         ])></i>
                                     @elseif($enableSort)
                                         <i class="fas fa-fw fa-up-down"></i>
@@ -67,15 +65,10 @@
                                 'table-light' => ($loop->index / $lightDarkStep) % 2 == 1,
                             ])>
                                 @foreach($viewAttributes as $column => $trans)
-                                    @php
-                                        $value = Arr::get($row, $column . 'Highlighted')
-                                            ?? Arr::get($row, $column . 'Formatted')
-                                            ?? prettyPrint(Arr::get($row, $column));
-                                    @endphp
                                     <td @class([
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
                                     ])>{!!
-                                        $value ?: '-'
+                                        $this->itemValue($row, $column) ?: '-'
                                     !!}</td>
                                 @endforeach
                             </tr>
