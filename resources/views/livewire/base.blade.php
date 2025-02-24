@@ -13,7 +13,7 @@
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                     @foreach($viewAttributes as $column => $trans)
                         <dt>{{ $trans }}</dt>
-                        <dd>{!! $this->itemValue($row, $column) ?: '-' !!}</dd>
+                        <dd>{!! $this->itemValueHighlighted($row, $column) ?: '-' !!}</dd>
                     @endforeach
                 </dl>
             @endforeach
