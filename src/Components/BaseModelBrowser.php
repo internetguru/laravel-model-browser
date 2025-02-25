@@ -44,7 +44,10 @@ class BaseModelBrowser extends Component
     public bool $enableSort = true;
 
     #[Locked]
-    public array $defaultSort = [];  // new property
+    public array $defaultSort = [];
+
+    #[Locked]
+    public array $sortComparators = [];
 
     #[Url(as: 'per-page')]
     public int $perPage = self::PER_PAGE_DEFAULT;
@@ -63,6 +66,7 @@ class BaseModelBrowser extends Component
         array $alignments = [],
         array $defaultSort = [],
         bool $enableSort = true,
+        array $sortComparators = [],
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -82,6 +86,7 @@ class BaseModelBrowser extends Component
         $this->alignments = $alignments;
         $this->enableSort = $enableSort;
         $this->defaultSort = $defaultSort;
+        $this->sortComparators = $sortComparators;
         $this->updatedPerPage();
     }
 
@@ -95,7 +100,7 @@ class BaseModelBrowser extends Component
         $validAttributes = array_keys($this->viewAttributes);
         $validDirections = ['asc', 'desc'];
         foreach ($this->sort as $attribute => $compare) {
-            if (in_array($attribute, $validAttributes) && (in_array($compare, $validDirections) || is_callable($compare))) {
+            if (in_array($attribute, $validAttributes) && in_array($compare, $validDirections)) {
                 continue;
             }
             unset($this->sort[$attribute]);
@@ -199,8 +204,8 @@ class BaseModelBrowser extends Component
         if (! empty($sort)) {
             $sortByArg = [];
             foreach ($sort as $attribute => $direction) {
-                if (is_callable($direction)) {
-                    $sortByArg[] = Closure::fromCallable($direction);
+                if (is_callable($this->sortComparators[$attribute][$direction] ?? null)) {
+                    $sortByArg[] = Closure::fromCallable($this->sortComparators[$attribute][$direction]);
                 } else {
                     $sortByArg[] = fn ($a, $b) => $direction === 'desc'
                         ? $this->itemValueStripped($b, $attribute) <=> $this->itemValueStripped($a, $attribute)

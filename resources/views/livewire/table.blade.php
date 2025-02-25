@@ -40,13 +40,13 @@
                             <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
                                 <span class="d-flex align-items-center gap-1" @if($enableSort) style="cursor: pointer;" @endif>
                                     @php
-                                        $currentDirection = $sort[$column] ?? null;
+                                        $currentDirection = empty($sort) ? ($defaultSort[$column] ?? null) : ($sort[$column] ?? null);
                                     @endphp
                                     @if($enableSort && $currentDirection)
                                         <i @class([
                                             "fas fa-fw",
                                             "fa-up-long" => $currentDirection === 'asc',
-                                            "fa-down-long" => $currentDirection === 'desc',
+                                            "fa-down-long" => $currentDirection !== 'asc',
                                         ])></i>
                                     @elseif($enableSort)
                                         <i class="fas fa-fw fa-up-down"></i>
