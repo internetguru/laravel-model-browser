@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Internetguru\ModelBrowser\Traits\HighlightMatchesTrait;
@@ -93,8 +94,8 @@ class BaseModelBrowser extends Component
     {
         $validAttributes = array_keys($this->viewAttributes);
         $validDirections = ['asc', 'desc'];
-        foreach ($this->sort as $attribute => $direction) {
-            if (in_array($attribute, $validAttributes) && in_array($direction, $validDirections)) {
+        foreach ($this->sort as $attribute => $compare) {
+            if (in_array($attribute, $validAttributes) && (in_array($compare, $validDirections) || is_callable($compare))) {
                 continue;
             }
             unset($this->sort[$attribute]);
@@ -198,9 +199,13 @@ class BaseModelBrowser extends Component
         if (! empty($sort)) {
             $sortByArg = [];
             foreach ($sort as $attribute => $direction) {
-                $sortByArg[] = fn ($a, $b) => $direction === 'desc'
-                    ? $this->itemValueStripped($b, $attribute) <=> $this->itemValueStripped($a, $attribute)
-                    : $this->itemValueStripped($a, $attribute) <=> $this->itemValueStripped($b, $attribute);
+                if (is_callable($direction)) {
+                    $sortByArg[] = Closure::fromCallable($direction);
+                } else {
+                    $sortByArg[] = fn ($a, $b) => $direction === 'desc'
+                        ? $this->itemValueStripped($b, $attribute) <=> $this->itemValueStripped($a, $attribute)
+                        : $this->itemValueStripped($a, $attribute) <=> $this->itemValueStripped($b, $attribute);
+                }
             }
             $data = $data->sortBy($sortByArg);
         }
