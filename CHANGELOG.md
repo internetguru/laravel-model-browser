@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.8] - 2025-02-26
+
+### Fixed
+
+- Fix sort with ascents.
+
 ## [0.4.7] - 2025-02-26
 
 ### Fixed
@@ -109,6 +115,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[0.4.8]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.7...v0.4.8
 [0.4.7]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.6...v0.4.7
 [0.4.6]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.5...v0.4.6
 [0.4.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.4...v0.4.5
