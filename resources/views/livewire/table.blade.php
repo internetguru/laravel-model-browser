@@ -36,13 +36,20 @@
             <table class="table table-borderless">
                 <thead>
                     <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
+                        @php
+                            $first = true;
+                        @endphp
                         @foreach($viewAttributes as $column => $trans)
                             <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
                                 <span class="d-flex align-items-center gap-1" @if($enableSort) style="cursor: pointer;" @endif>
                                     @php
                                         $currentDirection = empty($sort)
-                                            ? (isset($defaultSort[$column]) && $defaultSort[$column] == reset($defaultSort) ? $defaultSort[$column] : null)
+                                            ? ($defaultSort[$column] ?? null)
                                             : ($sort[$column] ?? null);
+                                        if (! $first) {
+                                            $currentDirection = null;
+                                        }
+                                        $first = false;
                                     @endphp
                                     @if($enableSort && $currentDirection)
                                         <i @class([
