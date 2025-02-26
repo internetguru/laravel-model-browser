@@ -208,8 +208,8 @@ class BaseModelBrowser extends Component
                     $sortByArg[] = Closure::fromCallable($this->sortComparators[$attribute][$direction]);
                 } else {
                     $sortByArg[] = fn ($a, $b) => $direction === 'desc'
-                        ? $this->itemValueStripped($b, $attribute) <=> $this->itemValueStripped($a, $attribute)
-                        : $this->itemValueStripped($a, $attribute) <=> $this->itemValueStripped($b, $attribute);
+                        ? str($this->itemValueStripped($b, $attribute))->ascii() <=> str($this->itemValueStripped($a, $attribute))->ascii()
+                        : str($this->itemValueStripped($a, $attribute))->ascii() <=> str($this->itemValueStripped($b, $attribute))->ascii();
                 }
             }
             $data = $data->sortBy($sortByArg);
