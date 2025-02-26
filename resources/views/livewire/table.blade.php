@@ -49,7 +49,9 @@
                                         if (! $first) {
                                             $currentDirection = null;
                                         }
-                                        $first = false;
+                                        if ($first && $currentDirection) {
+                                            $first = false;
+                                        }
                                     @endphp
                                     @if($enableSort && $currentDirection)
                                         <i @class([
