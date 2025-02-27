@@ -3,8 +3,9 @@
 return [
 
     'filter' => [
-        'button' => 'Aplikovat',
-        'placeholder' => 'Filtr',
+        'button' => 'Aplikovat na ',
+        'placeholder' => 'Filtrovat',
+        'all' => 'Vše',
     ],
     'sort' => [
         'by' => 'Řadit podle',

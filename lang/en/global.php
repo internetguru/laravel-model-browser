@@ -3,8 +3,9 @@
 return [
 
     'filter' => [
-        'button' => 'Apply',
+        'button' => 'Apply to',
         'placeholder' => 'Filter',
+        'all' => 'All',
     ],
     'sort' => [
         'by' => 'Sort by',

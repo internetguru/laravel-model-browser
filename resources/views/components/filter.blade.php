@@ -1,7 +1,7 @@
 <form
-    class="input-group justify-content-center mt-3 editable-skip"
-    x-data="{ filterText: $wire.filter }"
-    wire:submit.prevent="$set('filter', filterText)"
+    class="input-group justify-content-center mt-3 editable-skip mb-filter"
+    x-data="{ filterText: $wire.filter, filterColumn: 'all', filterColumnTrans: '{{ __('model-browser::global.filter.all') }}' }"
+    wire:submit.prevent="$set('filter', filterText); $wire.set('filterColumn', filterColumn)"
 >
     <span class="position-relative">
         <x-ig::input
@@ -17,8 +17,27 @@
             x-on:click="filterText = ''; $refs.filter.focus();"
         ></i>
     </span>
-    <button class="btn btn-ico btn-primary mt-3" type="submit">
-        <i class="fas fa-filter"></i>
-        @lang('model-browser::global.filter.button')
-    </button>
+    <div class="btn-group">
+        <button type="submit" class="btn btn-ico btn-primary">
+            <i class="fa-solid fa-fw fa-filter"></i>
+            @lang('model-browser::global.filter.button') <span x-text="filterColumnTrans.toLowerCase()"></span>
+        </button>
+        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="visually-hidden">Toggle Dropdown</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" href="#" x-on:click.prevent="filterColumn = 'all'; filterColumnTrans = '{{ __('model-browser::global.filter.all') }}'">
+                    @lang('model-browser::global.filter.all')
+                </a>
+            </li>
+            @foreach($viewAttributes as $column => $trans)
+                <li>
+                    <a class="dropdown-item" href="#" x-on:click.prevent="filterColumn = '{{ $column }}', filterColumnTrans = '{{ $trans }}'">
+                        {{ $trans }}
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+    </div>
 </form>
