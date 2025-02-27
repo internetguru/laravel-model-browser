@@ -58,6 +58,8 @@ class BaseModelBrowser extends Component
     #[Url(except: '', as: 'sort')]
     public array $sort = [];
 
+    public string $filterColumn = 'all';
+
     public function mount(
         string $model,
         array $filterAttributes = [],
@@ -174,6 +176,9 @@ class BaseModelBrowser extends Component
             $data = $data->filter(function ($item) use ($filter) {
                 foreach ($this->filterAttributes as $attribute) {
                     $attributeFilter = $filter;
+                    if ($this->filterColumn !== 'all' && $attribute !== $this->filterColumn) {
+                        continue;
+                    }
                     if (
                         isset($this->formats[$attribute])
                         && is_array($this->formats[$attribute])
@@ -228,12 +233,13 @@ class BaseModelBrowser extends Component
         }
 
         if ($highlightMatches) {
+            $highlightedColumns = $this->filterColumn == 'all' ? $this->filterAttributes : [$this->filterColumn];
             if ($paginate) {
                 $data->setCollection(
-                    $this->highlightMatches($data->getCollection(), $this->filter, $this->filterAttributes)
+                    $this->highlightMatches($data->getCollection(), $this->filter, $highlightedColumns)
                 );
             } else {
-                $data = $this->highlightMatches($data, $this->filter, $this->filterAttributes);
+                $data = $this->highlightMatches($data, $this->filter, $highlightedColumns);
             }
         }
 

@@ -23,7 +23,7 @@
     >
 
         <div class="d-flex justify-content-end alig-items-center gap-3 m-3">
-            <x-model-browser::filter :$filter />
+            <x-model-browser::filter :$filter :$viewAttributes />
             <div class="mt-3">
                 <x-model-browser::fullscreen-button />
             </div>
