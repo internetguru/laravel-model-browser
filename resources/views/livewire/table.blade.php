@@ -8,8 +8,9 @@
             $el.classList.toggle('fullscreen--active', fullscreen)
         "
         x-data="{
-            sortColumn: function(column) {
-                let current = $wire.sort ? $wire.sort[column] : null;
+            sortColumn: function(column, first) {
+                console.log(first)
+                let current = $wire.sort[column] || (first ? $wire.defaultSort[column] : null) || null;
                 if (current === 'asc') {
                     $wire.set('sort', { [column]: 'desc' });
                 } else if (current === 'desc') {
@@ -22,7 +23,7 @@
     >
 
         <div class="d-flex justify-content-end alig-items-center gap-3 m-3">
-            <x-model-browser::filter :$filter />
+            <x-model-browser::filter :$filter :$viewAttributes />
             <div class="mt-3">
                 <x-model-browser::fullscreen-button />
             </div>
@@ -40,8 +41,8 @@
                             $first = true;
                         @endphp
                         @foreach($viewAttributes as $column => $trans)
-                            <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
-                                <span class="d-flex align-items-center gap-1" @if($enableSort) style="cursor: pointer;" @endif>
+                            <th class="table-light">
+                                <span class="d-flex align-items-center gap-1">
                                     @php
                                         $currentDirection = empty($sort)
                                             ? ($defaultSort[$column] ?? null)
@@ -49,20 +50,26 @@
                                         if (! $first) {
                                             $currentDirection = null;
                                         }
+                                    @endphp
+                                    @if ($enableSort)
+                                        <span x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" style="cursor: pointer;">
+                                            @if($currentDirection)
+                                                <i @class([
+                                                    "fas fa-fw",
+                                                    "fa-up-long" => $currentDirection === 'asc',
+                                                    "fa-down-long" => $currentDirection === 'desc',
+                                                ])></i>
+                                            @else
+                                                <i class="fas fa-fw fa-up-down"></i>
+                                            @endif
+                                        </span>
+                                    @endif
+                                    {{ $trans }}
+                                    @php
                                         if ($first && $currentDirection) {
                                             $first = false;
                                         }
                                     @endphp
-                                    @if($enableSort && $currentDirection)
-                                        <i @class([
-                                            "fas fa-fw",
-                                            "fa-up-long" => $currentDirection === 'asc',
-                                            "fa-down-long" => $currentDirection === 'desc',
-                                        ])></i>
-                                    @elseif($enableSort)
-                                        <i class="fas fa-fw fa-up-down"></i>
-                                    @endif
-                                    {{ $trans }}
                                 </span>
                             </th>
                         @endforeach

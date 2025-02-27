@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Allow to select filter column.
+
 ## [0.4.8] - 2025-02-26
 
 ### Fixed
@@ -112,6 +118,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [0.4.8]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.7...v0.4.8
 [0.4.7]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.6...v0.4.7
 [0.4.6]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.4.5...v0.4.6

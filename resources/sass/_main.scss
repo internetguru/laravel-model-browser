@@ -13,4 +13,16 @@
             margin: 0;
         }
     }
+
+    .mb-filter {
+        .form-floating {
+            margin-top: 0;
+        }
+        input {
+            border-radius: $border-radius 0 0 $border-radius;
+        }
+        button {
+            border-radius: 0 $border-radius $border-radius 0;
+        }
+    }
 }
