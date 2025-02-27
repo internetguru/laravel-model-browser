@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Allow to select filter column.
+
 ## [0.4.8] - 2025-02-26
 
 ### Fixed
