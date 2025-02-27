@@ -12,17 +12,41 @@
         p {
             margin: 0;
         }
+        td {
+            max-width: 3em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @include media-3 {
+            td {
+                max-width: unset;
+                white-space: unset;
+            }
+        }
     }
 
     .mb-filter {
+        flex-direction: column;
+        align-items: center;
+        gap: $spacer;
+
         .form-floating {
             margin-top: 0;
         }
-        input {
-            border-radius: $border-radius 0 0 $border-radius;
-        }
-        button {
-            border-radius: 0 $border-radius $border-radius 0;
+
+        @include media-2 {
+            flex-direction: row;
+            align-items: stretch;
+            gap: 0;
+
+            input {
+                border-radius: $border-radius 0 0 $border-radius;
+            }
+
+            button {
+                border-radius: 0 $border-radius $border-radius 0;
+            }
         }
     }
 }
