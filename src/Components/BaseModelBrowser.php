@@ -222,14 +222,18 @@ class BaseModelBrowser extends Component
 
         // Paginate manually if required
         if ($paginate) {
-            $currentPage = $this->getPage();
-            $currentItems = $data->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
-            $data = new LengthAwarePaginator(
-                $currentItems,
-                $data->count(),
-                $this->perPage,
-                $currentPage
-            );
+            if ($data->count() > 0) {
+                $currentPage = $this->getPage();
+                $currentItems = $data->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
+                $data = new LengthAwarePaginator(
+                    $currentItems,
+                    $data->count(),
+                    $this->perPage,
+                    $currentPage
+                );
+            } else {
+                $data = new LengthAwarePaginator([], 0, $this->perPage, 1);
+            }
         }
 
         if ($highlightMatches) {

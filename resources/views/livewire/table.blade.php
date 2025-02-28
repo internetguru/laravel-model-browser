@@ -8,9 +8,8 @@
             $el.classList.toggle('fullscreen--active', fullscreen)
         "
         x-data="{
-            sortColumn: function(column, first) {
-                console.log(first)
-                let current = $wire.sort[column] || (first ? $wire.defaultSort[column] : null) || null;
+            sortColumn: function(column) {
+                let current = $wire.sort ? $wire.sort[column] : null;
                 if (current === 'asc') {
                     $wire.set('sort', { [column]: 'desc' });
                 } else if (current === 'desc') {
@@ -23,7 +22,7 @@
     >
 
         <div class="d-flex justify-content-end alig-items-center gap-3 m-3">
-            <x-model-browser::filter :$filter :$viewAttributes />
+            <x-model-browser::filter :$filter />
             <div class="mt-3">
                 <x-model-browser::fullscreen-button />
             </div>
@@ -41,8 +40,8 @@
                             $first = true;
                         @endphp
                         @foreach($viewAttributes as $column => $trans)
-                            <th class="table-light">
-                                <span class="d-flex align-items-center gap-1">
+                            <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}')" @endif>
+                                <span class="d-flex align-items-center gap-1" @if($enableSort) style="cursor: pointer;" @endif>
                                     @php
                                         $currentDirection = empty($sort)
                                             ? ($defaultSort[$column] ?? null)
@@ -50,33 +49,25 @@
                                         if (! $first) {
                                             $currentDirection = null;
                                         }
+                                        $first = false;
                                     @endphp
-                                    @if ($enableSort)
-                                        <span x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" style="cursor: pointer;">
-                                            @if($currentDirection)
-                                                <i @class([
-                                                    "fas fa-fw",
-                                                    "fa-up-long" => $currentDirection === 'asc',
-                                                    "fa-down-long" => $currentDirection === 'desc',
-                                                ])></i>
-                                            @else
-                                                <i class="fas fa-fw fa-up-down"></i>
-                                            @endif
-                                        </span>
+                                    @if($enableSort && $currentDirection)
+                                        <i @class([
+                                            "fas fa-fw",
+                                            "fa-up-long" => $currentDirection === 'asc',
+                                            "fa-down-long" => $currentDirection === 'desc',
+                                        ])></i>
+                                    @elseif($enableSort)
+                                        <i class="fas fa-fw fa-up-down"></i>
                                     @endif
                                     {{ $trans }}
-                                    @php
-                                        if ($first && $currentDirection) {
-                                            $first = false;
-                                        }
-                                    @endphp
                                 </span>
                             </th>
                         @endforeach
                     </tr>
                 </thead>
                 <tbody>
-                    @if (! empty($data->items()))
+                    @if ($data->isNotEmpty())
                         @foreach($data as $row)
                             <tr style="--bs-border-color: #f2f5fa;" @class([
                                 'border-bottom',
