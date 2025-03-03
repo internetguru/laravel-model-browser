@@ -13,7 +13,11 @@
                 if (current === 'asc') {
                     $wire.set('sort', { [column]: 'desc' });
                 } else if (current === 'desc') {
-                    $wire.set('sort', {} );
+                    let data = {}
+                    if ($wire.defaultSort[column] || false) {
+                        data[column] = 'asc';
+                    }
+                    $wire.set('sort', data);
                 } else {
                     $wire.set('sort', { [column]: 'asc' });
                 }
@@ -40,25 +44,33 @@
                             $first = true;
                         @endphp
                         @foreach($viewAttributes as $column => $trans)
-                            <th class="table-light" @if($enableSort) x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" @endif>
-                                <span class="d-flex align-items-center gap-1" @if($enableSort) style="cursor: pointer;" @endif>
+                            <th class="table-light">
+                                <span class="d-flex align-items-center gap-1">
                                     @php
                                         $currentDirection = $sort[$column] ?? null;
                                         if ($first && empty($sort)) {
                                             $currentDirection = $defaultSort[$column] ?? null;
+                                        }
+                                    @endphp
+                                    @if ($enableSort)
+                                        <span x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" style="cursor: pointer;">
+                                            @if ($currentDirection)
+                                                <i @class([
+                                                    "fas fa-fw",
+                                                    "fa-up-long" => $currentDirection === 'asc',
+                                                    "fa-down-long" => $currentDirection === 'desc',
+                                                ])></i>
+                                            @else
+                                                <i class="fas fa-fw fa-up-down"></i>
+                                            @endif
+                                        </span>
+                                    @endif
+                                    {{ $trans }}
+                                    @php
+                                        if ($enableSort && $currentDirection) {
                                             $first = false;
                                         }
                                     @endphp
-                                    @if($enableSort && $currentDirection)
-                                        <i @class([
-                                            "fas fa-fw",
-                                            "fa-up-long" => $currentDirection === 'asc',
-                                            "fa-down-long" => $currentDirection === 'desc',
-                                        ])></i>
-                                    @elseif($enableSort)
-                                        <i class="fas fa-fw fa-up-down"></i>
-                                    @endif
-                                    {{ $trans }}
                                 </span>
                             </th>
                         @endforeach

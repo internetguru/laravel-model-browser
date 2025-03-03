@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.5] - 2025-03-03
+
+### Fixed
+
+- Fix sort and allow click only to sort ico.
+
 ## [0.5.4] - 2025-03-03
 
 ### Fixed
@@ -146,6 +152,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[0.5.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.5.4...v0.5.5
 [0.5.4]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.5.3...v0.5.4
 [0.5.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.5.2...v0.5.3
 [0.5.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.5.1...v0.5.2
