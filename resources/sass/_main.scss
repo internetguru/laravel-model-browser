@@ -35,6 +35,19 @@
             margin-top: 0;
         }
 
+        button {
+            border-radius: $border-radius 0 0 $border-radius;
+        }
+        button + button {
+            border-radius: 0 $border-radius $border-radius 0;
+        }
+
+        .dropdown-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         @include media-2 {
             flex-direction: row;
             align-items: stretch;
@@ -43,10 +56,13 @@
             input {
                 border-radius: $border-radius 0 0 $border-radius;
             }
-
             button {
+                border-radius: 0;
+            }
+            button + button {
                 border-radius: 0 $border-radius $border-radius 0;
             }
+
         }
     }
 }
