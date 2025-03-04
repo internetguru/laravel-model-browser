@@ -156,11 +156,9 @@ class BaseModelBrowser extends Component
     protected function getData(bool $paginate = true, bool $highlightMatches = true, bool $applyFormats = true)
     {
         // Retrieve all items from the model
-        $modelQuery = $this->modelMethod
+        $data = $this->modelMethod
             ? $this->model::{$this->modelMethod}()
-            : $this->model::query();
-
-        $data = $modelQuery->get();
+            : $this->model::query()->get();
 
         if ($data->count() === 0) {
             return $data;

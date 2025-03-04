@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Do not run `->get()` when custom function is provided.
+
 ## [0.5.5] - 2025-03-03
 
 ### Fixed
