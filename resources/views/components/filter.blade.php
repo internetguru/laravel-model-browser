@@ -31,21 +31,24 @@
             class="form-control py-3 pe-4"
         ></input>
         <i
-            class="fas fa-fw fa-close position-absolute top-50 end-0 translate-middle-y p-2 z-1"
+            class="fas fa-fw fa-close position-absolute top-50 end-0 translate-middle-y p-2 z-2"
             style="cursor: pointer;"
             x-show="filterText"
             x-on:click="filterText = ''; $refs.filter.focus();"
         ></i>
+        <i
+            class="fa-solid fa-fw fa-filter position-absolute top-50 end-0 translate-middle-y p-2 z-1"
+            x-show="!filterText"
+        ></i>
     </span>
     <div class="d-flex">
         <button type="submit" class="btn btn-primary">
-            <i class="fa-solid fa-fw fa-filter"></i>
             @lang('model-browser::global.filter.placeholder')
         </button>
         <button
             wire:ignore.self
             type="button"
-            class="btn btn-outline-primary dropdown-toggle"
+            class="btn btn-primary dropdown-toggle"
             data-bs-toggle="dropdown"
             aria-expanded="false"
             x-ref="dropdownButton"
