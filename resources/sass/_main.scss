@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 .model-browser {
     &-table {
         th svg {
@@ -35,8 +37,13 @@
             margin-top: 0;
         }
 
+        .fa-filter {
+            color: #bcbcbc;
+        }
+
         button {
             border-radius: $border-radius 0 0 $border-radius;
+            border-right: thin solid color.adjust($primary, $blackness: 15%);
         }
         button + button {
             border-radius: 0 $border-radius $border-radius 0;
