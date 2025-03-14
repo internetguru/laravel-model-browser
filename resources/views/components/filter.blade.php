@@ -28,7 +28,7 @@
             name="filter"
             x-ref="filter"
             x-model="filterText"
-            class="form-control py-3 pe-4"
+            class="form-control py-3"
         ></input>
         <i
             class="fas fa-fw fa-close position-absolute top-50 end-0 translate-middle-y p-2 z-2"
@@ -37,8 +37,7 @@
             x-on:click="filterText = ''; $refs.filter.focus();"
         ></i>
         <i
-            class="fa-solid fa-fw fa-filter position-absolute top-50 end-0 translate-middle-y p-2 z-1"
-            x-show="!filterText"
+            class="fa-solid fa-fw fa-filter position-absolute top-50 start-0 translate-middle-y p-2 z-1"
         ></i>
     </span>
     <div class="d-flex">
