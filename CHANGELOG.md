@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.3] - 2025-03-14
+
+### Changed
+
+- Update laravel-common version to `0.6`.
+
+## [0.6.3] - 2025-03-14
+
 ## [0.6.2] - 2025-03-13
 
 ### Changed
@@ -177,6 +185,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[0.6.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.2...v0.6.3
 [0.6.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.1...v0.6.2
 [0.6.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.0...v0.6.1
 [0.6.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.5.5...v0.6.0
