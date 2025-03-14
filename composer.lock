@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "537dc700422f71c8cd7857f55e879cd2",
+    "content-hash": "73b8cd03bb0ae0a0f24880ae9e174815",
     "packages": [
         {
             "name": "brick/math",
@@ -1056,16 +1056,16 @@
         },
         {
             "name": "internetguru/laravel-common",
-            "version": "v0.5.0",
+            "version": "v0.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/internetguru/laravel-common.git",
-                "reference": "580473b22af2b8e61be07252d4e2337953700d57"
+                "reference": "46a428b21d82444aee318f1b57f08c855dbf687e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/internetguru/laravel-common/zipball/580473b22af2b8e61be07252d4e2337953700d57",
-                "reference": "580473b22af2b8e61be07252d4e2337953700d57",
+                "url": "https://api.github.com/repos/internetguru/laravel-common/zipball/46a428b21d82444aee318f1b57f08c855dbf687e",
+                "reference": "46a428b21d82444aee318f1b57f08c855dbf687e",
                 "shasum": ""
             },
             "require": {
@@ -1103,9 +1103,9 @@
             ],
             "support": {
                 "issues": "https://github.com/internetguru/laravel-common/issues",
-                "source": "https://github.com/internetguru/laravel-common/tree/v0.5.0"
+                "source": "https://github.com/internetguru/laravel-common/tree/v0.6.0"
             },
-            "time": "2025-03-13T14:25:42+00:00"
+            "time": "2025-03-14T07:55:59+00:00"
         },
         {
             "name": "laravel/framework",
