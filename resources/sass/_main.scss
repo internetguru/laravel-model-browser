@@ -33,11 +33,13 @@
         align-items: center;
         gap: $spacer;
 
-        .form-floating {
+        .form-control {
             margin-top: 0;
+            padding-left: 1.95em;
+            padding-right: 1.75em;
         }
 
-        .fa-filter {
+        svg {
             color: #bcbcbc;
         }
 
