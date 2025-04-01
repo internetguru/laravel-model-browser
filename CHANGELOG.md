@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.5] - 2025-04-01
+
+### Changed
+
+- Update laravel-common to `^0.7`.
+
 ## [0.6.4] - 2025-03-14
 
 ### Fixed
@@ -188,6 +194,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[0.6.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.4...v0.6.5
 [0.6.4]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.3...v0.6.4
 [0.6.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.2...v0.6.3
 [0.6.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.1...v0.6.2
