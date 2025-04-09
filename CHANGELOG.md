@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Set max height to table cell to 3 rows with ellipsis.
+- Add `column-widths` livewire attribute to allow setting column widths.
+
+### Changed
+
+- Reimplement HTML table to CSS grid.
+
 ## [0.7.0] - 2025-04-07
 
 _Stable release based on [0.7.0-rc.1]._
@@ -202,6 +213,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [0.7.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.5...v0.7.0
 [0.7.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v0.6.5
 [0.6.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.6.4...v0.6.5

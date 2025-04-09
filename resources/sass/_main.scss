@@ -2,28 +2,75 @@
 
 .model-browser {
     &-table {
-        th svg {
-            color: #bcbcbc;
-            width: 0.5em !important;
-            padding-right: 0.25em;
+        .grid-table {
+            display: grid;
+            // Dynamic number of columns is handled in blade
+            width: 100%;
+            border-collapse: collapse;
         }
-        th svg.fa-up-long,
-        th svg.fa-down-long {
-            color: #333;
+
+        .grid-header {
+            display: grid;
+            grid-column: 1 / -1;
+            grid-template-columns: subgrid;
+            background-color: var(--bs-table-bg, #f8f9fa);
+            border-bottom: 1px solid #ced6e0;
         }
-        p {
-            margin: 0;
+
+        .grid-header-cell {
+            font-weight: 500;
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+
+            i {
+                color: #bcbcbc;
+                width: 0.5em !important;
+                padding-right: 0.25em;
+
+                &.fa-up-long,
+                &.fa-down-long {
+                    color: #333;
+                }
+            }
         }
-        td {
-            max-width: 3em;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+
+        .grid-row {
+            display: grid;
+            grid-column: 1 / -1;
+            grid-template-columns: subgrid;
+
+            &-light .grid-cell {
+                background-color: var(--bs-table-bg, #f8f9fa);
+            }
         }
+
+        .grid-cell {
+            padding: 0.75rem;
+            border-bottom: 1px solid #f2f5fa;
+
+            > span {
+                text-overflow: ellipsis;
+                overflow-wrap: break-word;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+            }
+        }
+
+        .grid-no-results {
+            grid-column: 1 / -1;
+            padding: 0.75rem;
+            text-align: center;
+            border-bottom: 1px solid #f2f5fa;
+        }
+
         @include media-3 {
-            td {
-                max-width: unset;
-                white-space: unset;
+            .grid-cell {
+                > span {
+                    display: block;
+                }
             }
         }
     }
