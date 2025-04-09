@@ -37,68 +37,69 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-borderless">
-                <thead>
-                    <tr style="--bs-border-color: #ced6e0;" class="border-bottom">
-                        @php
-                            $first = true;
-                        @endphp
-                        @foreach($viewAttributes as $column => $trans)
-                            <th class="table-light">
-                                <span class="d-flex align-items-center gap-1">
-                                    @php
-                                        $currentDirection = $sort[$column] ?? null;
-                                        if ($first && empty($sort)) {
-                                            $currentDirection = $defaultSort[$column] ?? null;
-                                        }
-                                    @endphp
-                                    @if ($enableSort)
-                                        <span x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" style="cursor: pointer;">
-                                            @if ($currentDirection)
-                                                <i @class([
-                                                    "fas fa-fw",
-                                                    "fa-up-long" => $currentDirection === 'asc',
-                                                    "fa-down-long" => $currentDirection === 'desc',
-                                                ])></i>
-                                            @else
-                                                <i class="fas fa-fw fa-up-down"></i>
-                                            @endif
-                                        </span>
-                                    @endif
-                                    {{ $trans }}
-                                    @php
-                                        if ($enableSort && $currentDirection) {
-                                            $first = false;
-                                        }
-                                    @endphp
-                                </span>
-                            </th>
-                        @endforeach
-                    </tr>
-                </thead>
-                <tbody>
-                    @if ($data->isNotEmpty())
-                        @foreach($data as $row)
-                            <tr style="--bs-border-color: #f2f5fa;" @class([
-                                'border-bottom',
-                                'table-light' => ($loop->index / $lightDarkStep) % 2 == 1,
-                            ])>
-                                @foreach($viewAttributes as $column => $trans)
-                                    <td @class([
+            <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
+                <div class="grid-header">
+                    @php
+                        $first = true;
+                        $columnCount = count($viewAttributes);
+                    @endphp
+                    @foreach($viewAttributes as $column => $trans)
+                        <div class="grid-header-cell">
+                            <span class="d-flex align-items-center gap-1">
+                                @php
+                                    $currentDirection = $sort[$column] ?? null;
+                                    if ($first && empty($sort)) {
+                                        $currentDirection = $defaultSort[$column] ?? null;
+                                    }
+                                @endphp
+                                @if ($enableSort)
+                                    <span x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" style="cursor: pointer;">
+                                        @if ($currentDirection)
+                                            <i @class([
+                                                "fas fa-fw",
+                                                "fa-up-long" => $currentDirection === 'asc',
+                                                "fa-down-long" => $currentDirection === 'desc',
+                                            ])></i>
+                                        @else
+                                            <i class="fas fa-fw fa-up-down"></i>
+                                        @endif
+                                    </span>
+                                @endif
+                                {{ $trans }}
+                                @php
+                                    if ($enableSort && $currentDirection) {
+                                        $first = false;
+                                    }
+                                @endphp
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+
+                @if ($data->isNotEmpty())
+                    @foreach($data as $row)
+                        <div @class([
+                            'grid-row',
+                            'grid-row-light' => ($loop->index / $lightDarkStep) % 2 == 1,
+                        ])>
+                            @foreach($viewAttributes as $column => $trans)
+                                <div
+                                    @class([
+                                        'grid-cell',
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
-                                    ])>{!!
-                                        $this->itemValueHighlighted($row, $column) ?: '-'
-                                    !!}</td>
-                                @endforeach
-                            </tr>
-                        @endforeach
-                    @else
-                        <tr>
-                            <td colspan="{{ count($viewAttributes) }}">@lang('model-browser::global.no-results')</td>
-                        </tr>
-                    @endif
-                </tbody>
-            </table>
+                                    ])
+                                ><span>{!!
+                                    $this->itemValueHighlighted($row, $column) ?: '-'
+                                !!}</span></div>
+                            @endforeach
+                        </div>
+                    @endforeach
+                @else
+                    <div class="grid-no-results">
+                        <div>@lang('model-browser::global.no-results')</div>
+                    </div>
+                @endif
+            </div>
         </div>
 
         <div class="my-5">
