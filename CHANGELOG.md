@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Set max height to table cell to 3 rows with ellipsis.
+- Add `column-widths` livewire attribute to allow setting column widths.
+
+### Changed
+
+- Reimplement HTML table to CSS grid.
+
 ## [0.7.0] - 2025-04-07
 
 _Stable release based on [0.7.0-rc.1]._
