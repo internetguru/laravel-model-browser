@@ -22,11 +22,13 @@
             padding: 0.75rem;
             display: flex;
             align-items: center;
+            overflow: hidden;
 
             i {
                 color: #bcbcbc;
                 width: 0.5em !important;
                 padding-right: 0.25em;
+                flex-shrink: 0;
 
                 &.fa-up-long,
                 &.fa-down-long {
