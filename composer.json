@@ -7,14 +7,14 @@
     "require": {
         "livewire/livewire": "^3.5",
         "laravel/framework": "^9.0 || ^10.0 || ^11.0",
-        "internetguru/laravel-common": "^0.9"
+        "internetguru/laravel-common": "^0.10"
     },
     "require-dev": {
         "laravel/pint": "^1.17",
         "orchestra/testbench": "^9.5",
         "phpunit/php-code-coverage": "^11.0",
         "livewire/livewire": "^3.5",
-        "internetguru/laravel-common": "^0.9"
+        "internetguru/laravel-common": "^0.10"
     },
     "license": "MIT",
     "autoload": {
