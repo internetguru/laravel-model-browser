@@ -165,6 +165,22 @@ class BaseModelBrowser extends Component
             ? $this->model::{$this->modelMethod}()
             : $this->model::query()->get();
 
+        // Append missing attributes
+        foreach ($this->viewAttributes as $attribute => $trans) {
+            if (! isset($data[0]->{$attribute})) {
+                $data[0]->{$attribute} = null;
+            }
+        }
+
+        // Empty attributes fallback to dash
+        foreach ($data as $item) {
+            foreach ($this->viewAttributes as $attribute => $trans) {
+                if (! isset($item->{$attribute})) {
+                    $item->{$attribute} = '-';
+                }
+            }
+        }
+
         if ($data->count() === 0) {
             return $data;
         }
@@ -181,13 +197,6 @@ class BaseModelBrowser extends Component
                     $attributeFilter = $filter;
                     if ($this->filterColumn !== 'all' && $attribute !== $this->filterColumn) {
                         continue;
-                    }
-                    if (
-                        isset($this->formats[$attribute])
-                        && is_array($this->formats[$attribute])
-                        && isset($this->formats[$attribute]['down'])
-                    ) {
-                        $attributeFilter = $this->formats[$attribute]['down']($filter);
                     }
                     $value = $this->itemValueStripped($item, $attribute);
                     // if filter containing asscetic characters, use as it is, otherwise remove asscent
@@ -276,12 +285,6 @@ class BaseModelBrowser extends Component
     {
         $data->transform(function ($item) {
             foreach ($this->formats as $attribute => $format) {
-                if (is_array($format)) {
-                    if (! isset($format['up'])) {
-                        continue;
-                    }
-                    $format = $format['up'];
-                }
                 if (! isset($item->{$attribute})) {
                     continue;
                 }

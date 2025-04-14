@@ -89,7 +89,7 @@
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
                                     ])
                                 ><span>{!!
-                                    $this->itemValueHighlighted($row, $column) ?: '-'
+                                    $this->itemValueHighlighted($row, $column)
                                 !!}</span></div>
                             @endforeach
                         </div>
