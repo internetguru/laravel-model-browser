@@ -109,6 +109,11 @@ class BaseModelBrowser extends Component
         }
     }
 
+    public function updatedFilter()
+    {
+        $this->resetPage();
+    }
+
     public function updatedPerPage()
     {
         $this->perPage = min(self::PER_PAGE_MAX, max(self::PER_PAGE_MIN, $this->perPage));
