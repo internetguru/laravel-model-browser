@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.5] - 2025-04-14
+
+### Fixed
+
+- Allow filter to dash (empty data).
+
 ## [0.8.4] - 2025-04-14
 
 ### Fixed
@@ -244,6 +250,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[0.8.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.8.4...v0.8.5
 [0.8.4]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.8.3...v0.8.4
 [0.8.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.8.2...v0.8.3
 [0.8.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.8.1...v0.8.2
