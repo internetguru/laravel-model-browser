@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Add quotation marks to support exact match in filter instead of fuzzy ansii match.
+- Visualize empty cells with css instead of fallback to dash.
+
 ## [0.9.0] - 2025-04-16
 
 _Stable release based on [0.9.0-rc.1]._
