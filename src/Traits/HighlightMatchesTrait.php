@@ -4,26 +4,41 @@ namespace Internetguru\ModelBrowser\Traits;
 
 trait HighlightMatchesTrait
 {
+    protected function exactMatchFilter(&$filter): bool
+    {
+        // Check if the filter is enclosed in double quotes for exact matching
+        if (strlen($filter) >= 2 && $filter[0] === '"' && $filter[strlen($filter) - 1] === '"') {
+            $filter = substr($filter, 1, -1);
+            return true;
+        }
+        return false;
+    }
+
     protected function highlightMatches($data, string $filter, array $filterAttributes): mixed
     {
         if (! $filter) {
             return $data;
         }
 
+        $exactMatch = $this->exactMatchFilter($filter);
         $normalizedFilter = mb_strtolower($this->removeAccents($filter));
-        $filterLength = mb_strlen($normalizedFilter);
 
-        $data->transform(function ($item) use ($normalizedFilter, $filterAttributes) {
+        $data->transform(function ($item) use ($normalizedFilter, $filterAttributes, $exactMatch) {
             // Highlight matches in each filter attribute
             foreach ($filterAttributes as $attribute) {
                 $originalValue = $item->{$attribute . 'Formatted'} ?? $item->{$attribute};
 
+                if ($exactMatch && $normalizedFilter == '') {
+                    // Exact match with empty string
+                    $item->{$attribute . 'Highlighted'} = $originalValue == '' ? '<mark></mark>' : $originalValue;
+                    continue;
+                }
                 if (! $originalValue) {
                     continue;
                 }
 
                 // Apply highlighting while preserving HTML structure
-                $item->{$attribute . 'Highlighted'} = $this->highlightText($originalValue, $normalizedFilter);
+                $item->{$attribute . 'Highlighted'} = $this->highlightText($originalValue, $normalizedFilter, $exactMatch);
             }
 
             return $item;
@@ -32,26 +47,57 @@ trait HighlightMatchesTrait
         return $data;
     }
 
-    protected function highlightText($htmlContent, $normalizedFilter)
+    protected function highlightText($htmlContent, $normalizedFilter, bool $exactMatch = false)
     {
-        $dom = new \DOMDocument;
+        // For empty content, return as is
+        if (!$htmlContent) {
+            return $htmlContent;
+        }
 
-        // Suppress errors due to invalid HTML snippets
+        // For all types of matching, use DOM parsing to preserve HTML structure
+        $dom = new \DOMDocument;
         libxml_use_internal_errors(true);
-        // Load the HTML content
         $dom->loadHTML(mb_convert_encoding($htmlContent, 'HTML-ENTITIES', 'UTF-8'));
         libxml_clear_errors();
 
-        // Traverse text nodes and apply highlighting
+        // Handle exact matching
+        if ($exactMatch && $normalizedFilter !== '') {
+            // Get concatenated text content without HTML tags
+            $textContent = $this->getDomTextContent($dom);
+
+            // Check if the extracted text matches exactly
+            $normalizedContent = mb_strtolower($this->removeAccents($textContent));
+            if ($normalizedContent == $normalizedFilter) {
+                return '<mark>' . $htmlContent . '</mark>';
+            }
+            return $htmlContent;
+        }
+
+        // For partial matching, traverse and highlight text nodes
         $this->highlightDomNode($dom, $dom->documentElement, $normalizedFilter);
 
-        // Save and return the modified HTML
+        // Extract and return the modified HTML
+        return $this->getInnerHtml($dom);
+    }
+
+    protected function getDomTextContent($dom): string
+    {
+        $textContent = '';
+        $xpath = new \DOMXPath($dom);
+        $textNodes = $xpath->query('//text()');
+        foreach ($textNodes as $node) {
+            $textContent .= $node->nodeValue;
+        }
+        return $textContent;
+    }
+
+    protected function getInnerHtml($dom): string
+    {
         $body = $dom->getElementsByTagName('body')->item(0);
         $innerHTML = '';
         foreach ($body->childNodes as $child) {
             $innerHTML .= $dom->saveHTML($child);
         }
-
         return $innerHTML;
     }
 

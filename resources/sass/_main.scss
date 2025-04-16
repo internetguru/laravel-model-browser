@@ -58,6 +58,25 @@
                 display: -webkit-box;
                 -webkit-line-clamp: 3;
                 -webkit-box-orient: vertical;
+
+                &:has(mark:empty) {
+                    display: block;
+                    height: 100%;
+                }
+
+                &:empty,
+                mark:empty {
+                    display: block;
+                    width: 1em;
+                    height: 0.2em;
+                    position: relative;
+                    top: 0.7em;
+                    border-top: medium dashed #ced0d1;
+                }
+
+                mark:empty {
+                    border-top-color: rgb(255 224 132);
+                }
             }
         }
 
