@@ -12,6 +12,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class BaseModelBrowser extends Component
 {
@@ -172,15 +173,6 @@ class BaseModelBrowser extends Component
             }
         }
 
-        // Empty attributes fallback to dash
-        foreach ($data as $item) {
-            foreach ($this->viewAttributes as $attribute => $trans) {
-                if (! isset($item->{$attribute})) {
-                    $item->{$attribute} = '-';
-                }
-            }
-        }
-
         if ($data->count() === 0) {
             return $data;
         }
@@ -189,26 +181,8 @@ class BaseModelBrowser extends Component
             $data = $this->format($data);
         }
 
-        // Filter the collection
         if ($this->filter) {
-            $filter = $this->filter;
-            $data = $data->filter(function ($item) use ($filter) {
-                foreach ($this->filterAttributes as $attribute) {
-                    $attributeFilter = $filter;
-                    if ($this->filterColumn !== 'all' && $attribute !== $this->filterColumn) {
-                        continue;
-                    }
-                    $value = $this->itemValueStripped($item, $attribute);
-                    // if filter containing asscetic characters, use as it is, otherwise remove asscent
-                    if (str($attributeFilter)->ascii() == $attributeFilter) {
-                        $value = str($value)->ascii();
-                    }
-                    if (mb_stripos($value, $attributeFilter) !== false) {
-                        return true;
-                    }
-                }
-                return false;
-            });
+            $data = $this->applyFilter($data);
         }
 
         // Multi-column sort
@@ -295,5 +269,46 @@ class BaseModelBrowser extends Component
         });
 
         return $data;
+    }
+
+    protected function applyFilter($data): Collection
+    {
+        return $data->filter(function ($item) {
+            foreach ($this->filterAttributes as $attribute) {
+                $attributeFilter = $this->filter;
+                $exactMatch = $this->exactMatchFilter($attributeFilter);
+
+                if ($this->filterColumn !== 'all' && $attribute !== $this->filterColumn) {
+                    continue;
+                }
+
+                $value = $this->itemValueStripped($item, $attribute);
+
+                // For exact match with empty string
+                if ($exactMatch && $attributeFilter === '' && $value === '') {
+                    return true;
+                }
+
+                if ($exactMatch) {
+                    // Exact matching
+                    if ($value == $attributeFilter) {
+                        return true;
+                    }
+                } else {
+                    // Fuzzy matching with both case insensitivity and ASCII insensitivity
+                    // Check for match without ASCII conversion first
+                    if (mb_stripos($value, $attributeFilter) !== false) {
+                        return true;
+                    }
+
+                    $normalizedValue = str($value)->ascii();
+                    $normalizedFilter = str($attributeFilter)->ascii();
+                    if (mb_stripos($normalizedValue, $normalizedFilter) !== false) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
     }
 }
