@@ -1,6 +1,6 @@
 <div class="model-browser model-browser-base">
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
-        <x-model-browser::filter :$filter />
+        <x-model-browser::filter :$filter :$viewAttributes />
     </div>
 
     <div class="my-5">
