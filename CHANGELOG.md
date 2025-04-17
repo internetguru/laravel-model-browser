@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.12.0-rc.1] - 2025-04-17
 
+### Changed
+
+- Update laravel-common version to `^0.13`.
+
 ## [0.11.0] - 2025-04-16
 
 _Stable release based on [0.11.0-rc.1]._
