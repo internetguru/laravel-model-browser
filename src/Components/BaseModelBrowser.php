@@ -166,15 +166,15 @@ class BaseModelBrowser extends Component
             ? $this->model::{$this->modelMethod}()
             : $this->model::query()->get();
 
+        if ($data->count() === 0) {
+            return $data;
+        }
+
         // Append missing attributes
         foreach ($this->viewAttributes as $attribute => $trans) {
             if (! isset($data[0]->{$attribute})) {
                 $data[0]->{$attribute} = null;
             }
-        }
-
-        if ($data->count() === 0) {
-            return $data;
         }
 
         if ($applyFormats) {
