@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Update `laravel-common` version to `^1`.
+
 ## [0.12.2] - 2025-04-25
 
 ### Fixed
