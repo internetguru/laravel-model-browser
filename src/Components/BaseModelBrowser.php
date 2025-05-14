@@ -134,7 +134,7 @@ class BaseModelBrowser extends Component
 
     public function downloadCsv(): StreamedResponse
     {
-        $data = $this->getData(paginate: false, highlightMatches: false, applyFormats: false);
+        $data = $this->getData(paginate: false, highlightMatches: false);
         $headers = array_values($this->viewAttributes);
         $handle = fopen('php://memory', 'w+');
 
@@ -143,7 +143,7 @@ class BaseModelBrowser extends Component
         foreach ($data as $item) {
             $row = [];
             foreach ($this->viewAttributes as $attribute => $trans) {
-                $row[] = $this->itemValue($item, $attribute);
+                $row[] = $this->itemValueStripped($item, $attribute);
             }
             fputcsv($handle, $row);
         }
