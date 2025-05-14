@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-05-14
+
+### Fixed
+
+- Export itemValue instead of stval.
+
 ## [1.0.0] - 2025-05-09
 
 _Stable release based on [1.0.0-rc.1]._
@@ -319,6 +325,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[1.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.0.0...v1.0.1
 [1.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.12.2...v1.0.0
 [1.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v0.12.2
 [0.12.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v0.12.1...v0.12.2
