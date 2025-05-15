@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Design empty cell background as empty string.
+- Trim "fuzzy match" filter.
+
 ## [1.0.3] - 2025-05-15
 
 ### Fixed
