@@ -28,6 +28,10 @@ trait HighlightMatchesTrait
             foreach ($filterAttributes as $attribute) {
                 $originalValue = $item->{$attribute . 'Formatted'} ?? $item->{$attribute};
 
+                if (! $exactMatch) {
+                    $normalizedFilter = trim($normalizedFilter);
+                }
+
                 if ($exactMatch && $normalizedFilter == '') {
                     // Exact match with empty string
                     $item->{$attribute . 'Highlighted'} = $originalValue == '' ? '<mark></mark>' : $originalValue;
