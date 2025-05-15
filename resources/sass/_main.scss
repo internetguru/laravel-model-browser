@@ -64,14 +64,10 @@
                     height: 100%;
                 }
 
-                &:empty,
-                mark:empty {
-                    display: block;
-                    width: 1em;
-                    height: 0.2em;
-                    position: relative;
-                    top: 0.7em;
-                    border-top: medium dashed #ced0d1;
+                &:empty:before,
+                mark:empty:before {
+                    content: '""';
+                    color: #ced0d1;
                 }
 
                 mark:empty {

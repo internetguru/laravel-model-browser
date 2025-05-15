@@ -297,6 +297,7 @@ class BaseModelBrowser extends Component
                 } else {
                     // Fuzzy matching with both case insensitivity and ASCII insensitivity
                     // Check for match without ASCII conversion first
+                    $attributeFilter = trim($attributeFilter);
                     if (mb_stripos($value, $attributeFilter) !== false) {
                         return true;
                     }
