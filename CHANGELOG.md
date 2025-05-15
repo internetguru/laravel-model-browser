@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-05-15
+
+### Fixed
+
+- Fix fuzzy match highlight.
+
 ## [1.1.0] - 2025-05-15
 
 _Stable release based on [1.1.0-rc.1]._
@@ -348,6 +354,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[1.1.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.1.0...v1.1.1
 [1.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.0.3...v1.1.0
 [1.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v1.0.3
 [1.0.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.0.2...v1.0.3
