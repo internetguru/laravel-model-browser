@@ -259,10 +259,11 @@ class BaseModelBrowser extends Component
     {
         $data->transform(function ($item) {
             foreach ($this->formats as $attribute => $format) {
-                if (! isset($item->{$attribute})) {
+                $value = Arr::get($item, $attribute);
+                if ($value === null) {
                     continue;
                 }
-                $item->{$attribute . 'Formatted'} = $format($item->{$attribute}, $item);
+                $item->{$attribute . 'Formatted'} = $format($value, $item);
             }
 
             return $item;
