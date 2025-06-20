@@ -26,7 +26,9 @@
     >
 
         <div class="d-flex justify-content-end alig-items-center gap-3 m-3">
-            <x-model-browser::filter :$filter :$viewAttributes />
+            @if (!empty ($this->filterAttributes))
+                <x-model-browser::filter :$filter :$viewAttributes />
+            @endif
             <div class="mt-3">
                 <x-model-browser::fullscreen-button />
             </div>
