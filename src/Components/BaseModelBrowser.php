@@ -21,7 +21,7 @@ class BaseModelBrowser extends Component
 
     public const PER_PAGE_MIN = 3;
     public const PER_PAGE_MAX = 150;
-    public const PER_PAGE_DEFAULT = 50;
+    public const PER_PAGE_DEFAULT = 20;
 
     #[Locked]
     public string $model;
@@ -177,33 +177,37 @@ class BaseModelBrowser extends Component
             }
         }
 
-        if ($applyFormats) {
+        $applyFormatsOnAll = ! empty($this->filterAttributes) || $this->enableSort;
+
+        if ($applyFormats && $applyFormatsOnAll) {
             $data = $this->format($data);
         }
 
-        if ($this->filter) {
+        if (! empty($this->filterAttributes) && $this->filter) {
             $data = $this->applyFilter($data);
         }
 
-        // Multi-column sort
-        $sort = $this->sort;
-        foreach ($this->defaultSort as $attribute => $direction) {
-            if (! isset($sort[$attribute])) {
-                $sort[$attribute] = $direction;
-            }
-        }
-        if (! empty($sort)) {
-            $sortByArg = [];
-            foreach ($sort as $attribute => $direction) {
-                if (is_callable($this->sortComparators[$attribute][$direction] ?? null)) {
-                    $sortByArg[] = Closure::fromCallable($this->sortComparators[$attribute][$direction]);
-                } else {
-                    $sortByArg[] = fn ($a, $b) => $direction === 'desc'
-                        ? str($this->itemValueStripped($b, $attribute))->ascii() <=> str($this->itemValueStripped($a, $attribute))->ascii()
-                        : str($this->itemValueStripped($a, $attribute))->ascii() <=> str($this->itemValueStripped($b, $attribute))->ascii();
+        if ($this->enableSort) {
+            // Multi-column sort
+            $sort = $this->sort;
+            foreach ($this->defaultSort as $attribute => $direction) {
+                if (! isset($sort[$attribute])) {
+                    $sort[$attribute] = $direction;
                 }
             }
-            $data = $data->sortBy($sortByArg);
+            if (! empty($sort)) {
+                $sortByArg = [];
+                foreach ($sort as $attribute => $direction) {
+                    if (is_callable($this->sortComparators[$attribute][$direction] ?? null)) {
+                        $sortByArg[] = Closure::fromCallable($this->sortComparators[$attribute][$direction]);
+                    } else {
+                        $sortByArg[] = fn ($a, $b) => $direction === 'desc'
+                            ? str($this->itemValueStripped($b, $attribute))->ascii() <=> str($this->itemValueStripped($a, $attribute))->ascii()
+                            : str($this->itemValueStripped($a, $attribute))->ascii() <=> str($this->itemValueStripped($b, $attribute))->ascii();
+                    }
+                }
+                $data = $data->sortBy($sortByArg);
+            }
         }
 
         // Paginate manually if required
@@ -219,6 +223,17 @@ class BaseModelBrowser extends Component
                 );
             } else {
                 $data = new LengthAwarePaginator([], 0, $this->perPage, 1);
+            }
+        }
+
+        if ($applyFormats && ! $applyFormatsOnAll) {
+            // Apply formats only to the current page if not applied on all
+            if ($paginate) {
+                $data->setCollection(
+                    $this->format($data->getCollection())
+                );
+            } else {
+                $data = $this->format($data);
             }
         }
 
