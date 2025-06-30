@@ -138,7 +138,6 @@ class BaseModelBrowser extends Component
         $headers = array_values($this->viewAttributes);
         $handle = fopen('php://memory', 'w+');
 
-        // Write data to the memory stream
         fputcsv($handle, $headers);
         foreach ($data as $item) {
             $row = [];
@@ -148,15 +147,45 @@ class BaseModelBrowser extends Component
             fputcsv($handle, $row);
         }
 
-        // Rewind the memory stream to the beginning and capture the CSV content
         rewind($handle);
         $csvContent = stream_get_contents($handle);
         fclose($handle);
 
-        // Stream the CSV content as a download
+        $exportName = $this->generateExportFilename();
+
         return response()->streamDownload(function () use ($csvContent) {
             echo $csvContent;
-        }, 'data.csv', ['Content-Type' => 'text/csv']);
+        }, $exportName, ['Content-Type' => 'text/csv']);
+    }
+
+    protected function generateExportFilename(): string
+    {
+        $modelName = class_basename($this->model);
+        $fileName = $modelName;
+
+        if (!empty($this->filter)) {
+            $filterInfo = $this->filterColumn !== 'all'
+                ? "{$this->filterColumn}-{$this->filter}"
+                : "filter-{$this->filter}";
+
+            $filterInfo = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filterInfo);
+            $fileName .= "-{$filterInfo}";
+        }
+
+        if (!empty($this->sort)) {
+            $sortInfo = [];
+            foreach ($this->sort as $column => $direction) {
+                $sortInfo[] = "{$column}-{$direction}";
+            }
+            if (!empty($sortInfo)) {
+                $fileName .= "-sort-" . implode('-', $sortInfo);
+            }
+        }
+
+        $fileName .= "-" . date('Y-m-d');
+        $fileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $fileName);
+
+        return "{$fileName}.csv";
     }
 
     protected function getData(bool $paginate = true, bool $highlightMatches = true, bool $applyFormats = true)
