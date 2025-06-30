@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.3.0-rc.1] - 2025-06-30
 
+### Changed
+
+- Generate semantic export name.
+
 ## [1.2.0] - 2025-06-20
 
 _Stable release based on [1.2.0-rc.1]._
