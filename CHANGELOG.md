@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Update laravel-common to v4.
+- Update PHP requirement to ^8.4.
+
 ## [1.4.1] - 2025-11-14
 
 ### Changed
