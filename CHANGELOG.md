@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.1] - 2025-12-04
+
+### Fixed
+
+- Fix deprecated mb_convert_encoding.
+
 ## [2.0.0] - 2025-12-02
 
 _Stable release based on [2.0.0-rc.1]._
@@ -400,6 +406,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[2.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.0...v2.0.1
 [2.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.4.1...v2.0.0
 [2.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v1.4.1
 [1.4.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.4.0...v1.4.1
