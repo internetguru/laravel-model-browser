@@ -61,7 +61,16 @@ trait HighlightMatchesTrait
         // For all types of matching, use DOM parsing to preserve HTML structure
         $dom = new \DOMDocument;
         libxml_use_internal_errors(true);
-        $dom->loadHTML(mb_convert_encoding($htmlContent, 'HTML-ENTITIES', 'UTF-8'));
+        https: //github.com/symfony/symfony/issues/44281#issuecomment-1647665965
+        $encoded = mb_encode_numericentity(
+            htmlspecialchars_decode(
+                htmlentities($htmlContent, ENT_NOQUOTES, 'UTF-8', false),
+                ENT_NOQUOTES
+            ),
+            [0x80, 0x10FFFF, 0, ~0],
+            'UTF-8'
+        );
+        $dom->loadHTML($encoded);
         libxml_clear_errors();
 
         // Handle exact matching

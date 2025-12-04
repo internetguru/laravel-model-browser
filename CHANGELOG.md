@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.1] - 2025-12-04
+
+### Fixed
+
+- Fix deprecated mb_convert_encoding.
+
 ## [2.0.0] - 2025-12-02
 
 _Stable release based on [2.0.0-rc.1]._
@@ -403,6 +409,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[2.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.0...v2.0.1
 [2.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.4.1...v2.0.0
 [2.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v1.4.1
 [1.4.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.4.0...v1.4.1
