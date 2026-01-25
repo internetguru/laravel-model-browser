@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.3] - 2026-01-25
+
+### Fixed
+
+- Fix github workflow.
+
 ## [2.0.2] - 2026-01-25
 
 ### Changed
@@ -412,6 +418,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[2.0.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.2...v2.0.3
 [2.0.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.1...v2.0.2
 [2.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.0...v2.0.1
 [2.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v1.4.1...v2.0.0
