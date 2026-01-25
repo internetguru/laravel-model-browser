@@ -2,10 +2,6 @@ name: Tests
 
 on: [push, pull_request]
 
-concurrency:
-  group: badges-push
-  cancel-in-progress: false
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -32,6 +28,26 @@ jobs:
         with:
           coverage_badge_path: output/${{ github.ref_name }}-coverage.svg
           push_badge: false
+
+      - name: Upload badge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: badge-${{ github.ref_name }}
+          path: output/
+
+  push-badge:
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.repository }}-badges-push
+      cancel-in-progress: false
+
+    steps:
+      - name: Download badge artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: badge-${{ github.ref_name }}
+          path: output/
 
       - name: Git push to badges branch
         uses: peaceiris/actions-gh-pages@v3
