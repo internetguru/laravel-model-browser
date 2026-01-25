@@ -2,6 +2,10 @@ name: Tests
 
 on: [push, pull_request]
 
+concurrency:
+  group: badges-push
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -29,17 +33,12 @@ jobs:
           coverage_badge_path: output/${{ github.ref_name }}-coverage.svg
           push_badge: false
 
-      - name: Pull badges branch
-        run: |
-          git fetch origin badges:badges || true
-          git checkout badges -- . 2>/dev/null && mv *.svg output/ 2>/dev/null || true
-          git checkout ${{ github.sha }}
-
       - name: Git push to badges branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           publish_dir: ./output
           publish_branch: badges
+          keep_files: true
           github_token: ${{ secrets.ACTIONS_TOKEN }}
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
