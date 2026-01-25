@@ -38,9 +38,6 @@ jobs:
   push-badge:
     needs: test
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.repository }}-badges-push
-      cancel-in-progress: false
 
     steps:
       - name: Download badge artifact
@@ -50,11 +47,22 @@ jobs:
           path: output/
 
       - name: Git push to badges branch
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          publish_dir: ./output
-          publish_branch: badges
-          keep_files: true
-          github_token: ${{ secrets.ACTIONS_TOKEN }}
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd output
+          git init -b badges
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          for i in 1 2 3 4 5; do
+            git fetch origin badges && git reset --hard origin/badges || true
+            git add -A
+            git diff --cached --quiet && echo "No changes to commit" && exit 0
+            git commit -m "Update badge for ${{ github.ref_name }}"
+            git push origin badges && exit 0
+            echo "Push failed, retrying in $((i * 5)) seconds..."
+            sleep $((i * 5))
+          done
+          echo "Failed to push after 5 attempts"
+          exit 1
