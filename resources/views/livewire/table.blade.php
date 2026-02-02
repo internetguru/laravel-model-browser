@@ -8,27 +8,25 @@
             $el.classList.toggle('fullscreen--active', fullscreen)
         "
         x-data="{
-            sortColumn: function(column, first = 0) {
-                let current = $wire.sort[column] || (first ? $wire.defaultSort[column] : null) || null;
-                if (current === 'asc') {
-                    $wire.set('sort', { [column]: 'desc' });
-                } else if (current === 'desc') {
-                    let data = {}
-                    if ($wire.defaultSort[column] || false) {
-                        data[column] = 'asc';
+            sortColumn: function(column) {
+                let currentColumn = $wire.sortColumn;
+                let currentDirection = $wire.sortDirection;
+                if (currentColumn === column) {
+                    if (currentDirection === 'asc') {
+                        $wire.set('sortDirection', 'desc');
+                    } else {
+                        $wire.set('sortColumn', '');
+                        $wire.set('sortDirection', 'asc');
                     }
-                    $wire.set('sort', data);
                 } else {
-                    $wire.set('sort', { [column]: 'asc' });
+                    $wire.set('sortColumn', column);
+                    $wire.set('sortDirection', 'asc');
                 }
             }
         }"
     >
 
         <div class="d-flex justify-content-end alig-items-center gap-3 m-3">
-            @if (!empty ($this->filterAttributes))
-                <x-model-browser::filter :$filter :$viewAttributes />
-            @endif
             <div class="mt-3">
                 <x-model-browser::fullscreen-button />
             </div>
@@ -41,26 +39,21 @@
         <div class="table-responsive">
             <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
                 <div class="grid-header">
-                    @php
-                        $first = true;
-                        $columnCount = count($viewAttributes);
-                    @endphp
                     @foreach($viewAttributes as $column => $trans)
                         <div class="grid-header-cell">
                             <span class="d-flex align-items-center gap-1">
                                 @php
-                                    $currentDirection = $sort[$column] ?? null;
-                                    if ($first && empty($sort)) {
-                                        $currentDirection = $defaultSort[$column] ?? null;
-                                    }
+                                    $activeSortColumn = $this->getActiveSortColumn();
+                                    $activeSortDirection = $this->getActiveSortDirection();
+                                    $isCurrentSortColumn = $activeSortColumn === $column;
                                 @endphp
                                 @if ($enableSort)
-                                    <span x-on:click="sortColumn('{{ $column }}', {{ $first ? 1 : 0 }})" style="cursor: pointer;">
-                                        @if ($currentDirection)
+                                    <span x-on:click="sortColumn('{{ $column }}')" style="cursor: pointer;">
+                                        @if ($isCurrentSortColumn)
                                             <i @class([
                                                 "fas fa-fw",
-                                                "fa-up-long" => $currentDirection === 'asc',
-                                                "fa-down-long" => $currentDirection === 'desc',
+                                                "fa-up-long" => $activeSortDirection === 'asc',
+                                                "fa-down-long" => $activeSortDirection === 'desc',
                                             ])></i>
                                         @else
                                             <i class="fas fa-fw fa-up-down"></i>
@@ -68,11 +61,6 @@
                                     </span>
                                 @endif
                                 {{ $trans }}
-                                @php
-                                    if ($enableSort && $currentDirection) {
-                                        $first = false;
-                                    }
-                                @endphp
                             </span>
                         </div>
                     @endforeach
@@ -91,7 +79,7 @@
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
                                     ])
                                 ><span>{!!
-                                    $this->itemValueHighlighted($row, $column)
+                                    $this->itemValue($row, $column)
                                 !!}</span></div>
                             @endforeach
                         </div>

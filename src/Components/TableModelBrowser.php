@@ -14,17 +14,16 @@ class TableModelBrowser extends BaseModelBrowser
 
     public function mount(
         string $model,
-        array $filterAttributes = [],
         array $viewAttributes = [],
         array $formats = [],
         array $alignments = [],
-        array $defaultSort = [],
+        string $defaultSortColumn = '',
+        string $defaultSortDirection = 'asc',
         bool $enableSort = true,
-        array $sortComparators = [],
         int $lightDarkStep = 1,
         array $columnWidths = [],
     ) {
-        parent::mount($model, $filterAttributes, $viewAttributes, $formats, $alignments, $defaultSort, $enableSort, $sortComparators);
+        parent::mount($model, $viewAttributes, $formats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
     }
@@ -54,5 +53,4 @@ class TableModelBrowser extends BaseModelBrowser
             'data' => $this->getData(),
         ]);
     }
-
 }

@@ -4,6 +4,6 @@ return [
 
     'previous' => 'Předchozí',
     'next' => 'Další',
-    'range' => ':from–:to z :total',
+    'page' => 'Stránka :page (:count položek)',
 
 ];

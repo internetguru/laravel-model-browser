@@ -27,6 +27,6 @@ class User extends Authenticatable
 
     public static function summary()
     {
-        return self::all();
+        return self::query();
     }
 }
