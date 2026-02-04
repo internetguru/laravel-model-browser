@@ -6,6 +6,7 @@ use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -56,7 +57,12 @@ class BaseModelBrowser extends Component
 
     /**
      * Filter configuration.
-     * Format: ['attribute' => ['type' => 'string|number|date|date_from|date_to|number_from|number_to|options', 'label' => 'Label', 'options' => ['a', 'b', 'c']]]
+     * Format: ['attribute' => ['type' => 'string|number|date|...', 'label' => 'Label', 'options' => [...], 'rules' => 'nullable|...']]
+     *
+     * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options)
+     * - label: Display label
+     * - options: Array of options for 'options' type
+     * - rules: Optional Laravel validation rules (overrides default type-based rules)
      */
     #[Locked]
     public array $filterConfig = [];
@@ -134,7 +140,7 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Validate filter value based on its type.
+     * Validate filter value using Laravel validation.
      */
     protected function validateFilterValue(string $attribute, mixed $value): string
     {
@@ -143,35 +149,14 @@ class BaseModelBrowser extends Component
         }
 
         $config = $this->filterConfig[$attribute] ?? [];
-        $type = $config['type'] ?? self::FILTER_STRING;
+        $rules = $this->getFilterRules($attribute, $config);
 
-        return match ($type) {
-            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => $this->validateNumber($value),
-            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => $this->validateDate($value),
-            self::FILTER_OPTIONS => $this->validateOption($value, $config['options'] ?? []),
-            default => $this->validateString($value),
-        };
-    }
+        $validator = Validator::make(
+            [$attribute => $value],
+            [$attribute => $rules]
+        );
 
-    /**
-     * Validate string filter value.
-     */
-    protected function validateString(mixed $value): string
-    {
-        $value = (string) $value;
-        // Remove potentially dangerous characters, limit length
-        $value = strip_tags($value);
-        $value = mb_substr($value, 0, 255);
-
-        return $value;
-    }
-
-    /**
-     * Validate number filter value.
-     */
-    protected function validateNumber(mixed $value): string
-    {
-        if (! is_numeric($value)) {
+        if ($validator->fails()) {
             return '';
         }
 
@@ -179,46 +164,38 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Validate date filter value.
+     * Get validation rules for a filter.
+     * Uses custom rules from config if provided, otherwise generates default rules based on type.
      */
-    protected function validateDate(mixed $value): string
+    protected function getFilterRules(string $attribute, array $config): string|array
     {
-        $value = (string) $value;
-        // Validate Y-m-d format
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-            return '';
+        // Use custom rules if provided
+        if (isset($config['rules'])) {
+            return $config['rules'];
         }
 
-        $date = \DateTime::createFromFormat('Y-m-d', $value);
-        if (! $date || $date->format('Y-m-d') !== $value) {
-            return '';
-        }
+        // Generate default rules based on type
+        $type = $config['type'] ?? self::FILTER_STRING;
 
-        return $value;
+        return match ($type) {
+            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'nullable|numeric',
+            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => 'nullable|date',
+            self::FILTER_OPTIONS => $this->getOptionsRule($config['options'] ?? []),
+            default => 'nullable|string|max:255',
+        };
     }
 
     /**
-     * Validate option filter value.
+     * Generate validation rule for options filter.
      */
-    protected function validateOption(mixed $value, array $options): string
+    protected function getOptionsRule(array $options): string
     {
-        $value = (string) $value;
-
-        // Check if value exists in options (as key or value for numeric arrays)
         $validValues = [];
         foreach ($options as $optionKey => $optionValue) {
-            if (is_numeric($optionKey)) {
-                $validValues[] = (string) $optionValue;
-            } else {
-                $validValues[] = (string) $optionKey;
-            }
+            $validValues[] = is_numeric($optionKey) ? $optionValue : $optionKey;
         }
 
-        if (! in_array($value, $validValues, true)) {
-            return '';
-        }
-
-        return $value;
+        return 'nullable|in:' . implode(',', $validValues);
     }
 
     /**
