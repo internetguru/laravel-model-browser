@@ -118,7 +118,7 @@ class BaseModelBrowser extends Component
         $this->defaultSortColumn = $defaultSortColumn;
         $this->defaultSortDirection = $defaultSortDirection;
         $this->filterConfig = $filters;
-        $this->filterSessionKey = $filterSessionKey ?: 'model-browser-filters-' . md5($model . ($this->modelMethod ?? ''));
+        $this->filterSessionKey = $filterSessionKey ?: 'model-browser-filters-' . md5($model);
         $this->initializeFilters();
         $this->updatedPerPage();
         $this->updatedSortColumn();
