@@ -96,6 +96,10 @@
         }
     }
 
+    form {
+        margin-top: $spacer;
+    }
+
     .mb-filter-item {
         &.mb-filter-active {
             .form-control {
@@ -103,52 +107,9 @@
                 box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb, 13, 110, 253), 0.25);
             }
         }
-    }
 
-    .mb-filter {
-        flex-direction: column;
-        align-items: center;
-        gap: $spacer;
-
-        .form-control {
+        .form-floating {
             margin-top: 0;
-            padding-left: 1.95em;
-            padding-right: 1.75em;
-        }
-
-        svg {
-            color: #bcbcbc;
-        }
-
-        button {
-            border-radius: $border-radius 0 0 $border-radius;
-            border-right: thin solid color.adjust($primary, $blackness: 15%);
-        }
-        button + button {
-            border-radius: 0 $border-radius $border-radius 0;
-        }
-
-        .dropdown-toggle {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        @include media-2 {
-            flex-direction: row;
-            align-items: stretch;
-            gap: 0;
-
-            input {
-                border-radius: $border-radius 0 0 $border-radius;
-            }
-            button {
-                border-radius: 0;
-            }
-            button + button {
-                border-radius: 0 $border-radius $border-radius 0;
-            }
-
         }
     }
 
