@@ -20,10 +20,12 @@ class TableModelBrowser extends BaseModelBrowser
         string $defaultSortColumn = '',
         string $defaultSortDirection = 'asc',
         bool $enableSort = true,
+        array $filters = [],
+        string $filterSessionKey = '',
         int $lightDarkStep = 1,
         array $columnWidths = [],
     ) {
-        parent::mount($model, $viewAttributes, $formats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort);
+        parent::mount($model, $viewAttributes, $formats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
     }

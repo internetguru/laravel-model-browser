@@ -32,8 +32,11 @@
             </div>
         </div>
 
+        <x-model-browser::filters :$filterConfig :$filterValues />
+
         <div class="my-5">
             <x-model-browser::pagination :$data />
+        </div>
         </div>
 
         <div class="table-responsive">

@@ -7,6 +7,17 @@ return [
         'placeholder' => 'Filtrovat',
         'all' => 'Vše',
     ],
+    'filters' => [
+        'active' => 'Aktivní filtry',
+        'clear' => 'Zrušit',
+        'clear-all' => 'Zrušit vše',
+        'show' => 'Všechny filtry',
+        'hide' => 'Méně filtrů',
+        'all' => 'Vše',
+        'search' => 'Hledat...',
+        'from' => 'Od',
+        'to' => 'Do',
+    ],
     'sort' => [
         'by' => 'Řadit podle',
         'direction' => 'Směr',

@@ -20,6 +20,16 @@ class BaseModelBrowser extends Component
     public const PER_PAGE_MAX = 150;
     public const PER_PAGE_DEFAULT = 20;
 
+    // Filter types
+    public const FILTER_STRING = 'string';
+    public const FILTER_NUMBER = 'number';
+    public const FILTER_DATE = 'date';
+    public const FILTER_DATE_FROM = 'date_from';
+    public const FILTER_DATE_TO = 'date_to';
+    public const FILTER_NUMBER_FROM = 'number_from';
+    public const FILTER_NUMBER_TO = 'number_to';
+    public const FILTER_OPTIONS = 'options';
+
     #[Locked]
     public string $model;
 
@@ -44,6 +54,13 @@ class BaseModelBrowser extends Component
     #[Locked]
     public string $defaultSortDirection = 'asc';
 
+    /**
+     * Filter configuration.
+     * Format: ['attribute' => ['type' => 'string|number|date|date_from|date_to|number_from|number_to|options', 'label' => 'Label', 'options' => ['a', 'b', 'c']]]
+     */
+    #[Locked]
+    public array $filterConfig = [];
+
     #[Url(as: 'per-page')]
     public int $perPage = self::PER_PAGE_DEFAULT;
 
@@ -53,6 +70,18 @@ class BaseModelBrowser extends Component
     // #[Url(except: '', as: 'sort-direction')]
     public string $sortDirection = 'asc';
 
+    /**
+     * Current filter values.
+     * Format: ['attribute' => 'value']
+     */
+    public array $filterValues = [];
+
+    /**
+     * Session key for storing filters.
+     */
+    #[Locked]
+    public string $filterSessionKey = '';
+
     public function mount(
         string $model,
         array $viewAttributes = [],
@@ -61,6 +90,8 @@ class BaseModelBrowser extends Component
         string $defaultSortColumn = '',
         string $defaultSortDirection = 'asc',
         bool $enableSort = true,
+        array $filters = [],
+        string $filterSessionKey = '',
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -80,9 +111,173 @@ class BaseModelBrowser extends Component
         $this->enableSort = $enableSort;
         $this->defaultSortColumn = $defaultSortColumn;
         $this->defaultSortDirection = $defaultSortDirection;
+        $this->filterConfig = $filters;
+        $this->filterSessionKey = $filterSessionKey ?: 'model-browser-filters-' . md5($model . ($this->modelMethod ?? ''));
+        $this->initializeFilters();
         $this->updatedPerPage();
         $this->updatedSortColumn();
         $this->updatedSortDirection();
+    }
+
+    /**
+     * Initialize filter values from session or defaults.
+     */
+    protected function initializeFilters(): void
+    {
+        // Load from session
+        $sessionFilters = session($this->filterSessionKey, []);
+
+        foreach ($this->filterConfig as $attribute => $config) {
+            $sessionValue = $sessionFilters[$attribute] ?? '';
+            $this->filterValues[$attribute] = $this->validateFilterValue($attribute, $sessionValue);
+        }
+    }
+
+    /**
+     * Validate filter value based on its type.
+     */
+    protected function validateFilterValue(string $attribute, mixed $value): string
+    {
+        if ($value === '' || $value === null) {
+            return '';
+        }
+
+        $config = $this->filterConfig[$attribute] ?? [];
+        $type = $config['type'] ?? self::FILTER_STRING;
+
+        return match ($type) {
+            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => $this->validateNumber($value),
+            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => $this->validateDate($value),
+            self::FILTER_OPTIONS => $this->validateOption($value, $config['options'] ?? []),
+            default => $this->validateString($value),
+        };
+    }
+
+    /**
+     * Validate string filter value.
+     */
+    protected function validateString(mixed $value): string
+    {
+        $value = (string) $value;
+        // Remove potentially dangerous characters, limit length
+        $value = strip_tags($value);
+        $value = mb_substr($value, 0, 255);
+
+        return $value;
+    }
+
+    /**
+     * Validate number filter value.
+     */
+    protected function validateNumber(mixed $value): string
+    {
+        if (! is_numeric($value)) {
+            return '';
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * Validate date filter value.
+     */
+    protected function validateDate(mixed $value): string
+    {
+        $value = (string) $value;
+        // Validate Y-m-d format
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return '';
+        }
+
+        $date = \DateTime::createFromFormat('Y-m-d', $value);
+        if (! $date || $date->format('Y-m-d') !== $value) {
+            return '';
+        }
+
+        return $value;
+    }
+
+    /**
+     * Validate option filter value.
+     */
+    protected function validateOption(mixed $value, array $options): string
+    {
+        $value = (string) $value;
+
+        // Check if value exists in options (as key or value for numeric arrays)
+        $validValues = [];
+        foreach ($options as $optionKey => $optionValue) {
+            if (is_numeric($optionKey)) {
+                $validValues[] = (string) $optionValue;
+            } else {
+                $validValues[] = (string) $optionKey;
+            }
+        }
+
+        if (! in_array($value, $validValues, true)) {
+            return '';
+        }
+
+        return $value;
+    }
+
+    /**
+     * Save filters to session.
+     */
+    protected function saveFiltersToSession(): void
+    {
+        session([$this->filterSessionKey => $this->filterValues]);
+    }
+
+    /**
+     * Get active (non-empty) filters.
+     */
+    public function getActiveFilters(): array
+    {
+        return array_filter($this->filterValues, fn ($value) => $value !== '' && $value !== null);
+    }
+
+    /**
+     * Check if any filter is active.
+     */
+    public function hasActiveFilters(): bool
+    {
+        return ! empty($this->getActiveFilters());
+    }
+
+    /**
+     * Clear all filters.
+     */
+    public function clearFilters(): void
+    {
+        foreach ($this->filterValues as $key => $value) {
+            $this->filterValues[$key] = '';
+        }
+        $this->saveFiltersToSession();
+        $this->resetPage();
+    }
+
+    /**
+     * Clear a specific filter.
+     */
+    public function clearFilter(string $attribute): void
+    {
+        if (isset($this->filterValues[$attribute])) {
+            $this->filterValues[$attribute] = '';
+            $this->saveFiltersToSession();
+            $this->resetPage();
+        }
+    }
+
+    /**
+     * Called when any filter value is updated.
+     */
+    public function updatedFilterValues($value, $key): void
+    {
+        // Validate the updated filter value
+        $this->filterValues[$key] = $this->validateFilterValue($key, $value);
+        $this->saveFiltersToSession();
+        $this->resetPage();
     }
 
     public function paginationView()
