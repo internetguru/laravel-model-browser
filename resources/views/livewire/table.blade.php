@@ -62,6 +62,12 @@
                                             <i class="fas fa-fw fa-up-down"></i>
                                         @endif
                                     </span>
+                                @elseif ($isCurrentSortColumn)
+                                    <i @class([
+                                        "fas fa-fw",
+                                        "fa-up-long" => $activeSortDirection === 'asc',
+                                        "fa-down-long" => $activeSortDirection === 'desc',
+                                    ])></i>
                                 @endif
                                 {{ $trans }}
                             </span>
