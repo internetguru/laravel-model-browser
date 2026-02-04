@@ -1,7 +1,5 @@
 <div class="model-browser model-browser-base">
-    <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
-        <x-model-browser::filter :$filter :$viewAttributes />
-    </div>
+    <x-model-browser::filters :$filterConfig :$filterValues />
 
     <div class="my-5">
         <x-model-browser::pagination :$data />
@@ -13,7 +11,7 @@
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                     @foreach($viewAttributes as $column => $trans)
                         <dt>{{ $trans }}</dt>
-                        <dd>{!! $this->itemValueHighlighted($row, $column) ?: '-' !!}</dd>
+                        <dd>{!! $this->itemValue($row, $column) ?: '-' !!}</dd>
                     @endforeach
                 </dl>
             @endforeach

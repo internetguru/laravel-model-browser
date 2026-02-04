@@ -2,26 +2,35 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
-use Closure;
-use Illuminate\Database\Eloquent\Model;
+use Exception;
+use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
-use Internetguru\ModelBrowser\Traits\HighlightMatchesTrait;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 class BaseModelBrowser extends Component
 {
-    use HighlightMatchesTrait;
     use WithPagination;
 
     public const PER_PAGE_MIN = 3;
     public const PER_PAGE_MAX = 150;
     public const PER_PAGE_DEFAULT = 20;
+
+    // Filter types
+    public const FILTER_STRING = 'string';
+    public const FILTER_NUMBER = 'number';
+    public const FILTER_DATE = 'date';
+    public const FILTER_DATE_FROM = 'date_from';
+    public const FILTER_DATE_TO = 'date_to';
+    public const FILTER_NUMBER_FROM = 'number_from';
+    public const FILTER_NUMBER_TO = 'number_to';
+    public const FILTER_OPTIONS = 'options';
 
     #[Locked]
     public string $model;
@@ -33,9 +42,6 @@ class BaseModelBrowser extends Component
     public array $viewAttributes;
 
     #[Locked]
-    public array $filterAttributes;
-
-    #[Locked]
     public array $alignments;
 
     #[Locked]
@@ -45,52 +51,280 @@ class BaseModelBrowser extends Component
     public bool $enableSort = true;
 
     #[Locked]
-    public array $defaultSort = [];
+    public string $defaultSortColumn = '';
 
     #[Locked]
-    public array $sortComparators = [];
+    public string $defaultSortDirection = 'asc';
+
+    /**
+     * Filter configuration.
+     * Format: ['attribute' => ['type' => 'string|number|date|...', 'label' => 'Label', 'options' => [...], 'rules' => 'nullable|...', 'url' => 'query_param']]
+     *
+     * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options)
+     * - label: Display label
+     * - options: Array of options for 'options' type
+     * - rules: Optional Laravel validation rules (overrides default type-based rules)
+     * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
+     */
+    #[Locked]
+    public array $filterConfig = [];
 
     #[Url(as: 'per-page')]
     public int $perPage = self::PER_PAGE_DEFAULT;
 
-    #[Url(except: '')]
-    public string $filter = '';
+    // #[Url(except: '', as: 'sort-column')]
+    public string $sortColumn = '';
 
-    #[Url(except: '', as: 'sort')]
-    public array $sort = [];
+    // #[Url(except: '', as: 'sort-direction')]
+    public string $sortDirection = 'asc';
 
-    public string $filterColumn = 'all';
+    /**
+     * Current filter values.
+     * Format: ['attribute' => 'value']
+     */
+    public array $filterValues = [];
+
+    /**
+     * Session key for storing filters.
+     */
+    #[Locked]
+    public string $filterSessionKey = '';
 
     public function mount(
         string $model,
-        array $filterAttributes = [],
         array $viewAttributes = [],
         array $formats = [],
         array $alignments = [],
-        array $defaultSort = [],
+        string $defaultSortColumn = '',
+        string $defaultSortDirection = 'asc',
         bool $enableSort = true,
-        array $sortComparators = [],
+        array $filters = [],
+        string $filterSessionKey = '',
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
             [$model, $modelMethod] = explode('@', $model);
             $this->modelMethod = $modelMethod;
+            $this->model = $model;
         }
-        $this->model = $model;
-
         // Defaults to the first model's fillable attributes
         $this->viewAttributes = $viewAttributes;
         if (! $viewAttributes) {
             $defaultFillables = (new $model)->getFillable();
             $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
         }
-        $this->filterAttributes = $filterAttributes;
         $this->formats = $formats;
         $this->alignments = $alignments;
         $this->enableSort = $enableSort;
-        $this->defaultSort = $defaultSort;
-        $this->sortComparators = $sortComparators;
+        $this->defaultSortColumn = $defaultSortColumn;
+        $this->defaultSortDirection = $defaultSortDirection;
+        $this->filterConfig = $filters;
+        if (! empty($filters) && ! $filterSessionKey) {
+            throw new Exception('Provide filterSessionKey when using filters configuration.');
+        }
+        $this->initializeFilters();
         $this->updatedPerPage();
+        $this->updatedSortColumn();
+        $this->updatedSortDirection();
+    }
+
+    /**
+     * Initialize filter values from URL, session, or defaults.
+     * Priority: URL query parameter > Session > empty
+     */
+    protected function initializeFilters(): void
+    {
+        // Load from session
+        $sessionFilters = session($this->filterSessionKey, []);
+        $urlParamsToClear = [];
+
+        foreach ($this->filterConfig as $attribute => $config) {
+            $value = '';
+
+            // Check URL parameter first (highest priority)
+            if (isset($config['url'])) {
+                $urlValue = request()->query($config['url']);
+                if ($urlValue !== null && $urlValue !== '') {
+                    $value = $urlValue;
+                    $urlParamsToClear[] = $config['url'];
+                }
+            }
+
+            // Fall back to session if no URL value
+            if ($value === '') {
+                $value = $sessionFilters[$attribute] ?? '';
+            }
+
+            $result = $this->validateFilterValue($attribute, $value);
+            $this->filterValues[$attribute] = $result['value'];
+            // Don't show errors on initial load
+        }
+
+        // Save to session (in case URL params were used)
+        $this->saveFiltersToSession();
+
+        // Clear URL params that were used to initialize filters
+        if (! empty($urlParamsToClear)) {
+            $this->dispatch('mb-clear-url-params', params: $urlParamsToClear);
+        }
+    }
+
+    /**
+     * Validate filter value using Laravel validation.
+     * Returns array with 'value' and optionally 'error' keys.
+     */
+    protected function validateFilterValue(string $attribute, mixed $value): array
+    {
+        if ($value === '' || $value === null) {
+            return ['value' => '', 'error' => null];
+        }
+
+        $config = $this->filterConfig[$attribute] ?? [];
+        $rules = $this->getFilterRules($attribute, $config);
+
+        $validator = Validator::make(
+            [$attribute => $value],
+            [$attribute => $rules]
+        );
+
+        if ($validator->fails()) {
+            return [
+                'value' => (string) $value,
+                'error' => $validator->errors()->first($attribute),
+            ];
+        }
+
+        return ['value' => (string) $value, 'error' => null];
+    }
+
+    /**
+     * Get validation rules for a filter.
+     * Uses custom rules from config if provided, otherwise generates default rules based on type.
+     */
+    protected function getFilterRules(string $attribute, array $config): string|array
+    {
+        // Use custom rules if provided
+        if (isset($config['rules'])) {
+            return $config['rules'];
+        }
+
+        // Generate default rules based on type
+        $type = $config['type'] ?? self::FILTER_STRING;
+
+        return match ($type) {
+            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'nullable|numeric',
+            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => 'nullable|date',
+            self::FILTER_OPTIONS => $this->getOptionsRule($config['options'] ?? []),
+            default => 'nullable|string|max:255',
+        };
+    }
+
+    /**
+     * Generate validation rule for options filter.
+     */
+    protected function getOptionsRule(array $options): string
+    {
+        $validValues = [];
+        foreach ($options as $optionKey => $optionValue) {
+            if (is_array($optionValue) && isset($optionValue['id'])) {
+                // Format: [['id' => 'value', 'name' => 'label'], ...]
+                $validValues[] = $optionValue['id'];
+            } elseif (is_numeric($optionKey)) {
+                // Format: ['value1', 'value2', ...]
+                $validValues[] = $optionValue;
+            } else {
+                // Format: ['value' => 'label', ...]
+                $validValues[] = $optionKey;
+            }
+        }
+
+        return 'nullable|in:' . implode(',', $validValues);
+    }
+
+    /**
+     * Save filters to session (only valid values).
+     */
+    protected function saveFiltersToSession(): void
+    {
+        $validFilters = [];
+        foreach ($this->filterValues as $key => $value) {
+            if (! $this->getErrorBag()->has('filter-' . $key) && $value !== '' && $value !== null) {
+                $validFilters[$key] = $value;
+            }
+        }
+        session([$this->filterSessionKey => $validFilters]);
+    }
+
+    /**
+     * Get active (non-empty, valid) filters.
+     */
+    public function getActiveFilters(): array
+    {
+        return array_filter(
+            $this->filterValues,
+            fn($value, $key) => $value !== '' && $value !== null && ! $this->getErrorBag()->has('filter-' . $key),
+            ARRAY_FILTER_USE_BOTH
+        );
+    }
+
+    /**
+     * Check if any filter is active.
+     */
+    public function hasActiveFilters(): bool
+    {
+        return ! empty($this->getActiveFilters());
+    }
+
+    /**
+     * Clear all filters.
+     */
+    public function clearFilters(): void
+    {
+        foreach ($this->filterValues as $key => $value) {
+            $this->filterValues[$key] = '';
+        }
+        $this->resetErrorBag();
+        $this->saveFiltersToSession();
+        $this->resetPage();
+    }
+
+    /**
+     * Clear a specific filter.
+     */
+    public function clearFilter(string $attribute): void
+    {
+        if (isset($this->filterValues[$attribute])) {
+            $this->filterValues[$attribute] = '';
+            $this->resetErrorBag('filter-' . $attribute);
+            $this->saveFiltersToSession();
+            $this->resetPage();
+        }
+    }
+
+    /**
+     * Apply filters - validate all and save to session.
+     */
+    public function applyFilters(): void
+    {
+        $this->resetErrorBag();
+        $hasErrors = false;
+
+        foreach ($this->filterConfig as $attribute => $config) {
+            $value = $this->filterValues[$attribute] ?? '';
+            $result = $this->validateFilterValue($attribute, $value);
+
+            $this->filterValues[$attribute] = $result['value'];
+
+            if ($result['error']) {
+                $this->addError('filter-' . $attribute, $result['error']);
+                $hasErrors = true;
+            }
+        }
+
+        if (! $hasErrors) {
+            $this->saveFiltersToSession();
+            $this->resetPage();
+        }
     }
 
     public function paginationView()
@@ -98,26 +332,32 @@ class BaseModelBrowser extends Component
         return 'model-browser::empty';
     }
 
-    public function updatedSort()
+    public function paginationSimpleView()
     {
-        $validAttributes = array_keys($this->viewAttributes);
-        $validDirections = ['asc', 'desc'];
-        foreach ($this->sort as $attribute => $compare) {
-            if (in_array($attribute, $validAttributes) && in_array($compare, $validDirections)) {
-                continue;
-            }
-            unset($this->sort[$attribute]);
-        }
+        return 'model-browser::empty';
     }
 
-    public function updatedFilter()
+    public function updatedSortColumn()
     {
+        $validAttributes = array_keys($this->viewAttributes);
+        if (! in_array($this->sortColumn, $validAttributes)) {
+            $this->sortColumn = '';
+        }
+        $this->resetPage();
+    }
+
+    public function updatedSortDirection()
+    {
+        if (! in_array($this->sortDirection, ['asc', 'desc'])) {
+            $this->sortDirection = 'asc';
+        }
         $this->resetPage();
     }
 
     public function updatedPerPage()
     {
         $this->perPage = min(self::PER_PAGE_MAX, max(self::PER_PAGE_MIN, $this->perPage));
+        $this->resetPage();
     }
 
     public function render()
@@ -134,7 +374,7 @@ class BaseModelBrowser extends Component
 
     public function downloadCsv(): StreamedResponse
     {
-        $data = $this->getData(paginate: false, highlightMatches: false);
+        $data = $this->getData(paginate: false);
         $headers = array_values($this->viewAttributes);
         $handle = fopen('php://memory', 'w+');
 
@@ -163,118 +403,75 @@ class BaseModelBrowser extends Component
         $modelName = class_basename($this->model);
         $fileName = $modelName;
 
-        if (!empty($this->filter)) {
-            $filterInfo = $this->filterColumn !== 'all'
-                ? "{$this->filterColumn}-{$this->filter}"
-                : "filter-{$this->filter}";
-
-            $filterInfo = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filterInfo);
-            $fileName .= "-{$filterInfo}";
+        $sortColumn = $this->getActiveSortColumn();
+        $sortDirection = $this->getActiveSortDirection();
+        if ($sortColumn) {
+            $fileName .= "-sort-{$sortColumn}-{$sortDirection}";
         }
 
-        if (!empty($this->sort)) {
-            $sortInfo = [];
-            foreach ($this->sort as $column => $direction) {
-                $sortInfo[] = "{$column}-{$direction}";
-            }
-            if (!empty($sortInfo)) {
-                $fileName .= "-sort-" . implode('-', $sortInfo);
-            }
-        }
-
-        $fileName .= "-" . date('Y-m-d');
+        $fileName .= '-' . date('Y-m-d');
         $fileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $fileName);
 
         return "{$fileName}.csv";
     }
 
-    protected function getData(bool $paginate = true, bool $highlightMatches = true, bool $applyFormats = true)
+    /**
+     * Get the base query builder.
+     */
+    protected function getQuery(): Builder
     {
-        // Retrieve all items from the model
-        $data = $this->modelMethod
+        return $this->modelMethod
             ? $this->model::{$this->modelMethod}()
-            : $this->model::query()->get();
+            : $this->model::query();
+    }
 
-        if ($data->count() === 0) {
+    /**
+     * Get the active sort column (user selection or default).
+     */
+    public function getActiveSortColumn(): string
+    {
+        return $this->sortColumn ?: $this->defaultSortColumn;
+    }
+
+    /**
+     * Get the active sort direction (user selection or default).
+     */
+    public function getActiveSortDirection(): string
+    {
+        return $this->sortColumn ? $this->sortDirection : $this->defaultSortDirection;
+    }
+
+    /**
+     * Get data with database-level sorting and pagination.
+     */
+    protected function getData(bool $paginate = true, bool $applyFormats = true): Paginator|Collection
+    {
+        $query = $this->getQuery();
+
+        // Apply database-level sorting (single column)
+        // User sorting only when enableSort is true, default sort always applies
+        $sortColumn = $this->enableSort ? $this->getActiveSortColumn() : $this->defaultSortColumn;
+        $sortDirection = $this->enableSort ? $this->getActiveSortDirection() : $this->defaultSortDirection;
+        if ($sortColumn) {
+            $query->orderBy($sortColumn, $sortDirection);
+        }
+
+        if ($paginate) {
+            // Use simplePaginate for better performance (no total count query)
+            $data = $query->simplePaginate($this->perPage);
+
+            if ($applyFormats) {
+                $data->setCollection($this->format($data->getCollection()));
+            }
+
             return $data;
         }
 
-        // Append missing attributes
-        foreach ($this->viewAttributes as $attribute => $trans) {
-            if (! isset($data[0]->{$attribute})) {
-                $data[0]->{$attribute} = null;
-            }
-        }
+        // For CSV export, get all data
+        $data = $query->get();
 
-        $applyFormatsOnAll = ! empty($this->filterAttributes) || $this->enableSort;
-
-        if ($applyFormats && $applyFormatsOnAll) {
+        if ($applyFormats) {
             $data = $this->format($data);
-        }
-
-        if (! empty($this->filterAttributes) && $this->filter) {
-            $data = $this->applyFilter($data);
-        }
-
-        if ($this->enableSort) {
-            // Multi-column sort
-            $sort = $this->sort;
-            foreach ($this->defaultSort as $attribute => $direction) {
-                if (! isset($sort[$attribute])) {
-                    $sort[$attribute] = $direction;
-                }
-            }
-            if (! empty($sort)) {
-                $sortByArg = [];
-                foreach ($sort as $attribute => $direction) {
-                    if (is_callable($this->sortComparators[$attribute][$direction] ?? null)) {
-                        $sortByArg[] = Closure::fromCallable($this->sortComparators[$attribute][$direction]);
-                    } else {
-                        $sortByArg[] = fn ($a, $b) => $direction === 'desc'
-                            ? str($this->itemValueStripped($b, $attribute))->ascii() <=> str($this->itemValueStripped($a, $attribute))->ascii()
-                            : str($this->itemValueStripped($a, $attribute))->ascii() <=> str($this->itemValueStripped($b, $attribute))->ascii();
-                    }
-                }
-                $data = $data->sortBy($sortByArg);
-            }
-        }
-
-        // Paginate manually if required
-        if ($paginate) {
-            if ($data->count() > 0) {
-                $currentPage = $this->getPage();
-                $currentItems = $data->slice(($currentPage - 1) * $this->perPage, $this->perPage)->values();
-                $data = new LengthAwarePaginator(
-                    $currentItems,
-                    $data->count(),
-                    $this->perPage,
-                    $currentPage
-                );
-            } else {
-                $data = new LengthAwarePaginator([], 0, $this->perPage, 1);
-            }
-        }
-
-        if ($applyFormats && ! $applyFormatsOnAll) {
-            // Apply formats only to the current page if not applied on all
-            if ($paginate) {
-                $data->setCollection(
-                    $this->format($data->getCollection())
-                );
-            } else {
-                $data = $this->format($data);
-            }
-        }
-
-        if ($highlightMatches) {
-            $highlightedColumns = $this->filterColumn == 'all' ? $this->filterAttributes : [$this->filterColumn];
-            if ($paginate) {
-                $data->setCollection(
-                    $this->highlightMatches($data->getCollection(), $this->filter, $highlightedColumns)
-                );
-            } else {
-                $data = $this->highlightMatches($data, $this->filter, $highlightedColumns);
-            }
         }
 
         return $data;
@@ -282,16 +479,12 @@ class BaseModelBrowser extends Component
 
     public function itemValue($item, $attribute)
     {
-        return isset($item->{$attribute . 'Formatted'})
-            ? $item->{$attribute . 'Formatted'}
-            : $item->{$attribute};
-    }
+        $formattedAttribute = "{$attribute}Formatted";
+        if (isset($item->{$formattedAttribute})) {
+            return $item->{$formattedAttribute};
+        }
 
-    public function itemValueHighlighted($item, $attribute)
-    {
-        return Arr::get($item, $attribute . 'Highlighted')
-            ?? Arr::get($item, $attribute . 'Formatted')
-            ?? prettyPrint(Arr::get($item, $attribute));
+        return Arr::get($item, $attribute);
     }
 
     public function itemValueStripped($item, $attribute)
@@ -299,9 +492,9 @@ class BaseModelBrowser extends Component
         return strip_tags($this->itemValue($item, $attribute));
     }
 
-    protected function format($data)
+    protected function format(Collection $data): Collection
     {
-        $data->transform(function ($item) {
+        return $data->transform(function ($item) {
             foreach ($this->formats as $attribute => $format) {
                 $value = Arr::get($item, $attribute);
                 if ($value === null) {
@@ -311,50 +504,6 @@ class BaseModelBrowser extends Component
             }
 
             return $item;
-        });
-
-        return $data;
-    }
-
-    protected function applyFilter($data): Collection
-    {
-        return $data->filter(function ($item) {
-            foreach ($this->filterAttributes as $attribute) {
-                $attributeFilter = $this->filter;
-                $exactMatch = $this->exactMatchFilter($attributeFilter);
-
-                if ($this->filterColumn !== 'all' && $attribute !== $this->filterColumn) {
-                    continue;
-                }
-
-                $value = $this->itemValueStripped($item, $attribute);
-
-                // For exact match with empty string
-                if ($exactMatch && $attributeFilter === '' && $value === '') {
-                    return true;
-                }
-
-                if ($exactMatch) {
-                    // Exact matching
-                    if ($value == $attributeFilter) {
-                        return true;
-                    }
-                } else {
-                    // Fuzzy matching with both case insensitivity and ASCII insensitivity
-                    // Check for match without ASCII conversion first
-                    $attributeFilter = trim($attributeFilter);
-                    if (mb_stripos($value, $attributeFilter) !== false) {
-                        return true;
-                    }
-
-                    $normalizedValue = str($value)->ascii();
-                    $normalizedFilter = str($attributeFilter)->ascii();
-                    if (mb_stripos($normalizedValue, $normalizedFilter) !== false) {
-                        return true;
-                    }
-                }
-            }
-            return false;
         });
     }
 }

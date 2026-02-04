@@ -7,6 +7,18 @@ return [
         'placeholder' => 'Filtrer',
         'all' => 'Alle',
     ],
+    'filters' => [
+        'active' => 'Aktive filtre',
+        'clear' => 'Ryd',
+        'clear-all' => 'Ryd alle',
+        'show' => 'Alle filtre',
+        'hide' => 'Færre filtre',
+        'apply' => 'Anvend',
+        'all' => 'Alle',
+        'search' => 'Søg...',
+        'from' => 'Fra',
+        'to' => 'Til',
+    ],
     'sort' => [
         'by' => 'Sorter efter',
         'direction' => 'Retning',

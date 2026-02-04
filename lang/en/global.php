@@ -7,6 +7,18 @@ return [
         'placeholder' => 'Filter',
         'all' => 'All',
     ],
+    'filters' => [
+        'active' => 'Active filters',
+        'clear' => 'Clear',
+        'clear-all' => 'Clear all',
+        'show' => 'All filters',
+        'hide' => 'Fewer filters',
+        'apply' => 'Apply',
+        'all' => 'All',
+        'search' => 'Search...',
+        'from' => 'From',
+        'to' => 'To',
+    ],
     'sort' => [
         'by' => 'Sort by',
         'direction' => 'Direction',

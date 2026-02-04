@@ -96,6 +96,15 @@
         }
     }
 
+    .mb-filter-item {
+        &.mb-filter-active {
+            .form-control {
+                border-color: var(--bs-primary, #0d6efd);
+                box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb, 13, 110, 253), 0.25);
+            }
+        }
+    }
+
     .mb-filter {
         flex-direction: column;
         align-items: center;
@@ -141,5 +150,9 @@
             }
 
         }
+    }
+
+    select {
+        min-width: 8rem;
     }
 }
