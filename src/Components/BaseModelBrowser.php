@@ -226,7 +226,16 @@ class BaseModelBrowser extends Component
     {
         $validValues = [];
         foreach ($options as $optionKey => $optionValue) {
-            $validValues[] = is_numeric($optionKey) ? $optionValue : $optionKey;
+            if (is_array($optionValue) && isset($optionValue['id'])) {
+                // Format: [['id' => 'value', 'name' => 'label'], ...]
+                $validValues[] = $optionValue['id'];
+            } elseif (is_numeric($optionKey)) {
+                // Format: ['value1', 'value2', ...]
+                $validValues[] = $optionValue;
+            } else {
+                // Format: ['value' => 'label', ...]
+                $validValues[] = $optionKey;
+            }
         }
 
         return 'nullable|in:' . implode(',', $validValues);
