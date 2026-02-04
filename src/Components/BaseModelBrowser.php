@@ -325,6 +325,9 @@ class BaseModelBrowser extends Component
             $this->saveFiltersToSession();
             $this->resetPage();
         }
+
+        // Dispatch event with active filter keys for Alpine to update UI
+        $this->dispatch('mb-filters-applied', active: array_keys($this->getActiveFilters()));
     }
 
     public function paginationView()

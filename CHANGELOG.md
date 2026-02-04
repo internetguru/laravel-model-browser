@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-02-04
+
+### Fixed
+
+- Make some UI fixes.
+
 ## [3.0.0] - 2026-02-04
 
 _Stable release based on [3.0.0-rc.1]._
@@ -454,6 +460,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[3.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.0.0...v3.0.1
 [3.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.6...v3.0.0
 [3.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v2.0.6
 [2.0.6]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.5...v2.0.6

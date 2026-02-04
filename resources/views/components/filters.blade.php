@@ -3,6 +3,7 @@
 @php
     $activeFilters = $this->getActiveFilters();
     $hasActive = !empty($activeFilters);
+    $activeKeys = array_keys($activeFilters);
     $urlParams = collect($filterConfig)->pluck('url')->filter()->values()->toArray();
 @endphp
 
@@ -10,6 +11,10 @@
     <div
         x-data="{
             expanded: false,
+            activeFilters: @js($activeKeys),
+            isActive(attr) {
+                return this.activeFilters.includes(attr);
+            },
             clearUrlParams() {
                 const params = @js($urlParams);
                 if (params.length === 0) return;
@@ -19,14 +24,11 @@
                 window.history.replaceState({}, '', url.toString());
             },
             clearActive() {
-                document.querySelectorAll('.mb-filter-item.mb-filter-active').forEach(el => {
-                    el.classList.remove('mb-filter-active');
-                });
+                this.activeFilters = [];
             }
         }"
-        x-on:mb-clear-url-params.window="
-            clearUrlParams()
-        "
+        x-on:mb-clear-url-params.window="clearUrlParams()"
+        x-on:mb-filters-applied.window="activeFilters = $event.detail.active"
         wire:ignore.self
         class="mb-filters mb-3 px-3"
     >
@@ -69,8 +71,8 @@
                     @endphp
                     <div
                         class="mb-filter-item"
-                        :class="{ 'mb-filter-active': expanded && {{ $isActive ? 'true' : 'false' }} }"
-                        @if (!$isActive) x-show="expanded" @endif
+                        :class="{ 'mb-filter-active': expanded && isActive('{{ $attr }}') }"
+                        x-show="expanded || isActive('{{ $attr }}')"
                     >
                         @if ($inputType === 'select')
                             <x-ig::input
@@ -98,13 +100,13 @@
             {{-- Buttons --}}
             <div
                 class="mt-3 d-flex flex-wrap gap-3 align-items-center justify-content-start"
-                x-show="expanded || {{ $hasActive ? 'true' : 'false' }}"
+                x-show="expanded || activeFilters.length > 0"
             >
                 <button
                     type="button"
                     class="btn btn-shadow btn-white btn-danger"
                     x-on:click="clearUrlParams(); clearActive(); $wire.clearFilters()"
-                    @disabled(!$hasActive)
+                    :disabled="activeFilters.length === 0"
                 >
                     <i class="fas fa-fw fa-xmark"></i>
                     @lang('model-browser::global.filters.clear-all')
