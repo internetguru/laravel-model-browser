@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use Exception;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
@@ -103,9 +104,8 @@ class BaseModelBrowser extends Component
         if (str_contains($model, '@')) {
             [$model, $modelMethod] = explode('@', $model);
             $this->modelMethod = $modelMethod;
+            $this->model = $model;
         }
-        $this->model = $model;
-
         // Defaults to the first model's fillable attributes
         $this->viewAttributes = $viewAttributes;
         if (! $viewAttributes) {
@@ -118,7 +118,9 @@ class BaseModelBrowser extends Component
         $this->defaultSortColumn = $defaultSortColumn;
         $this->defaultSortDirection = $defaultSortDirection;
         $this->filterConfig = $filters;
-        $this->filterSessionKey = $filterSessionKey ?: 'model-browser-filters-' . md5($model);
+        if (! empty($filters) && ! $filterSessionKey) {
+            throw new Exception('Provide filterSessionKey when using filters configuration.');
+        }
         $this->initializeFilters();
         $this->updatedPerPage();
         $this->updatedSortColumn();

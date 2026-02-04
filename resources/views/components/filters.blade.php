@@ -8,22 +8,24 @@
 @if (!empty($filterConfig))
     <div
         x-data="{ expanded: false }"
+        wire:ignore.self
         class="mb-filters mb-3 px-3"
     >
         {{-- Buttons --}}
-        <div class="mb-2">
+        <div class="mb-2 d-flex flex-wrap gap-3 align-items-center justify-content-start">
             <button
                 type="button"
-                class="btn btn-sm btn-outline-primary"
+                class="btn btn-shadow btn-white btn-primary"
                 x-on:click="expanded = !expanded"
             >
-                <i class="fas fa-fw fa-filter"></i>
+                <i class="fas fa-fw fa-chevron-down" x-show="!expanded"></i>
+                <i class="fas fa-fw fa-chevron-up" x-show="expanded" style="display: none;"></i>
                 <span x-text="expanded ? '@lang('model-browser::global.filters.hide')' : '@lang('model-browser::global.filters.show')'"></span>
             </button>
             @if ($hasActive)
                 <button
                     type="button"
-                    class="btn btn-sm btn-outline-secondary"
+                    class="btn btn-shadow btn-white btn-danger"
                     wire:click="clearFilters"
                 >
                     @lang('model-browser::global.filters.clear-all')
@@ -52,7 +54,11 @@
                         default => '',
                     };
                 @endphp
-                <div @if (!$isActive) x-show="expanded" @endif>
+                <div
+                    class="mb-filter-item"
+                    :class="{ 'mb-filter-active': expanded && {{ $isActive ? 'true' : 'false' }} }"
+                    @if (!$isActive) x-show="expanded" @endif
+                >
                     @if ($inputType === 'select')
                         <x-ig::input
                             type="select"

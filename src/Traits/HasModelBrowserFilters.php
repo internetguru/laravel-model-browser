@@ -2,6 +2,8 @@
 
 namespace Internetguru\ModelBrowser\Traits;
 
+use Exception;
+
 /**
  * Trait for models to access ModelBrowser filters from session.
  *
@@ -46,8 +48,7 @@ trait HasModelBrowserFilters
             return $this->modelBrowserFilterSessionKey;
         }
 
-        // Default: generate from class name
-        return 'model-browser-filters-' . md5(static::class);
+        throw new Exception('Define $modelBrowserFilterSessionKey property or override getModelBrowserFilterSessionKey() method in ' . static::class);
     }
 
     /**
