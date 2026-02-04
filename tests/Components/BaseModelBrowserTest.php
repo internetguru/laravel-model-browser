@@ -83,8 +83,6 @@ class BaseModelBrowserTest extends TestCase
         $component->assertSee('Email');
         $component->assertSee('Created At');
         $component->assertSee('Updated At');
-        // count 10 users
-        $component->assertSee('1–10 of 10');
 
         // see user data
         $users = User::all();
@@ -118,15 +116,8 @@ class BaseModelBrowserTest extends TestCase
         }
     }
 
-    public function test_view_with_highlighted_matches()
+    public function test_sorting_single_column()
     {
-        // skip
-        $this->markTestSkipped('Need to fix this test as well');
-
-        // mock url setting filter
-        $firstUser = User::first();
-        $this->app['request']->merge(['filter' => $firstUser->name]);
-
         $component = Livewire::test(BaseModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => [
@@ -134,6 +125,32 @@ class BaseModelBrowserTest extends TestCase
             ],
         ]);
 
-        $component->assertSeeHtml("<mark>{$firstUser->name}</mark>");
+        // Set sort column
+        $component->set('sortColumn', 'name');
+        $component->assertSet('sortColumn', 'name');
+        $component->assertSet('sortDirection', 'asc');
+
+        // Change direction
+        $component->set('sortDirection', 'desc');
+        $component->assertSet('sortDirection', 'desc');
+
+        // Invalid sort column should be cleared
+        $component->set('sortColumn', 'invalid_column');
+        $component->assertSet('sortColumn', '');
+    }
+
+    public function test_default_sort_settings()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+            ],
+            'defaultSortColumn' => 'name',
+            'defaultSortDirection' => 'desc',
+        ]);
+
+        $component->assertSet('defaultSortColumn', 'name');
+        $component->assertSet('defaultSortDirection', 'desc');
     }
 }

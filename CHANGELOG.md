@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.0] - 2026-02-04
+
+_Stable release based on [3.0.0-rc.1]._
+
+## [3.0.0-rc.1] - 2026-02-04
+
+### Changed
+
+- Do not fetch all data from database at once use pagination, filtering and sorting on database level.
+- Method from `model` attributte must return query builder instead of collection.
+
+### Removed
+
+- Remove default frontend filters.
+
 ## [2.0.6] - 2026-01-25
 
 ### Fixed
@@ -436,6 +451,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[3.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.6...v3.0.0
+[3.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v2.0.6
 [2.0.6]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.5...v2.0.6
 [2.0.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.4...v2.0.5
 [2.0.4]: https://https://github.com/internetguru/laravel-model-browser/compare/v2.0.3...v2.0.4

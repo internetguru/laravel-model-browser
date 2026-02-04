@@ -4,6 +4,6 @@ return [
 
     'previous' => 'Forrige',
     'next' => 'Næste',
-    'range' => ':from–:to af :total',
+    'page' => 'Side :page (:count elementer)',
 
 ];
