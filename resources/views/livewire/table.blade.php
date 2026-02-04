@@ -34,9 +34,8 @@
 
         <x-model-browser::filters :$filterConfig :$filterValues />
 
-        <div class="my-5">
+        <div>
             <x-model-browser::pagination :$data />
-        </div>
         </div>
 
         <div class="table-responsive">
@@ -101,7 +100,7 @@
             </div>
         </div>
 
-        <div class="my-5">
+        <div>
             <x-model-browser::pagination :$data />
         </div>
 
