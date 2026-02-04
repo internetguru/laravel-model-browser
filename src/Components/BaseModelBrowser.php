@@ -253,7 +253,7 @@ class BaseModelBrowser extends Component
     {
         return array_filter(
             $this->filterValues,
-            fn ($value, $key) => $value !== '' && $value !== null && ! $this->getErrorBag()->has('filter-' . $key),
+            fn($value, $key) => $value !== '' && $value !== null && ! $this->getErrorBag()->has('filter-' . $key),
             ARRAY_FILTER_USE_BOTH
         );
     }
@@ -470,9 +470,12 @@ class BaseModelBrowser extends Component
 
     public function itemValue($item, $attribute)
     {
-        return isset($item->{$attribute . 'Formatted'})
-            ? $item->{$attribute . 'Formatted'}
-            : $item->{$attribute};
+        $formattedAttribute = "{$attribute}Formatted";
+        if (isset($item->{$formattedAttribute})) {
+            return $item->{$formattedAttribute};
+        }
+
+        return Arr::get($item, $attribute);
     }
 
     public function itemValueStripped($item, $attribute)
