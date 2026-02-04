@@ -44,79 +44,79 @@
         </div>
 
         {{-- Filters --}}
-        <div class="d-flex gap-3 align-items-start justify-content-start flex-wrap">
-            @foreach ($filterConfig as $attr => $config)
-                @php
-                    $isActive = isset($activeFilters[$attr]);
-                    $type = $config['type'] ?? 'string';
-                    $label = $config['label'] ?? $attr;
-                    $options = $config['options'] ?? [];
-                    $inputType = match($type) {
-                        'date', 'date_from', 'date_to' => 'date',
-                        'number', 'number_from', 'number_to' => 'number',
-                        'options' => 'select',
-                        default => 'text',
-                    };
-                    $placeholder = match($type) {
-                        'number_from' => __('model-browser::global.filters.from'),
-                        'number_to' => __('model-browser::global.filters.to'),
-                        'string' => __('model-browser::global.filters.search'),
-                        default => '',
-                    };
-                    $attrName = "filter-$attr";
-                    $modelName = "filterValues.$attr";
-                @endphp
-                <div
-                    class="mb-filter-item"
-                    :class="{ 'mb-filter-active': expanded && {{ $isActive ? 'true' : 'false' }} }"
-                    @if (!$isActive) x-show="expanded" @endif
-                >
-                    @if ($inputType === 'select')
-                        <x-ig::input
-                            type="select"
-                            :name="$attrName"
-                            :value="$filterValues[$attr] ?? ''"
-                            :options="['' => __('model-browser::global.filters.all')] + $options"
-                            :useoptionkeys="true"
-                            :clearable="false"
-                            :wire:model="$modelName"
-                        >{{ $label }}</x-ig::input>
-                    @else
-                        <x-ig::input
-                            :type="$inputType"
-                            :name="$attrName"
-                            :value="$filterValues[$attr] ?? ''"
-                            :clearable="false"
-                            :placeholder="$placeholder"
-                            :wire:model="$modelName"
-                        >{{ $label }}</x-ig::input>
-                    @endif
-                </div>
-            @endforeach
-        </div>
+        <form wire:submit.prevent="applyFilters">
+            <div class="d-flex gap-3 align-items-start justify-content-start flex-wrap">
+                @foreach ($filterConfig as $attr => $config)
+                    @php
+                        $isActive = isset($activeFilters[$attr]);
+                        $type = $config['type'] ?? 'string';
+                        $label = $config['label'] ?? $attr;
+                        $options = $config['options'] ?? [];
+                        $inputType = match($type) {
+                            'date', 'date_from', 'date_to' => 'date',
+                            'number', 'number_from', 'number_to' => 'number',
+                            'options' => 'select',
+                            default => 'text',
+                        };
+                        $placeholder = match($type) {
+                            'number_from' => __('model-browser::global.filters.from'),
+                            'number_to' => __('model-browser::global.filters.to'),
+                            'string' => __('model-browser::global.filters.search'),
+                            default => '',
+                        };
+                        $attrName = "filter-$attr";
+                        $modelName = "filterValues.$attr";
+                    @endphp
+                    <div
+                        class="mb-filter-item"
+                        :class="{ 'mb-filter-active': expanded && {{ $isActive ? 'true' : 'false' }} }"
+                        @if (!$isActive) x-show="expanded" @endif
+                    >
+                        @if ($inputType === 'select')
+                            <x-ig::input
+                                type="select"
+                                :name="$attrName"
+                                :value="$filterValues[$attr] ?? ''"
+                                :options="['' => __('model-browser::global.filters.all')] + $options"
+                                :useoptionkeys="true"
+                                :wire:model="$modelName"
+                            >{{ $label }}</x-ig::input>
+                        @else
+                            <x-ig::input
+                                :type="$inputType"
+                                :name="$attrName"
+                                :value="$filterValues[$attr] ?? ''"
+                                :clearable="false"
+                                :placeholder="$placeholder"
+                                :wire:model="$modelName"
+                            >{{ $label }}</x-ig::input>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
 
-        {{-- Buttons --}}
-        <div
-            class="mt-3 d-flex flex-wrap gap-3 align-items-center justify-content-start"
-            x-show="expanded || {{ $hasActive ? 'true' : 'false' }}"
-        >
-            <button
-                type="button"
-                class="btn btn-shadow btn-white btn-danger"
-                x-on:click="clearUrlParams(); clearActive(); $wire.clearFilters()"
-                @disabled(!$hasActive)
+            {{-- Buttons --}}
+            <div
+                class="mt-3 d-flex flex-wrap gap-3 align-items-center justify-content-start"
+                x-show="expanded || {{ $hasActive ? 'true' : 'false' }}"
             >
-                <i class="fas fa-fw fa-xmark"></i>
-                @lang('model-browser::global.filters.clear-all')
-            </button>
-            <button
-                type="button"
-                class="btn btn-shadow btn-white btn-success"
-                wire:click="applyFilters"
-            >
-                <i class="fas fa-fw fa-check"></i>
-                @lang('model-browser::global.filters.apply')
-            </button>
-        </div>
+                <button
+                    type="button"
+                    class="btn btn-shadow btn-white btn-danger"
+                    x-on:click="clearUrlParams(); clearActive(); $wire.clearFilters()"
+                    @disabled(!$hasActive)
+                >
+                    <i class="fas fa-fw fa-xmark"></i>
+                    @lang('model-browser::global.filters.clear-all')
+                </button>
+                <button
+                    type="submit"
+                    class="btn btn-shadow btn-white btn-success"
+                >
+                    <i class="fas fa-fw fa-check"></i>
+                    @lang('model-browser::global.filters.apply')
+                </button>
+            </div>
+        </form>
     </div>
 @endif
