@@ -3,11 +3,30 @@
 @php
     $activeFilters = $this->getActiveFilters();
     $hasActive = !empty($activeFilters);
+    $urlParams = collect($filterConfig)->pluck('url')->filter()->values()->toArray();
 @endphp
 
 @if (!empty($filterConfig))
     <div
-        x-data="{ expanded: false }"
+        x-data="{
+            expanded: false,
+            clearUrlParams() {
+                const params = @js($urlParams);
+                if (params.length === 0) return;
+
+                const url = new URL(window.location.href);
+                params.forEach(param => url.searchParams.delete(param));
+                window.history.replaceState({}, '', url.toString());
+            },
+            clearActive() {
+                document.querySelectorAll('.mb-filter-item.mb-filter-active').forEach(el => {
+                    el.classList.remove('mb-filter-active');
+                });
+            }
+        }"
+        x-on:mb-clear-url-params.window="
+            clearUrlParams()
+        "
         wire:ignore.self
         class="mb-filters mb-3 px-3"
     >
@@ -22,19 +41,10 @@
                 <i class="fas fa-fw fa-chevron-up" x-show="expanded" style="display: none;"></i>
                 <span x-text="expanded ? '@lang('model-browser::global.filters.hide')' : '@lang('model-browser::global.filters.show')'"></span>
             </button>
-            @if ($hasActive)
-                <button
-                    type="button"
-                    class="btn btn-shadow btn-white btn-danger"
-                    wire:click="clearFilters"
-                >
-                    @lang('model-browser::global.filters.clear-all')
-                </button>
-            @endif
         </div>
 
         {{-- Filters --}}
-        <div class="d-flex gap-3 align-items-end justify-content-start">
+        <div class="d-flex gap-3 align-items-start justify-content-start flex-wrap">
             @foreach ($filterConfig as $attr => $config)
                 @php
                     $isActive = isset($activeFilters[$attr]);
@@ -53,6 +63,8 @@
                         'string' => __('model-browser::global.filters.search'),
                         default => '',
                     };
+                    $attrName = "filter-$attr";
+                    $modelName = "filterValues.$attr";
                 @endphp
                 <div
                     class="mb-filter-item"
@@ -62,27 +74,49 @@
                     @if ($inputType === 'select')
                         <x-ig::input
                             type="select"
-                            name="filter-{{ $attr }}"
+                            :name="$attrName"
                             :value="$filterValues[$attr] ?? ''"
                             :options="['' => __('model-browser::global.filters.all')] + $options"
                             :useoptionkeys="true"
                             :clearable="false"
-                            :showError="false"
-                            wire:model.live.debounce.300ms="filterValues.{{ $attr }}"
+                            :wire:model="$modelName"
                         >{{ $label }}</x-ig::input>
                     @else
                         <x-ig::input
                             :type="$inputType"
-                            name="filter-{{ $attr }}"
+                            :name="$attrName"
                             :value="$filterValues[$attr] ?? ''"
                             :clearable="false"
-                            :showError="false"
                             :placeholder="$placeholder"
-                            wire:model.live.debounce.300ms="filterValues.{{ $attr }}"
+                            :wire:model="$modelName"
                         >{{ $label }}</x-ig::input>
                     @endif
                 </div>
             @endforeach
+        </div>
+
+        {{-- Buttons --}}
+        <div
+            class="mt-3 d-flex flex-wrap gap-3 align-items-center justify-content-start"
+            x-show="expanded || {{ $hasActive ? 'true' : 'false' }}"
+        >
+            <button
+                type="button"
+                class="btn btn-shadow btn-white btn-danger"
+                x-on:click="clearUrlParams(); clearActive(); $wire.clearFilters()"
+                @disabled(!$hasActive)
+            >
+                <i class="fas fa-fw fa-xmark"></i>
+                @lang('model-browser::global.filters.clear-all')
+            </button>
+            <button
+                type="button"
+                class="btn btn-shadow btn-white btn-success"
+                wire:click="applyFilters"
+            >
+                <i class="fas fa-fw fa-check"></i>
+                @lang('model-browser::global.filters.apply')
+            </button>
         </div>
     </div>
 @endif

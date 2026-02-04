@@ -13,6 +13,7 @@ return [
         'clear-all' => 'Clear all',
         'show' => 'All filters',
         'hide' => 'Fewer filters',
+        'apply' => 'Apply',
         'all' => 'All',
         'search' => 'Search...',
         'from' => 'From',

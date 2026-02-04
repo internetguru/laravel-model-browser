@@ -13,6 +13,7 @@ return [
         'clear-all' => 'Zrušit vše',
         'show' => 'Všechny filtry',
         'hide' => 'Méně filtrů',
+        'apply' => 'Použít',
         'all' => 'Vše',
         'search' => 'Hledat...',
         'from' => 'Od',

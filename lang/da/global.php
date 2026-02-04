@@ -13,6 +13,7 @@ return [
         'clear-all' => 'Ryd alle',
         'show' => 'Alle filtre',
         'hide' => 'Færre filtre',
+        'apply' => 'Anvend',
         'all' => 'Alle',
         'search' => 'Søg...',
         'from' => 'Fra',

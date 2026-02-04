@@ -58,12 +58,13 @@ class BaseModelBrowser extends Component
 
     /**
      * Filter configuration.
-     * Format: ['attribute' => ['type' => 'string|number|date|...', 'label' => 'Label', 'options' => [...], 'rules' => 'nullable|...']]
+     * Format: ['attribute' => ['type' => 'string|number|date|...', 'label' => 'Label', 'options' => [...], 'rules' => 'nullable|...', 'url' => 'query_param']]
      *
      * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options)
      * - label: Display label
      * - options: Array of options for 'options' type
      * - rules: Optional Laravel validation rules (overrides default type-based rules)
+     * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
      */
     #[Locked]
     public array $filterConfig = [];
@@ -128,26 +129,54 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Initialize filter values from session or defaults.
+     * Initialize filter values from URL, session, or defaults.
+     * Priority: URL query parameter > Session > empty
      */
     protected function initializeFilters(): void
     {
         // Load from session
         $sessionFilters = session($this->filterSessionKey, []);
+        $urlParamsToClear = [];
 
         foreach ($this->filterConfig as $attribute => $config) {
-            $sessionValue = $sessionFilters[$attribute] ?? '';
-            $this->filterValues[$attribute] = $this->validateFilterValue($attribute, $sessionValue);
+            $value = '';
+
+            // Check URL parameter first (highest priority)
+            if (isset($config['url'])) {
+                $urlValue = request()->query($config['url']);
+                if ($urlValue !== null && $urlValue !== '') {
+                    $value = $urlValue;
+                    $urlParamsToClear[] = $config['url'];
+                }
+            }
+
+            // Fall back to session if no URL value
+            if ($value === '') {
+                $value = $sessionFilters[$attribute] ?? '';
+            }
+
+            $result = $this->validateFilterValue($attribute, $value);
+            $this->filterValues[$attribute] = $result['value'];
+            // Don't show errors on initial load
+        }
+
+        // Save to session (in case URL params were used)
+        $this->saveFiltersToSession();
+
+        // Clear URL params that were used to initialize filters
+        if (! empty($urlParamsToClear)) {
+            $this->dispatch('mb-clear-url-params', params: $urlParamsToClear);
         }
     }
 
     /**
      * Validate filter value using Laravel validation.
+     * Returns array with 'value' and optionally 'error' keys.
      */
-    protected function validateFilterValue(string $attribute, mixed $value): string
+    protected function validateFilterValue(string $attribute, mixed $value): array
     {
         if ($value === '' || $value === null) {
-            return '';
+            return ['value' => '', 'error' => null];
         }
 
         $config = $this->filterConfig[$attribute] ?? [];
@@ -159,10 +188,13 @@ class BaseModelBrowser extends Component
         );
 
         if ($validator->fails()) {
-            return '';
+            return [
+                'value' => (string) $value,
+                'error' => $validator->errors()->first($attribute),
+            ];
         }
 
-        return (string) $value;
+        return ['value' => (string) $value, 'error' => null];
     }
 
     /**
@@ -201,19 +233,29 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Save filters to session.
+     * Save filters to session (only valid values).
      */
     protected function saveFiltersToSession(): void
     {
-        session([$this->filterSessionKey => $this->filterValues]);
+        $validFilters = [];
+        foreach ($this->filterValues as $key => $value) {
+            if (! $this->getErrorBag()->has('filter-' . $key) && $value !== '' && $value !== null) {
+                $validFilters[$key] = $value;
+            }
+        }
+        session([$this->filterSessionKey => $validFilters]);
     }
 
     /**
-     * Get active (non-empty) filters.
+     * Get active (non-empty, valid) filters.
      */
     public function getActiveFilters(): array
     {
-        return array_filter($this->filterValues, fn ($value) => $value !== '' && $value !== null);
+        return array_filter(
+            $this->filterValues,
+            fn ($value, $key) => $value !== '' && $value !== null && ! $this->getErrorBag()->has('filter-' . $key),
+            ARRAY_FILTER_USE_BOTH
+        );
     }
 
     /**
@@ -232,6 +274,7 @@ class BaseModelBrowser extends Component
         foreach ($this->filterValues as $key => $value) {
             $this->filterValues[$key] = '';
         }
+        $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
     }
@@ -243,20 +286,36 @@ class BaseModelBrowser extends Component
     {
         if (isset($this->filterValues[$attribute])) {
             $this->filterValues[$attribute] = '';
+            $this->resetErrorBag('filter-' . $attribute);
             $this->saveFiltersToSession();
             $this->resetPage();
         }
     }
 
     /**
-     * Called when any filter value is updated.
+     * Apply filters - validate all and save to session.
      */
-    public function updatedFilterValues($value, $key): void
+    public function applyFilters(): void
     {
-        // Validate the updated filter value
-        $this->filterValues[$key] = $this->validateFilterValue($key, $value);
-        $this->saveFiltersToSession();
-        $this->resetPage();
+        $this->resetErrorBag();
+        $hasErrors = false;
+
+        foreach ($this->filterConfig as $attribute => $config) {
+            $value = $this->filterValues[$attribute] ?? '';
+            $result = $this->validateFilterValue($attribute, $value);
+
+            $this->filterValues[$attribute] = $result['value'];
+
+            if ($result['error']) {
+                $this->addError('filter-' . $attribute, $result['error']);
+                $hasErrors = true;
+            }
+        }
+
+        if (! $hasErrors) {
+            $this->saveFiltersToSession();
+            $this->resetPage();
+        }
     }
 
     public function paginationView()
