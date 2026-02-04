@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.0.0-rc.1] - 2026-02-04
 
+### Changed
+
+- Do not fetch all data from database at once use pagination, filtering and sorting on database level.
+- Method from `model` attributte must return query builder instead of collection.
+
+### Removed
+
+- Remove default frontend filters.
+
 ## [2.0.6] - 2026-01-25
 
 ### Fixed
