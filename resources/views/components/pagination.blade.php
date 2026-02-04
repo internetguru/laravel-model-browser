@@ -8,11 +8,11 @@
     $itemCount = count($data->items());
 @endphp
 
-<nav role="navigation" aria-label="Pagination Navigation" class="d-flex align-items-center justify-content-end gap-3">
+<nav role="navigation" aria-label="Pagination Navigation" class="d-flex align-items-center justify-content-end gap-3 my-3">
     <div>
         @lang('model-browser::pagination.page', ['page' => $currentPage, 'count' => $itemCount])
     </div>
-    <div class="me-3">
+    <div>
         @if ($firstPage)
             <button class="btn btn-light btn-sm" disabled>{!! $prevContent !!}</button>
         @else
