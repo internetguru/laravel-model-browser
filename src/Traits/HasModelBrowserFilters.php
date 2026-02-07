@@ -20,12 +20,13 @@ use Exception;
  *
  *     protected string $modelBrowserFilterSessionKey = 'user-browser-filters';
  *
- *     public static function sommary() {
+ *     public static function summary() {
  *         $filters = (new static)->getModelBrowserFilters();
  *         $query = self::query();
  *
  *         if ($name = $filters->get('name')) {
- *             $query->where('name', 'like', "%{$name}%");
+ *             // Accent-insensitive matching (á=a, č=c, etc.)
+ *             $query->whereLikeUnaccented('name', $name);
  *         }
  *         if ($status = $filters->get('status')) {
  *             $query->where('status', $status);

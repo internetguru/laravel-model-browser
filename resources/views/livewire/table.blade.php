@@ -101,7 +101,7 @@
         </div>
 
         <div>
-            <x-model-browser::pagination :$data />
+            <x-model-browser::pagination :$data :$perPageOptions showPerPage />
         </div>
 
         <x-model-browser::csv-buttons />

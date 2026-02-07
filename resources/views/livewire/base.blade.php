@@ -21,7 +21,7 @@
     </div>
 
     <div class="my-5">
-        <x-model-browser::pagination :$data />
+        <x-model-browser::pagination :$data :$perPageOptions showPerPage />
     </div>
 
     <x-model-browser::csv-buttons />

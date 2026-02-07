@@ -21,6 +21,8 @@ class BaseModelBrowser extends Component
     public const PER_PAGE_MIN = 3;
     public const PER_PAGE_MAX = 150;
     public const PER_PAGE_DEFAULT = 20;
+    public const PER_PAGE_OPTIONS = [20, 50, 100];
+    public const PER_PAGE_PREFERENCE = 'model_browser_per_page';
 
     // Filter types
     public const FILTER_STRING = 'string';
@@ -69,7 +71,9 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $filterConfig = [];
 
-    #[Url(as: 'per-page')]
+    #[Locked]
+    public array $perPageOptions = self::PER_PAGE_OPTIONS;
+
     public int $perPage = self::PER_PAGE_DEFAULT;
 
     // #[Url(except: '', as: 'sort-column')]
@@ -123,6 +127,11 @@ class BaseModelBrowser extends Component
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
         $this->initializeFilters();
+        // Read per-page from user preference
+        if (auth()->check()) {
+            $preferred = auth()->user()->getPreference(self::PER_PAGE_PREFERENCE);
+            $this->perPage = (int) ($preferred ?? self::PER_PAGE_DEFAULT);
+        }
         $this->updatedPerPage();
         $this->updatedSortColumn();
         $this->updatedSortDirection();
@@ -359,8 +368,17 @@ class BaseModelBrowser extends Component
 
     public function updatedPerPage()
     {
-        $this->perPage = min(self::PER_PAGE_MAX, max(self::PER_PAGE_MIN, $this->perPage));
+        $this->perPage = max(self::PER_PAGE_MIN, min(self::PER_PAGE_MAX, $this->perPage));
         $this->resetPage();
+    }
+
+    public function setPerPage(int $value): void
+    {
+        $this->perPage = $value;
+        $this->updatedPerPage();
+        if (auth()->check()) {
+            auth()->user()->setPreference(self::PER_PAGE_PREFERENCE, $this->perPage);
+        }
     }
 
     public function render()
