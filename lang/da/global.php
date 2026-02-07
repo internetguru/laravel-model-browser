@@ -8,6 +8,7 @@ return [
         'all' => 'Alle',
     ],
     'filters' => [
+        'label' => 'Filtre',
         'active' => 'Aktive filtre',
         'clear' => 'Ryd',
         'clear-all' => 'Ryd alle',
