@@ -48,11 +48,20 @@ class ModelBrowserServiceProvider extends ServiceProvider
          */
         Builder::macro('whereLikeUnaccented', function (string $column, string $value): Builder {
             /** @var Builder $this */
+
+            // If the search value contains accented characters, do an exact (accent-sensitive) match
+            $hasAccents = $value !== \Normalizer::normalize($value, \Normalizer::FORM_D)
+                || (bool) preg_match('/[^\x00-\x7F]/', $value);
+
+            if ($hasAccents) {
+                return $this->where($column, 'LIKE', '%' . $value . '%');
+            }
+
             $driver = $this->getConnection()->getDriverName();
 
             if ($driver === 'sqlite') {
                 return $this->whereRaw(
-                    "unaccent({$column}) LIKE unaccent(?)",
+                    "unaccent({$column}) LIKE ?",
                     ['%' . $value . '%']
                 );
             }
