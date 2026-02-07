@@ -10,26 +10,29 @@ use Exception;
  * Usage:
  * 1. Use this trait in your model
  * 2. Define $modelBrowserFilterSessionKey (or override getModelBrowserFilterSessionKey())
- * 3. Call getModelBrowserFilters() to get active filters
- * 4. Apply filters in your query method as needed
  *
- * Example:
+ * Filters with 'column' in their config are auto-applied by BaseModelBrowser.
+ * For filters without 'column', use getModelBrowserFilters() and apply manually.
+ *
+ * Example (auto-applied — no manual code needed):
  * ```php
- * class User extends Model {
+ * // In your Livewire component blade:
+ * // filters: ['name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name', 'relation' => 'customer']]
+ * ```
+ *
+ * Example (manual — for custom logic):
+ * ```php
+ * class Order extends Model {
  *     use HasModelBrowserFilters;
  *
- *     protected string $modelBrowserFilterSessionKey = 'user-browser-filters';
+ *     protected string $modelBrowserFilterSessionKey = 'order-browser-filters';
  *
  *     public static function summary() {
  *         $filters = (new static)->getModelBrowserFilters();
  *         $query = self::query();
  *
  *         if ($name = $filters->get('name')) {
- *             // Accent-insensitive matching (á=a, č=c, etc.)
  *             $query->whereLikeUnaccented('name', $name);
- *         }
- *         if ($status = $filters->get('status')) {
- *             $query->where('status', $status);
  *         }
  *
  *         return $query;
