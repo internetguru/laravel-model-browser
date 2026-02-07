@@ -1,5 +1,5 @@
 <div class="model-browser model-browser-base">
-    <x-model-browser::filters :$filterConfig :$filterValues />
+    <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
     <div class="my-5">
         <x-model-browser::pagination :$data />
