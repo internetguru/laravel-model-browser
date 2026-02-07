@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Locked;
@@ -60,13 +61,19 @@ class BaseModelBrowser extends Component
 
     /**
      * Filter configuration.
-     * Format: ['attribute' => ['type' => 'string|number|date|...', 'label' => 'Label', 'options' => [...], 'rules' => 'nullable|...', 'url' => 'query_param']]
+     * Format: ['attribute' => ['type' => '...', 'label' => '...', ...]]
      *
+     * Keys:
      * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options)
      * - label: Display label
+     * - column: Database column name (defaults to the attribute key)
+     * - relation: Eloquent relation name — wraps the filter in whereHas()
      * - options: Array of options for 'options' type
      * - rules: Optional Laravel validation rules (overrides default type-based rules)
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
+     *
+     * When 'column' is set, filters are auto-applied to the query.
+     * Omit 'column' to handle the filter manually in your model's query method.
      */
     #[Locked]
     public array $filterConfig = [];
@@ -460,6 +467,55 @@ class BaseModelBrowser extends Component
     }
 
     /**
+     * Auto-apply active filters to the query based on filter config.
+     * Only filters with a 'column' key are auto-applied.
+     * Filters with a 'relation' key are wrapped in whereHas().
+     * Supports dot-notation for nested relations (e.g. 'charges.voucher').
+     */
+    protected function applyFiltersToQuery(Builder $query): void
+    {
+        $activeFilters = $this->getActiveFilters();
+
+        foreach ($activeFilters as $attribute => $value) {
+            $config = $this->filterConfig[$attribute] ?? [];
+
+            // Skip filters without a 'column' key — they are handled manually
+            if (! isset($config['column'])) {
+                continue;
+            }
+
+            $column = $config['column'];
+            $type = $config['type'] ?? self::FILTER_STRING;
+            $relation = $config['relation'] ?? null;
+
+            $applyCondition = function (Builder $q) use ($column, $type, $value) {
+                match ($type) {
+                    self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
+                    self::FILTER_DATE_FROM => $q->where($column, '>=', Carbon::parse($value)->startOfDay()),
+                    self::FILTER_DATE_TO => $q->where($column, '<=', Carbon::parse($value)->endOfDay()),
+                    self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
+                    self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
+                    self::FILTER_DATE, self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
+                    default => $q->whereLikeUnaccented($column, $value),
+                };
+            };
+
+            if ($relation) {
+                // Support dot-notation for nested relations (e.g. 'charges.voucher')
+                $parts = explode('.', $relation);
+                $nested = $applyCondition;
+                foreach (array_reverse($parts) as $part) {
+                    $inner = $nested;
+                    $nested = fn (Builder $q) => $q->whereHas($part, $inner);
+                }
+                $nested($query);
+            } else {
+                $applyCondition($query);
+            }
+        }
+    }
+
+    /**
      * Get the active sort column (user selection or default).
      */
     public function getActiveSortColumn(): string
@@ -481,6 +537,9 @@ class BaseModelBrowser extends Component
     protected function getData(bool $paginate = true, bool $applyFormats = true): Paginator|Collection
     {
         $query = $this->getQuery();
+
+        // Auto-apply filters that have 'column' configured
+        $this->applyFiltersToQuery($query);
 
         // Apply database-level sorting (single column)
         // User sorting only when enableSort is true, default sort always applies
