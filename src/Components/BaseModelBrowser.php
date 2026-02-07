@@ -140,12 +140,25 @@ class BaseModelBrowser extends Component
     /**
      * Initialize filter values from URL, session, or defaults.
      * Priority: URL query parameter > Session > empty
+     * When any URL filter is present, all other filters are cleared.
      */
     protected function initializeFilters(): void
     {
         // Load from session
         $sessionFilters = session($this->filterSessionKey, []);
         $urlParamsToClear = [];
+
+        // Check if any URL filter params are present
+        $hasUrlFilters = false;
+        foreach ($this->filterConfig as $attribute => $config) {
+            if (isset($config['url'])) {
+                $urlValue = request()->query($config['url']);
+                if ($urlValue !== null && $urlValue !== '') {
+                    $hasUrlFilters = true;
+                    break;
+                }
+            }
+        }
 
         foreach ($this->filterConfig as $attribute => $config) {
             $value = '';
@@ -159,8 +172,8 @@ class BaseModelBrowser extends Component
                 }
             }
 
-            // Fall back to session if no URL value
-            if ($value === '') {
+            // Fall back to session only if no URL filters are present
+            if ($value === '' && ! $hasUrlFilters) {
                 $value = $sessionFilters[$attribute] ?? '';
             }
 
