@@ -39,8 +39,9 @@
                 class="btn btn-shadow btn-white btn-primary"
                 x-on:click="expanded = !expanded"
             >
-                <i class="fas fa-fw fa-filter"></i>
-                <span x-text="expanded ? '@lang('model-browser::global.filters.hide')' : '@lang('model-browser::global.filters.show')'"></span>
+                <i class="fas fa-fw fa-chevron-down" x-show="!expanded"></i>
+                <i class="fas fa-fw fa-chevron-up" x-show="expanded" style="display: none;"></i>
+                @lang('model-browser::global.filters.label')
                 <span
                     class="badge bg-primary ms-1"
                     x-show="activeFilters.length > 0"

@@ -8,6 +8,7 @@ return [
         'all' => 'Vše',
     ],
     'filters' => [
+        'label' => 'Filtry',
         'active' => 'Aktivní filtry',
         'clear' => 'Zrušit',
         'clear-all' => 'Zrušit vše',
