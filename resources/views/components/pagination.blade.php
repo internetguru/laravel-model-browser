@@ -7,6 +7,9 @@
     $currentPage = $data->currentPage();
     $itemStartNum = ($currentPage - 1) * $data->perPage() + 1;
     $itemEndNum = $data->count() < $data->perPage() ? $itemStartNum + $data->count() - 1 : $currentPage * $data->perPage();
+
+    $showPerPage = $showPerPage ?? false;
+    $perPageOptions = $perPageOptions ?? [20, 50, 100];
 @endphp
 
 <nav role="navigation" aria-label="Pagination Navigation" class="d-flex align-items-center justify-content-end gap-3 my-3">
@@ -27,3 +30,25 @@
         @endif
     </div>
 </nav>
+
+@if ($showPerPage)
+    <div class="d-flex justify-content-end">
+        <div class="d-flex align-items-center gap-1">
+            <span>@lang('model-browser::pagination.show')</span>
+            @foreach ($perPageOptions as $option)
+                @if ($data->perPage() == $option)
+                    <strong>{{ $option }}</strong>
+                @else
+                    <button
+                        class="btn btn-link p-0"
+                        wire:click="setPerPage({{ $option }})"
+                    >{{ $option }}</button>
+                @endif
+                @if (! $loop->last)
+                    <span>/</span>
+                @endif
+            @endforeach
+            <span>@lang('model-browser::pagination.per-page')</span>
+        </div>
+    </div>
+@endif
