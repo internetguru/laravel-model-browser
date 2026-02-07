@@ -17,6 +17,7 @@ return [
         'apply' => 'Použít',
         'all' => 'Vše',
         'search' => 'Hledat...',
+        'search-hint' => 'Vyhledává se ve sloupcích: :fields',
         'from' => 'Od',
         'to' => 'Do',
     ],

@@ -25,6 +25,10 @@ class BaseModelBrowser extends Component
     public const PER_PAGE_OPTIONS = [20, 50, 100];
     public const PER_PAGE_PREFERENCE = 'model_browser_per_page';
 
+    // Search query security limits
+    public const SEARCH_MAX_LENGTH = 500;
+    public const SEARCH_MAX_TERMS = 20;
+
     // Filter types
     public const FILTER_STRING = 'string';
     public const FILTER_NUMBER = 'number';
@@ -73,7 +77,7 @@ class BaseModelBrowser extends Component
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
      *
      * When 'column' is set, filters are auto-applied to the query.
-     * Omit 'column' to handle the filter manually in your model's query method.
+     * When 'column' is omitted, the attribute key is used as the column name.
      */
     #[Locked]
     public array $filterConfig = [];
@@ -88,6 +92,11 @@ class BaseModelBrowser extends Component
 
     // #[Url(except: '', as: 'sort-direction')]
     public string $sortDirection = 'asc';
+
+    /**
+     * Search query string with Gmail-style syntax (e.g. "name:John role:admin").
+     */
+    public string $searchQuery = '';
 
     /**
      * Current filter values.
@@ -153,6 +162,7 @@ class BaseModelBrowser extends Component
     {
         // Load from session
         $sessionFilters = session($this->filterSessionKey, []);
+        $sessionQuery = session($this->filterSessionKey . '.query', '');
         $urlParamsToClear = [];
 
         // Check if any URL filter params are present
@@ -187,6 +197,15 @@ class BaseModelBrowser extends Component
             $result = $this->validateFilterValue($attribute, $value);
             $this->filterValues[$attribute] = $result['value'];
             // Don't show errors on initial load
+        }
+
+        // Build or restore search query
+        if ($hasUrlFilters) {
+            $this->searchQuery = $this->buildSearchQuery();
+        } elseif ($sessionQuery) {
+            $this->searchQuery = $sessionQuery;
+        } else {
+            $this->searchQuery = $this->buildSearchQuery();
         }
 
         // Save to session (in case URL params were used)
@@ -271,7 +290,7 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Save filters to session (only valid values).
+     * Save filters to session (only valid values + search query).
      */
     protected function saveFiltersToSession(): void
     {
@@ -281,7 +300,10 @@ class BaseModelBrowser extends Component
                 $validFilters[$key] = $value;
             }
         }
-        session([$this->filterSessionKey => $validFilters]);
+        session([
+            $this->filterSessionKey => $validFilters,
+            $this->filterSessionKey . '.query' => $this->searchQuery,
+        ]);
     }
 
     /**
@@ -312,6 +334,7 @@ class BaseModelBrowser extends Component
         foreach ($this->filterValues as $key => $value) {
             $this->filterValues[$key] = '';
         }
+        $this->searchQuery = '';
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
@@ -325,13 +348,133 @@ class BaseModelBrowser extends Component
         if (isset($this->filterValues[$attribute])) {
             $this->filterValues[$attribute] = '';
             $this->resetErrorBag('filter-' . $attribute);
+            // Remove this key from search query, preserve rest
+            $terms = $this->parseSearchTerms($this->searchQuery);
+            $filtered = array_filter($terms, fn ($t) => $t['key'] !== $attribute);
+            $this->searchQuery = $this->buildSearchQueryFromTerms($filtered);
             $this->saveFiltersToSession();
             $this->resetPage();
         }
     }
 
     /**
-     * Apply filters - validate all and save to session.
+     * Apply search query — parse, sync filter fields, save.
+     */
+    public function applySearch(): void
+    {
+        $this->searchQuery = $this->sanitizeSearchQuery($this->searchQuery);
+
+        // Populate filterValues from parsed terms (for filter panel sync)
+        foreach ($this->filterConfig as $attr => $config) {
+            $this->filterValues[$attr] = '';
+        }
+        foreach ($this->parseSearchTerms($this->searchQuery) as $term) {
+            if ($term['key'] !== null && isset($this->filterConfig[$term['key']])) {
+                $this->filterValues[$term['key']] = $term['value'];
+            }
+        }
+
+        $this->resetErrorBag();
+        $this->saveFiltersToSession();
+        $this->resetPage();
+    }
+
+    /**
+     * Sanitize search query input against abuse.
+     */
+    protected function sanitizeSearchQuery(string $query): string
+    {
+        // Remove null bytes and control characters
+        $query = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $query);
+        // Collapse whitespace
+        $query = preg_replace('/\s+/', ' ', trim($query));
+
+        return mb_substr($query, 0, self::SEARCH_MAX_LENGTH);
+    }
+
+    /**
+     * Parse search query into structured terms.
+     * Returns array of ['key' => string|null, 'value' => string, 'exact' => bool]
+     * - key:value or key:"quoted value" → specific filter term
+     * - "quoted text" → exact match free text term (key = null, exact = true)
+     * - bare word → free text term (key = null, searches all string columns)
+     */
+    protected function parseSearchTerms(string $query): array
+    {
+        $query = $this->sanitizeSearchQuery($query);
+        $terms = [];
+
+        // Extract key:"quoted value" and key:value tokens
+        $remaining = preg_replace_callback('/(\w+):(?:"([^"]*)"|([^\s"]+))/', function ($match) use (&$terms) {
+            $key = $match[1];
+            $value = ($match[2] ?? '') !== '' ? $match[2] : ($match[3] ?? '');
+            $value = mb_substr(trim($value), 0, 255);
+            if ($value !== '' && isset($this->filterConfig[$key])) {
+                $terms[] = ['key' => $key, 'value' => $value, 'exact' => false];
+            }
+
+            return '';
+        }, $query);
+
+        // Extract "quoted text" (exact match free text)
+        $remaining = preg_replace_callback('/"([^"]*)"/', function ($match) use (&$terms) {
+            $value = mb_substr(trim($match[1]), 0, 255);
+            if ($value !== '') {
+                $terms[] = ['key' => null, 'value' => $value, 'exact' => true];
+            }
+
+            return '';
+        }, $remaining);
+
+        // Remaining text → free text terms (each word is an OR term)
+        foreach (preg_split('/\s+/', trim($remaining), -1, PREG_SPLIT_NO_EMPTY) as $word) {
+            $word = mb_substr(trim($word), 0, 255);
+            if ($word !== '') {
+                $terms[] = ['key' => null, 'value' => $word, 'exact' => false];
+            }
+        }
+
+        return array_slice($terms, 0, self::SEARCH_MAX_TERMS);
+    }
+
+    /**
+     * Build search query string from current filter values.
+     */
+    protected function buildSearchQuery(): string
+    {
+        $parts = [];
+
+        foreach ($this->filterValues as $attr => $value) {
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            $parts[] = str_contains($value, ' ') ? "{$attr}:\"{$value}\"" : "{$attr}:{$value}";
+        }
+
+        return implode(' ', $parts);
+    }
+
+    /**
+     * Build search query string from structured terms array.
+     */
+    protected function buildSearchQueryFromTerms(array $terms): string
+    {
+        $parts = [];
+        foreach ($terms as $term) {
+            if ($term['key'] === null) {
+                $parts[] = ($term['exact'] ?? false) ? '"' . $term['value'] . '"' : $term['value'];
+            } else {
+                $parts[] = str_contains($term['value'], ' ')
+                    ? "{$term['key']}:\"{$term['value']}\""
+                    : "{$term['key']}:{$term['value']}";
+            }
+        }
+
+        return implode(' ', $parts);
+    }
+
+    /**
+     * Apply filters — validate, merge with existing free text, save.
      */
     public function applyFilters(): void
     {
@@ -351,12 +494,26 @@ class BaseModelBrowser extends Component
         }
 
         if (! $hasErrors) {
+            // Preserve existing free text terms from search query
+            $freeText = array_filter(
+                $this->parseSearchTerms($this->searchQuery),
+                fn ($t) => $t['key'] === null
+            );
+
+            $parts = [];
+            foreach ($this->filterValues as $attr => $value) {
+                if ($value !== '' && $value !== null) {
+                    $parts[] = str_contains($value, ' ') ? "{$attr}:\"{$value}\"" : "{$attr}:{$value}";
+                }
+            }
+            foreach ($freeText as $term) {
+                $parts[] = $term['value'];
+            }
+
+            $this->searchQuery = implode(' ', $parts);
             $this->saveFiltersToSession();
             $this->resetPage();
         }
-
-        // Dispatch event with active filter keys for Alpine to update UI
-        $this->dispatch('mb-filters-applied', active: array_keys($this->getActiveFilters()));
     }
 
     public function paginationView()
@@ -467,28 +624,67 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Auto-apply active filters to the query based on filter config.
-     * Only filters with a 'column' key are auto-applied.
-     * Filters with a 'relation' key are wrapped in whereHas().
-     * Supports dot-notation for nested relations (e.g. 'charges.voucher').
+     * Auto-apply search terms to the query.
+     * Parses searchQuery into terms. All terms are OR'd together.
+     * Free text (no key:) searches all string-type filter columns.
+     * Column defaults to the filter attribute key when not explicitly set.
      */
     protected function applyFiltersToQuery(Builder $query): void
     {
-        $activeFilters = $this->getActiveFilters();
+        $terms = $this->parseSearchTerms($this->searchQuery);
 
-        foreach ($activeFilters as $attribute => $value) {
-            $config = $this->filterConfig[$attribute] ?? [];
+        if (empty($terms)) {
+            return;
+        }
 
-            // Skip filters without a 'column' key — they are handled manually
-            if (! isset($config['column'])) {
-                continue;
-            }
-
-            $column = $config['column'];
+        // Collect string-type columns for free text search
+        $stringColumns = [];
+        foreach ($this->filterConfig as $attr => $config) {
             $type = $config['type'] ?? self::FILTER_STRING;
-            $relation = $config['relation'] ?? null;
+            if ($type === self::FILTER_STRING) {
+                $stringColumns[] = [
+                    'column' => $config['column'] ?? $attr,
+                    'relation' => $config['relation'] ?? null,
+                ];
+            }
+        }
 
-            $applyCondition = function (Builder $q) use ($column, $type, $value) {
+        // All terms are OR'd together
+        $query->where(function (Builder $q) use ($terms, $stringColumns) {
+            foreach ($terms as $term) {
+                if ($term['key'] === null) {
+                    // Free text → OR across all string columns
+                    if (empty($stringColumns)) {
+                        continue;
+                    }
+                    $q->orWhere(function (Builder $sub) use ($term, $stringColumns) {
+                        foreach ($stringColumns as $col) {
+                            $this->applyOrCondition($sub, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
+                        }
+                    });
+                } else {
+                    // Specific filter
+                    $config = $this->filterConfig[$term['key']] ?? [];
+                    $column = $config['column'] ?? $term['key'];
+                    $this->applyOrCondition(
+                        $q,
+                        $column,
+                        $config['relation'] ?? null,
+                        $config['type'] ?? self::FILTER_STRING,
+                        $term['value']
+                    );
+                }
+            }
+        });
+    }
+
+    /**
+     * Apply a single filter condition with OR semantics.
+     */
+    protected function applyOrCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
+    {
+        $applyCondition = function (Builder $q) use ($column, $type, $value) {
+            try {
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
                     self::FILTER_DATE_FROM => $q->where($column, '>=', Carbon::parse($value)->startOfDay()),
@@ -498,20 +694,25 @@ class BaseModelBrowser extends Component
                     self::FILTER_DATE, self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
                     default => $q->whereLikeUnaccented($column, $value),
                 };
-            };
-
-            if ($relation) {
-                // Support dot-notation for nested relations (e.g. 'charges.voucher')
-                $parts = explode('.', $relation);
-                $nested = $applyCondition;
-                foreach (array_reverse($parts) as $part) {
-                    $inner = $nested;
-                    $nested = fn (Builder $q) => $q->whereHas($part, $inner);
-                }
-                $nested($query);
-            } else {
-                $applyCondition($query);
+            } catch (\Exception $e) {
+                // Invalid value (e.g. unparseable date), skip
             }
+        };
+
+        if ($relation) {
+            $parts = explode('.', $relation);
+            $nested = $applyCondition;
+            foreach (array_reverse($parts) as $part) {
+                $inner = $nested;
+                $nested = fn (Builder $q) => $q->whereHas($part, $inner);
+            }
+            $query->orWhere(function (Builder $sub) use ($nested) {
+                $nested($sub);
+            });
+        } else {
+            $query->orWhere(function (Builder $sub) use ($applyCondition) {
+                $applyCondition($sub);
+            });
         }
     }
 

@@ -14,7 +14,7 @@
             grid-column: 1 / -1;
             grid-template-columns: subgrid;
             background-color: var(--bs-table-bg, #f8f9fa);
-            border-bottom: 1px solid #ced6e0;
+            border-bottom: thin solid #ced6e0;
         }
 
         .grid-header-cell {
@@ -49,7 +49,7 @@
 
         .grid-cell {
             padding: 0.75rem;
-            border-bottom: 1px solid #f2f5fa;
+            border-bottom: thin solid #f2f5fa;
 
             > span {
                 text-overflow: ellipsis;
@@ -80,7 +80,7 @@
             grid-column: 1 / -1;
             padding: 0.75rem;
             text-align: center;
-            border-bottom: 1px solid #f2f5fa;
+            border-bottom: thin solid #f2f5fa;
         }
 
         @include media-3 {
@@ -100,11 +100,108 @@
         margin-top: $spacer;
     }
 
-    .mb-filters {
-        padding: 0.5rem;
+    .mb-search {
+        position: relative;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0 0 $spacer * 4 0;
 
-        &__toggle {
-            margin-bottom: 0.5rem;
+        &__bar {
+            width: 100%;
+            max-width: 44rem;
+        }
+
+        &__hint {
+            font-size: 0.75rem;
+            color: var(--bs-secondary, #6c757d);
+            padding: 0.25rem 1.25rem 0;
+            position: absolute;
+            top: 100%;
+            left: auto;
+        }
+
+        &__form {
+            display: flex;
+            align-items: center;
+            background: var(--bs-body-bg, #fff);
+            border: thin solid var(--bs-border-color, #dfe1e5);
+            border-radius: 1.5rem;
+            padding: 0.25rem 0.5rem;
+            transition: box-shadow 0.2s;
+
+            &:hover,
+            &:focus-within {
+                box-shadow: $box-shadow-sm;
+                border-color: #eee;
+            }
+        }
+
+        &__input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 0.5rem 0.75rem;
+            font-size: 1rem;
+            background: transparent;
+            min-width: 0;
+        }
+
+        &__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: var(--bs-secondary, #6c757d);
+            padding: 0.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+
+            &:hover {
+                background: var(--bs-light, #f8f9fa);
+                color: var(--bs-body-color, #212529);
+            }
+
+            &--submit {
+                color: var(--bs-primary, #4285f4);
+
+                &:hover {
+                    background: rgba(66, 133, 244, 0.1);
+                }
+            }
+        }
+
+        &__divider {
+            width: 1px;
+            height: 1.5rem;
+            background: var(--bs-border-color, #dfe1e5);
+            margin: 0 0.125rem;
+            flex-shrink: 0;
+        }
+    }
+
+    .mb-filters {
+        &__overlay {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 44rem;
+            background: var(--bs-body-bg, #fff);
+            border: thin solid var(--bs-border-color, #dfe1e5);
+            border-radius: 0.75rem;
+            box-shadow: $box-shadow-lg;
+            padding: 1rem;
+            z-index: 100;
+            margin-top: 0.25rem;
+
+            form {
+                margin-top: 0;
+            }
         }
 
         &__fields {
@@ -113,30 +210,25 @@
             gap: $spacer * 0.5;
 
             @include media-1 {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
             }
 
             @include media-2 {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
             }
 
             @include media-3 {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
             }
 
             @include media-4 {
-                grid-template-columns: repeat(5, 1fr);
+                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
             }
         }
 
         &__item {
             .form-floating {
                 margin-top: 0;
-            }
-
-            &--active .form-control {
-                border-color: var(--bs-primary, #0d6efd);
-                box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb, 13, 110, 253), 0.25);
             }
         }
 

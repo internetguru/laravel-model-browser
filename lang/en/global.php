@@ -17,6 +17,7 @@ return [
         'apply' => 'Apply',
         'all' => 'All',
         'search' => 'Search...',
+        'search-hint' => 'Searching in: :fields',
         'from' => 'From',
         'to' => 'To',
     ],

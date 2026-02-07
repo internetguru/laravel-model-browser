@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Add primary search box with configurable searchable columns.
+- Show filters in overlay hidden by default.
+
 ## [3.0.9] - 2026-02-07
 
 ### Changed

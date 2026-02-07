@@ -32,7 +32,7 @@
             </div>
         </div>
 
-        <x-model-browser::filters :$filterConfig :$filterValues />
+        <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
         <div>
             <x-model-browser::pagination :$data />
