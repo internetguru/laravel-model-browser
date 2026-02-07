@@ -5,12 +5,13 @@
     $firstPage = $data->onFirstPage();
     $morePages = $data->hasMorePages();
     $currentPage = $data->currentPage();
-    $itemCount = count($data->items());
+    $itemStartNum = ($currentPage - 1) * $data->perPage() + 1;
+    $itemEndNum = $data->count() < $data->perPage() ? $itemStartNum + $data->count() - 1 : $currentPage * $data->perPage();
 @endphp
 
 <nav role="navigation" aria-label="Pagination Navigation" class="d-flex align-items-center justify-content-end gap-3 my-3">
     <div>
-        @lang('model-browser::pagination.page', ['page' => $currentPage, 'count' => $itemCount])
+        @lang('model-browser::pagination.page', ['page' => $currentPage, 'start' => $itemStartNum, 'end' => $itemEndNum])
     </div>
     <div>
         @if ($firstPage)
