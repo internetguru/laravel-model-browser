@@ -73,6 +73,11 @@
                         };
                         $attrName = "filter-$attr";
                         $modelName = "filterValues.$attr";
+
+                        // Skip options filters with only one option
+                        if ($inputType === 'select' && count($options) <= 1) {
+                            continue;
+                        }
                     @endphp
                     <div
                         class="mb-filters__item"
