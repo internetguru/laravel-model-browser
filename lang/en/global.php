@@ -8,6 +8,7 @@ return [
         'all' => 'All',
     ],
     'filters' => [
+        'label' => 'Filters',
         'active' => 'Active filters',
         'clear' => 'Clear',
         'clear-all' => 'Clear all',
