@@ -100,16 +100,51 @@
         margin-top: $spacer;
     }
 
-    .mb-filter-item {
-        &.mb-filter-active {
-            .form-control {
+    .mb-filters {
+        padding: 0.5rem;
+
+        &__toggle {
+            margin-bottom: 0.5rem;
+        }
+
+        &__fields {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: $spacer * 0.5;
+
+            @include media-1 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            @include media-2 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            @include media-3 {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            @include media-4 {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        &__item {
+            .form-floating {
+                margin-top: 0;
+            }
+
+            &--active .form-control {
                 border-color: var(--bs-primary, #0d6efd);
                 box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb, 13, 110, 253), 0.25);
             }
         }
 
-        .form-floating {
-            margin-top: 0;
+        &__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
         }
     }
 

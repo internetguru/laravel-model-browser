@@ -4,6 +4,8 @@ return [
 
     'previous' => 'Forrige',
     'next' => 'Næste',
-    'page' => 'Side :page (:count elementer)',
+    'page' => 'Side :page (:start–:end)',
+    'show' => 'Vis',
+    'per-page' => 'per side',
 
 ];

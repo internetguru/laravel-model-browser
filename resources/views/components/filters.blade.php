@@ -30,24 +30,28 @@
         x-on:mb-clear-url-params.window="clearUrlParams()"
         x-on:mb-filters-applied.window="activeFilters = $event.detail.active"
         wire:ignore.self
-        class="mb-filters mb-3 px-3"
+        class="mb-filters"
     >
-        {{-- Buttons --}}
-        <div class="mb-2 d-flex flex-wrap gap-3 align-items-center justify-content-start">
+        {{-- Toggle button --}}
+        <div class="mb-filters__toggle">
             <button
                 type="button"
                 class="btn btn-shadow btn-white btn-primary"
                 x-on:click="expanded = !expanded"
             >
-                <i class="fas fa-fw fa-chevron-down" x-show="!expanded"></i>
-                <i class="fas fa-fw fa-chevron-up" x-show="expanded" style="display: none;"></i>
+                <i class="fas fa-fw fa-filter"></i>
                 <span x-text="expanded ? '@lang('model-browser::global.filters.hide')' : '@lang('model-browser::global.filters.show')'"></span>
+                <span
+                    class="badge bg-primary ms-1"
+                    x-show="activeFilters.length > 0"
+                    x-text="activeFilters.length"
+                ></span>
             </button>
         </div>
 
         {{-- Filters --}}
-        <form wire:submit.prevent="applyFilters">
-            <div class="d-flex gap-3 align-items-start justify-content-start flex-wrap">
+        <form wire:submit.prevent="applyFilters" x-show="expanded || activeFilters.length > 0" x-cloak>
+            <div class="mb-filters__fields">
                 @foreach ($filterConfig as $attr => $config)
                     @php
                         $isActive = isset($activeFilters[$attr]);
@@ -70,8 +74,8 @@
                         $modelName = "filterValues.$attr";
                     @endphp
                     <div
-                        class="mb-filter-item"
-                        :class="{ 'mb-filter-active': expanded && isActive('{{ $attr }}') }"
+                        class="mb-filters__item"
+                        :class="{ 'mb-filters__item--active': isActive('{{ $attr }}') }"
                         x-show="expanded || isActive('{{ $attr }}')"
                     >
                         @if ($inputType === 'select')
@@ -97,11 +101,8 @@
                 @endforeach
             </div>
 
-            {{-- Buttons --}}
-            <div
-                class="mt-3 d-flex flex-wrap gap-3 align-items-center justify-content-start"
-                x-show="expanded || activeFilters.length > 0"
-            >
+            {{-- Action buttons --}}
+            <div class="mb-filters__actions">
                 <button
                     type="button"
                     class="btn btn-shadow btn-white btn-danger"

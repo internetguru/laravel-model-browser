@@ -4,6 +4,8 @@ return [
 
     'previous' => 'Předchozí',
     'next' => 'Další',
-    'page' => 'Stránka :page (:count položek)',
+    'page' => 'Stránka :page (:start–:end)',
+    'show' => 'Zobrazit',
+    'per-page' => 'na stránku',
 
 ];
