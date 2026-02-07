@@ -17,6 +17,7 @@ return [
         'apply' => 'Anvend',
         'all' => 'Alle',
         'search' => 'Søg...',
+        'search-hint' => 'Søger i: :fields',
         'from' => 'Fra',
         'to' => 'Til',
     ],
