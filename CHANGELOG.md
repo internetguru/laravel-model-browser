@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.8] - 2026-02-07
+
+### Fixed
+
+- Fix register unaccent macro.
+
 ## [3.0.7] - 2026-02-07
 
 ### Fixed
@@ -502,6 +508,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[3.0.8]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.0.7...v3.0.8
 [3.0.7]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.0.6...v3.0.7
 [3.0.6]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.0.5...v3.0.6
 [3.0.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.0.4...v3.0.5
