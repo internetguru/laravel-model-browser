@@ -61,11 +61,11 @@
                     <i class="fas fa-fw fa-magnifying-glass"></i>
                 </button>
             </form>
-            @if ($searchableLabels)
+            {{-- @if ($searchableLabels)
                 <div class="mb-search__hint">
                     @lang('model-browser::global.filters.search-hint', ['fields' => $searchableLabels])
                 </div>
-            @endif
+            @endif --}}
         </div>
 
         {{-- Filter fields - overlay --}}
@@ -74,7 +74,7 @@
             style="display: none;"
             x-show="expanded"
         >
-            <form wire:submit.prevent="applyFilters">
+            <form x-on:submit.prevent="expanded = false; $wire.applyFilters()">
                 <div class="mb-filters__fields">
                     @foreach ($filterConfig as $attr => $config)
                         @php
@@ -130,7 +130,7 @@
                     <button
                         type="button"
                         class="btn btn-shadow btn-white btn-danger"
-                        x-on:click="clearUrlParams(); $wire.clearFilters()"
+                        x-on:click="expanded = false; clearUrlParams(); $wire.clearFilters()"
                     >
                         <i class="fas fa-fw fa-xmark"></i>
                         @lang('model-browser::global.filters.clear-all')
