@@ -77,7 +77,7 @@ class BaseModelBrowser extends Component
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
      *
      * When 'column' is set, filters are auto-applied to the query.
-     * When 'column' is omitted, the attribute key is used as the column name.
+     * When 'column' is omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
      */
     #[Locked]
     public array $filterConfig = [];
@@ -637,13 +637,16 @@ class BaseModelBrowser extends Component
             return;
         }
 
-        // Collect string-type columns for free text search
+        // Collect string-type columns for free text search (only filters with explicit 'column')
         $stringColumns = [];
         foreach ($this->filterConfig as $attr => $config) {
+            if (! array_key_exists('column', $config)) {
+                continue;
+            }
             $type = $config['type'] ?? self::FILTER_STRING;
             if ($type === self::FILTER_STRING) {
                 $stringColumns[] = [
-                    'column' => $config['column'] ?? $attr,
+                    'column' => $config['column'],
                     'relation' => $config['relation'] ?? null,
                 ];
             }
@@ -663,12 +666,14 @@ class BaseModelBrowser extends Component
                         }
                     });
                 } else {
-                    // Specific filter
+                    // Specific filter — skip filters without explicit 'column'
                     $config = $this->filterConfig[$term['key']] ?? [];
-                    $column = $config['column'] ?? $term['key'];
+                    if (! array_key_exists('column', $config)) {
+                        continue;
+                    }
                     $this->applyOrCondition(
                         $q,
-                        $column,
+                        $config['column'],
                         $config['relation'] ?? null,
                         $config['type'] ?? self::FILTER_STRING,
                         $term['value']
