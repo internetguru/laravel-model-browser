@@ -85,6 +85,12 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $perPageOptions = self::PER_PAGE_OPTIONS;
 
+    /**
+     * Auto-refresh interval in seconds. 0 = disabled.
+     */
+    #[Locked]
+    public int $refreshInterval = 0;
+
     public int $perPage = self::PER_PAGE_DEFAULT;
 
     // #[Url(except: '', as: 'sort-column')]
@@ -126,6 +132,7 @@ class BaseModelBrowser extends Component
         bool $enableSort = true,
         array $filters = [],
         string $filterSessionKey = '',
+        int $refreshInterval = 0,
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -145,6 +152,7 @@ class BaseModelBrowser extends Component
         $this->defaultSortColumn = $defaultSortColumn;
         $this->defaultSortDirection = $defaultSortDirection;
         $this->filterConfig = $filters;
+        $this->refreshInterval = $refreshInterval;
         if (! empty($filters) && ! $filterSessionKey) {
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
@@ -580,6 +588,10 @@ class BaseModelBrowser extends Component
 
     public function render()
     {
+        if ($this->refreshInterval > 0) {
+            $this->loadTotalCount();
+        }
+
         return view('model-browser::livewire.base', [
             'data' => $this->getData(),
         ]);

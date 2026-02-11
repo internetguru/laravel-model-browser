@@ -38,7 +38,10 @@
             <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
         </div>
 
-        <div class="table-responsive">
+        <div
+            @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif
+            class="table-responsive"
+        >
             <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
                 <div class="grid-header">
                     @foreach($viewAttributes as $column => $trans)

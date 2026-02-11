@@ -22,10 +22,11 @@ class TableModelBrowser extends BaseModelBrowser
         bool $enableSort = true,
         array $filters = [],
         string $filterSessionKey = '',
+        int $refreshInterval = 0,
         int $lightDarkStep = 1,
         array $columnWidths = [],
     ) {
-        parent::mount($model, $viewAttributes, $formats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey);
+        parent::mount($model, $viewAttributes, $formats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
     }
@@ -51,6 +52,10 @@ class TableModelBrowser extends BaseModelBrowser
 
     public function render()
     {
+        if ($this->refreshInterval > 0) {
+            $this->loadTotalCount();
+        }
+
         return view('model-browser::livewire.table', [
             'data' => $this->getData(),
         ]);
