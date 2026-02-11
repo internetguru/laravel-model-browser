@@ -137,6 +137,14 @@ Enable/disable interactive column sorting (default: `true`):
 
 See the [Filters](#filters) section below. When using `filters`, `filterSessionKey` is required.
 
+### `refreshInterval`
+
+Auto-refresh interval in seconds. When set, the component polls the server and re-renders with fresh data (including total count). Default: `0` (disabled):
+
+```php
+:refreshInterval="10"
+```
+
 ### TableModelBrowser-only Parameters
 
 #### `lightDarkStep`
@@ -407,7 +415,8 @@ In this example:
 
 ## Features
 
-- **Pagination** — Simple pagination with configurable per-page options (default: 20, 50, 100). Per-page preference is saved per authenticated user.
+- **Pagination** — Simple pagination with configurable per-page options (default: 20, 50, 100). Shows result range and total count (loaded asynchronously). Per-page preference is saved per authenticated user.
+- **Auto-refresh** — Optional periodic data refresh via `refreshInterval` parameter.
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file.
 - **Fullscreen** — Toggle fullscreen mode for the table view.
