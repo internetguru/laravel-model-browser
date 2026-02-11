@@ -85,6 +85,12 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $perPageOptions = self::PER_PAGE_OPTIONS;
 
+    /**
+     * Auto-refresh interval in seconds. 0 = disabled.
+     */
+    #[Locked]
+    public int $refreshInterval = 0;
+
     public int $perPage = self::PER_PAGE_DEFAULT;
 
     // #[Url(except: '', as: 'sort-column')]
@@ -97,6 +103,12 @@ class BaseModelBrowser extends Component
      * Search query string with Gmail-style syntax (e.g. "name:John role:admin").
      */
     public string $searchQuery = '';
+
+    /**
+     * Total result count (loaded asynchronously).
+     * null = not yet loaded (shows placeholder).
+     */
+    public ?int $totalCount = null;
 
     /**
      * Current filter values.
@@ -120,6 +132,7 @@ class BaseModelBrowser extends Component
         bool $enableSort = true,
         array $filters = [],
         string $filterSessionKey = '',
+        int $refreshInterval = 0,
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -139,6 +152,7 @@ class BaseModelBrowser extends Component
         $this->defaultSortColumn = $defaultSortColumn;
         $this->defaultSortDirection = $defaultSortDirection;
         $this->filterConfig = $filters;
+        $this->refreshInterval = $refreshInterval;
         if (! empty($filters) && ! $filterSessionKey) {
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
@@ -335,6 +349,7 @@ class BaseModelBrowser extends Component
             $this->filterValues[$key] = '';
         }
         $this->searchQuery = '';
+        $this->totalCount = null;
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
@@ -347,6 +362,7 @@ class BaseModelBrowser extends Component
     {
         if (isset($this->filterValues[$attribute])) {
             $this->filterValues[$attribute] = '';
+            $this->totalCount = null;
             $this->resetErrorBag('filter-' . $attribute);
             // Remove this key from search query, preserve rest
             $terms = $this->parseSearchTerms($this->searchQuery);
@@ -374,6 +390,7 @@ class BaseModelBrowser extends Component
             }
         }
 
+        $this->totalCount = null;
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
@@ -511,9 +528,20 @@ class BaseModelBrowser extends Component
             }
 
             $this->searchQuery = implode(' ', $parts);
+            $this->totalCount = null;
             $this->saveFiltersToSession();
             $this->resetPage();
         }
+    }
+
+    /**
+     * Load total result count asynchronously.
+     */
+    public function loadTotalCount(): void
+    {
+        $query = $this->getQuery();
+        $this->applyFiltersToQuery($query);
+        $this->totalCount = $query->count();
     }
 
     public function paginationView()
@@ -560,6 +588,10 @@ class BaseModelBrowser extends Component
 
     public function render()
     {
+        if ($this->refreshInterval > 0) {
+            $this->loadTotalCount();
+        }
+
         return view('model-browser::livewire.base', [
             'data' => $this->getData(),
         ]);
@@ -625,8 +657,8 @@ class BaseModelBrowser extends Component
 
     /**
      * Auto-apply search terms to the query.
-     * Parses searchQuery into terms. All terms are OR'd together.
-     * Free text (no key:) searches all string-type filter columns.
+     * Parses searchQuery into terms. All terms are AND'd together.
+     * Free text (no key:) searches all string-type filter columns (OR within one term).
      * Column defaults to the filter attribute key when not explicitly set.
      */
     protected function applyFiltersToQuery(Builder $query): void
@@ -637,58 +669,58 @@ class BaseModelBrowser extends Component
             return;
         }
 
-        // Collect string-type columns for free text search (only filters with explicit 'column')
-        $stringColumns = [];
+        // Collect searchable columns for free text search (only filters with explicit 'column')
+        $searchableColumns = [];
         foreach ($this->filterConfig as $attr => $config) {
             if (! array_key_exists('column', $config)) {
                 continue;
             }
             $type = $config['type'] ?? self::FILTER_STRING;
-            if ($type === self::FILTER_STRING) {
-                $stringColumns[] = [
+            if (in_array($type, [self::FILTER_STRING, self::FILTER_OPTIONS])) {
+                $searchableColumns[] = [
                     'column' => $config['column'],
                     'relation' => $config['relation'] ?? null,
                 ];
             }
         }
 
-        // All terms are OR'd together
-        $query->where(function (Builder $q) use ($terms, $stringColumns) {
-            foreach ($terms as $term) {
-                if ($term['key'] === null) {
-                    // Free text → OR across all string columns
-                    if (empty($stringColumns)) {
-                        continue;
-                    }
-                    $q->orWhere(function (Builder $sub) use ($term, $stringColumns) {
-                        foreach ($stringColumns as $col) {
-                            $this->applyOrCondition($sub, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
-                        }
-                    });
-                } else {
-                    // Specific filter — skip filters without explicit 'column'
-                    $config = $this->filterConfig[$term['key']] ?? [];
-                    if (! array_key_exists('column', $config)) {
-                        continue;
-                    }
-                    $this->applyOrCondition(
-                        $q,
-                        $config['column'],
-                        $config['relation'] ?? null,
-                        $config['type'] ?? self::FILTER_STRING,
-                        $term['value']
-                    );
+        // All terms are AND'd together
+        foreach ($terms as $term) {
+            if ($term['key'] === null) {
+                // Free text → OR across searchable columns (match any), AND'd with other terms
+                if (empty($searchableColumns)) {
+                    continue;
                 }
+                $query->where(function (Builder $sub) use ($term, $searchableColumns) {
+                    foreach ($searchableColumns as $col) {
+                        $sub->orWhere(function (Builder $q) use ($col, $term) {
+                            $this->applyCondition($q, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
+                        });
+                    }
+                });
+            } else {
+                // Specific filter — skip filters without explicit 'column'
+                $config = $this->filterConfig[$term['key']] ?? [];
+                if (! array_key_exists('column', $config)) {
+                    continue;
+                }
+                $this->applyCondition(
+                    $query,
+                    $config['column'],
+                    $config['relation'] ?? null,
+                    $config['type'] ?? self::FILTER_STRING,
+                    $term['value']
+                );
             }
-        });
+        }
     }
 
     /**
-     * Apply a single filter condition with OR semantics.
+     * Apply a single filter condition with AND semantics.
      */
-    protected function applyOrCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
+    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
     {
-        $applyCondition = function (Builder $q) use ($column, $type, $value) {
+        $applyWhere = function (Builder $q) use ($column, $type, $value) {
             try {
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
@@ -706,18 +738,14 @@ class BaseModelBrowser extends Component
 
         if ($relation) {
             $parts = explode('.', $relation);
-            $nested = $applyCondition;
+            $nested = $applyWhere;
             foreach (array_reverse($parts) as $part) {
                 $inner = $nested;
                 $nested = fn (Builder $q) => $q->whereHas($part, $inner);
             }
-            $query->orWhere(function (Builder $sub) use ($nested) {
-                $nested($sub);
-            });
+            $nested($query);
         } else {
-            $query->orWhere(function (Builder $sub) use ($applyCondition) {
-                $applyCondition($sub);
-            });
+            $applyWhere($query);
         }
     }
 

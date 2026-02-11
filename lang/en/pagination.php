@@ -4,8 +4,8 @@ return [
 
     'previous' => 'Previous',
     'next' => 'Next',
-    'page' => 'Page :page (:start–:end)',
-    'show' => 'Show',
-    'per-page' => 'per page',
+    'of' => 'of',
+    'many' => 'many',
+    'show' => 'show',
 
 ];

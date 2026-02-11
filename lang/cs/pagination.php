@@ -4,8 +4,8 @@ return [
 
     'previous' => 'Předchozí',
     'next' => 'Další',
-    'page' => 'Stránka :page (:start–:end)',
-    'show' => 'Zobrazit',
-    'per-page' => 'na stránku',
+    'of' => 'z',
+    'many' => 'mnoho',
+    'show' => 'zobrazit',
 
 ];
