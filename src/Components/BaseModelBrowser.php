@@ -99,6 +99,12 @@ class BaseModelBrowser extends Component
     public string $searchQuery = '';
 
     /**
+     * Total result count (loaded asynchronously).
+     * null = not yet loaded (shows placeholder).
+     */
+    public ?int $totalCount = null;
+
+    /**
      * Current filter values.
      * Format: ['attribute' => 'value']
      */
@@ -335,6 +341,7 @@ class BaseModelBrowser extends Component
             $this->filterValues[$key] = '';
         }
         $this->searchQuery = '';
+        $this->totalCount = null;
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
@@ -347,6 +354,7 @@ class BaseModelBrowser extends Component
     {
         if (isset($this->filterValues[$attribute])) {
             $this->filterValues[$attribute] = '';
+            $this->totalCount = null;
             $this->resetErrorBag('filter-' . $attribute);
             // Remove this key from search query, preserve rest
             $terms = $this->parseSearchTerms($this->searchQuery);
@@ -374,6 +382,7 @@ class BaseModelBrowser extends Component
             }
         }
 
+        $this->totalCount = null;
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
@@ -511,9 +520,20 @@ class BaseModelBrowser extends Component
             }
 
             $this->searchQuery = implode(' ', $parts);
+            $this->totalCount = null;
             $this->saveFiltersToSession();
             $this->resetPage();
         }
+    }
+
+    /**
+     * Load total result count asynchronously.
+     */
+    public function loadTotalCount(): void
+    {
+        $query = $this->getQuery();
+        $this->applyFiltersToQuery($query);
+        $this->totalCount = $query->count();
     }
 
     public function paginationView()

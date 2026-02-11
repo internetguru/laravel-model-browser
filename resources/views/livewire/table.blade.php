@@ -35,7 +35,7 @@
         <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
         <div>
-            <x-model-browser::pagination :$data />
+            <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
         </div>
 
         <div class="table-responsive">
@@ -101,7 +101,7 @@
         </div>
 
         <div>
-            <x-model-browser::pagination :$data :$perPageOptions showPerPage />
+            <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
         </div>
 
         <x-model-browser::csv-buttons />

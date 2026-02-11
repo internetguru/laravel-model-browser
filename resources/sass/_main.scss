@@ -240,7 +240,7 @@
         }
     }
 
-    select {
+    select:not(.per-page-select) {
         min-width: 8rem;
     }
 }
