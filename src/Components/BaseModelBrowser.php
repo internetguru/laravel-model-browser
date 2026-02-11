@@ -669,15 +669,15 @@ class BaseModelBrowser extends Component
             return;
         }
 
-        // Collect string-type columns for free text search (only filters with explicit 'column')
-        $stringColumns = [];
+        // Collect searchable columns for free text search (only filters with explicit 'column')
+        $searchableColumns = [];
         foreach ($this->filterConfig as $attr => $config) {
             if (! array_key_exists('column', $config)) {
                 continue;
             }
             $type = $config['type'] ?? self::FILTER_STRING;
-            if ($type === self::FILTER_STRING) {
-                $stringColumns[] = [
+            if (in_array($type, [self::FILTER_STRING, self::FILTER_OPTIONS])) {
+                $searchableColumns[] = [
                     'column' => $config['column'],
                     'relation' => $config['relation'] ?? null,
                 ];
@@ -687,13 +687,17 @@ class BaseModelBrowser extends Component
         // All terms are AND'd together
         foreach ($terms as $term) {
             if ($term['key'] === null) {
-                // Free text → AND across all string columns
-                if (empty($stringColumns)) {
+                // Free text → OR across searchable columns (match any), AND'd with other terms
+                if (empty($searchableColumns)) {
                     continue;
                 }
-                foreach ($stringColumns as $col) {
-                    $this->applyCondition($query, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
-                }
+                $query->where(function (Builder $sub) use ($term, $searchableColumns) {
+                    foreach ($searchableColumns as $col) {
+                        $sub->orWhere(function (Builder $q) use ($col, $term) {
+                            $this->applyCondition($q, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
+                        });
+                    }
+                });
             } else {
                 // Specific filter — skip filters without explicit 'column'
                 $config = $this->filterConfig[$term['key']] ?? [];
