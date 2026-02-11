@@ -240,7 +240,7 @@ The search bar supports Gmail-style syntax:
 - **Free text**: `john` — searches across all `string`-type filter columns (with `column` set)
 - **Specific filter**: `name:john` — applies to the `name` filter
 - **Quoted values**: `name:"John Doe"` — for values containing spaces
-- **Combined**: `name:john status:active some text`
+- **Combined**: `name:john from:2025-01-01` — all terms must match (AND)
 
 ### Auto-applied vs Manual Filters
 

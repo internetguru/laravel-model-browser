@@ -657,8 +657,8 @@ class BaseModelBrowser extends Component
 
     /**
      * Auto-apply search terms to the query.
-     * Parses searchQuery into terms. All terms are OR'd together.
-     * Free text (no key:) searches all string-type filter columns.
+     * Parses searchQuery into terms. All terms are AND'd together.
+     * Free text (no key:) searches all string-type filter columns (OR within one term).
      * Column defaults to the filter attribute key when not explicitly set.
      */
     protected function applyFiltersToQuery(Builder $query): void
@@ -684,43 +684,39 @@ class BaseModelBrowser extends Component
             }
         }
 
-        // All terms are OR'd together
-        $query->where(function (Builder $q) use ($terms, $stringColumns) {
-            foreach ($terms as $term) {
-                if ($term['key'] === null) {
-                    // Free text → OR across all string columns
-                    if (empty($stringColumns)) {
-                        continue;
-                    }
-                    $q->orWhere(function (Builder $sub) use ($term, $stringColumns) {
-                        foreach ($stringColumns as $col) {
-                            $this->applyOrCondition($sub, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
-                        }
-                    });
-                } else {
-                    // Specific filter — skip filters without explicit 'column'
-                    $config = $this->filterConfig[$term['key']] ?? [];
-                    if (! array_key_exists('column', $config)) {
-                        continue;
-                    }
-                    $this->applyOrCondition(
-                        $q,
-                        $config['column'],
-                        $config['relation'] ?? null,
-                        $config['type'] ?? self::FILTER_STRING,
-                        $term['value']
-                    );
+        // All terms are AND'd together
+        foreach ($terms as $term) {
+            if ($term['key'] === null) {
+                // Free text → AND across all string columns
+                if (empty($stringColumns)) {
+                    continue;
                 }
+                foreach ($stringColumns as $col) {
+                    $this->applyCondition($query, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
+                }
+            } else {
+                // Specific filter — skip filters without explicit 'column'
+                $config = $this->filterConfig[$term['key']] ?? [];
+                if (! array_key_exists('column', $config)) {
+                    continue;
+                }
+                $this->applyCondition(
+                    $query,
+                    $config['column'],
+                    $config['relation'] ?? null,
+                    $config['type'] ?? self::FILTER_STRING,
+                    $term['value']
+                );
             }
-        });
+        }
     }
 
     /**
-     * Apply a single filter condition with OR semantics.
+     * Apply a single filter condition with AND semantics.
      */
-    protected function applyOrCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
+    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
     {
-        $applyCondition = function (Builder $q) use ($column, $type, $value) {
+        $applyWhere = function (Builder $q) use ($column, $type, $value) {
             try {
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
@@ -738,18 +734,14 @@ class BaseModelBrowser extends Component
 
         if ($relation) {
             $parts = explode('.', $relation);
-            $nested = $applyCondition;
+            $nested = $applyWhere;
             foreach (array_reverse($parts) as $part) {
                 $inner = $nested;
                 $nested = fn (Builder $q) => $q->whereHas($part, $inner);
             }
-            $query->orWhere(function (Builder $sub) use ($nested) {
-                $nested($sub);
-            });
+            $nested($query);
         } else {
-            $query->orWhere(function (Builder $sub) use ($applyCondition) {
-                $applyCondition($sub);
-            });
+            $applyWhere($query);
         }
     }
 
