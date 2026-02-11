@@ -2,10 +2,13 @@
     <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
     <div class="my-5">
-        <x-model-browser::pagination :$data />
+        <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
     </div>
 
-    <div class="d-flex flex-wrap gap-3 align-items-stretch justify-items-start justify-content-center mb-4">
+    <div
+        @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif
+        class="d-flex flex-wrap gap-3 align-items-stretch justify-items-start justify-content-center mb-4"
+    >
         @if (! empty($data->items()))
             @foreach($data as $row)
                 <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
@@ -21,7 +24,7 @@
     </div>
 
     <div class="my-5">
-        <x-model-browser::pagination :$data :$perPageOptions showPerPage />
+        <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
     </div>
 
     <x-model-browser::csv-buttons />

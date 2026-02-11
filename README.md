@@ -137,6 +137,14 @@ Enable/disable interactive column sorting (default: `true`):
 
 See the [Filters](#filters) section below. When using `filters`, `filterSessionKey` is required.
 
+### `refreshInterval`
+
+Auto-refresh interval in seconds. When set, the component polls the server and re-renders with fresh data (including total count). Default: `0` (disabled):
+
+```php
+:refreshInterval="10"
+```
+
 ### TableModelBrowser-only Parameters
 
 #### `lightDarkStep`
@@ -232,7 +240,7 @@ The search bar supports Gmail-style syntax:
 - **Free text**: `john` — searches across all `string`-type filter columns (with `column` set)
 - **Specific filter**: `name:john` — applies to the `name` filter
 - **Quoted values**: `name:"John Doe"` — for values containing spaces
-- **Combined**: `name:john status:active some text`
+- **Combined**: `name:john from:2025-01-01` — all terms must match (AND)
 
 ### Auto-applied vs Manual Filters
 
@@ -407,7 +415,8 @@ In this example:
 
 ## Features
 
-- **Pagination** — Simple pagination with configurable per-page options (default: 20, 50, 100). Per-page preference is saved per authenticated user.
+- **Pagination** — Simple pagination with configurable per-page options (default: 20, 50, 100). Shows result range and total count (loaded asynchronously). Per-page preference is saved per authenticated user.
+- **Auto-refresh** — Optional periodic data refresh via `refreshInterval` parameter.
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file.
 - **Fullscreen** — Toggle fullscreen mode for the table view.

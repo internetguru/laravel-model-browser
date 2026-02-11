@@ -35,10 +35,13 @@
         <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
         <div>
-            <x-model-browser::pagination :$data />
+            <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
         </div>
 
-        <div class="table-responsive">
+        <div
+            @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif
+            class="table-responsive"
+        >
             <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
                 <div class="grid-header">
                     @foreach($viewAttributes as $column => $trans)
@@ -61,12 +64,6 @@
                                             <i class="fas fa-fw fa-up-down"></i>
                                         @endif
                                     </span>
-                                @elseif ($isCurrentSortColumn)
-                                    <i @class([
-                                        "fas fa-fw",
-                                        "fa-up-long" => $activeSortDirection === 'asc',
-                                        "fa-down-long" => $activeSortDirection === 'desc',
-                                    ])></i>
                                 @endif
                                 {{ $trans }}
                             </span>
@@ -101,7 +98,7 @@
         </div>
 
         <div>
-            <x-model-browser::pagination :$data :$perPageOptions showPerPage />
+            <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
         </div>
 
         <x-model-browser::csv-buttons />
