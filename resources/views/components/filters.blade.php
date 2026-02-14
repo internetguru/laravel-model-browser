@@ -74,7 +74,7 @@
             style="display: none;"
             x-show="expanded"
         >
-            <form x-on:submit.prevent="expanded = false; $wire.applyFilters()">
+            <form x-on:submit.prevent="expanded = false; $wire.applyFilters()" class="editable-skip">
                 <div class="mb-filters__fields">
                     @foreach ($filterConfig as $attr => $config)
                         @php
