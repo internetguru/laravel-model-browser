@@ -75,6 +75,7 @@ class BaseModelBrowser extends Component
      * - options: Array of options for 'options' type
      * - rules: Optional Laravel validation rules (overrides default type-based rules)
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
+     * - timezone: Timezone for date filters — parsed date is shifted via Carbon::shiftTimezone($tz)
      *
      * When 'column' is set, filters are auto-applied to the query.
      * When 'column' is omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
@@ -275,7 +276,7 @@ class BaseModelBrowser extends Component
 
         return match ($type) {
             self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'nullable|numeric',
-            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => 'nullable|date',
+            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9 .:\/+\-]+$/iu'],
             self::FILTER_OPTIONS => $this->getOptionsRule($config['options'] ?? []),
             default => 'nullable|string|max:255',
         };
@@ -757,7 +758,8 @@ class BaseModelBrowser extends Component
                     $config['column'],
                     $config['relation'] ?? null,
                     $config['type'] ?? self::FILTER_STRING,
-                    $term['value']
+                    $term['value'],
+                    $config['timezone'] ?? null,
                 );
             }
         }
@@ -766,17 +768,25 @@ class BaseModelBrowser extends Component
     /**
      * Apply a single filter condition with AND semantics.
      */
-    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
+    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value, ?string $timezone = null): void
     {
-        $applyWhere = function (Builder $q) use ($column, $type, $value) {
+        $applyWhere = function (Builder $q) use ($column, $type, $value, $timezone) {
             try {
+                $parseDate = function (string $v) use ($timezone) {
+                    $date = Carbon::parse($v);
+                    if ($timezone) {
+                        $date = $date->shiftTimezone($timezone);
+                    }
+                    return $date;
+                };
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
-                    self::FILTER_DATE_FROM => $q->where($column, '>=', Carbon::parse($value)->startOfDay()),
-                    self::FILTER_DATE_TO => $q->where($column, '<=', Carbon::parse($value)->endOfDay()),
+                    self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)->startOfDay()),
+                    self::FILTER_DATE_TO => $q->where($column, '<=', $parseDate($value)->endOfDay()),
                     self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
                     self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
-                    self::FILTER_DATE, self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
+                    self::FILTER_DATE => $q->where($column, $parseDate($value)),
+                    self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
                     default => $q->whereLikeUnaccented($column, $value),
                 };
             } catch (\Exception $e) {
