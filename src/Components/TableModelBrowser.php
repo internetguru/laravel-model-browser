@@ -53,7 +53,22 @@ class TableModelBrowser extends BaseModelBrowser
     public function render()
     {
         if ($this->refreshInterval > 0) {
+            // Save user's unsaved UI state
+            $uiFilterValues = $this->filterValues;
+            $uiSearchQuery = $this->searchQuery;
+
+            // Use stored (saved) filters for the data query
+            $this->loadFiltersFromSession();
             $this->loadTotalCount();
+            $data = $this->getData();
+
+            // Restore user's unsaved edits so the UI is not cleared
+            $this->filterValues = $uiFilterValues;
+            $this->searchQuery = $uiSearchQuery;
+
+            return view('model-browser::livewire.table', [
+                'data' => $data,
+            ]);
         }
 
         return view('model-browser::livewire.table', [

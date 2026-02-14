@@ -75,6 +75,7 @@ class BaseModelBrowser extends Component
      * - options: Array of options for 'options' type
      * - rules: Optional Laravel validation rules (overrides default type-based rules)
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
+     * - timezone: Timezone for date filters — parsed date is shifted via Carbon::shiftTimezone($tz)
      *
      * When 'column' is set, filters are auto-applied to the query.
      * When 'column' is omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
@@ -275,7 +276,7 @@ class BaseModelBrowser extends Component
 
         return match ($type) {
             self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'nullable|numeric',
-            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => 'nullable|date',
+            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9 .:\/+\-]+$/iu'],
             self::FILTER_OPTIONS => $this->getOptionsRule($config['options'] ?? []),
             default => 'nullable|string|max:255',
         };
@@ -426,8 +427,14 @@ class BaseModelBrowser extends Component
             $key = $match[1];
             $value = ($match[2] ?? '') !== '' ? $match[2] : ($match[3] ?? '');
             $value = mb_substr(trim($value), 0, 255);
-            if ($value !== '' && isset($this->filterConfig[$key])) {
+            if ($value === '') {
+                return '';
+            }
+            if (isset($this->filterConfig[$key])) {
                 $terms[] = ['key' => $key, 'value' => $value, 'exact' => false];
+            } else {
+                // Unknown filter name → treat as fulltext
+                $terms[] = ['key' => null, 'value' => $match[0], 'exact' => false];
             }
 
             return '';
@@ -535,6 +542,28 @@ class BaseModelBrowser extends Component
     }
 
     /**
+     * Reload filters from session — used during poll to ensure the table
+     * reflects stored (saved) filters, not unsaved UI edits.
+     */
+    protected function loadFiltersFromSession(): void
+    {
+        if (empty($this->filterSessionKey)) {
+            return;
+        }
+
+        $sessionFilters = session($this->filterSessionKey, []);
+        $sessionQuery = session($this->filterSessionKey . '.query', '');
+
+        foreach ($this->filterConfig as $attribute => $config) {
+            $value = $sessionFilters[$attribute] ?? '';
+            $result = $this->validateFilterValue($attribute, $value);
+            $this->filterValues[$attribute] = $result['value'];
+        }
+
+        $this->searchQuery = $sessionQuery ?: $this->buildSearchQuery();
+    }
+
+    /**
      * Load total result count asynchronously.
      */
     public function loadTotalCount(): void
@@ -589,7 +618,22 @@ class BaseModelBrowser extends Component
     public function render()
     {
         if ($this->refreshInterval > 0) {
+            // Save user's unsaved UI state
+            $uiFilterValues = $this->filterValues;
+            $uiSearchQuery = $this->searchQuery;
+
+            // Use stored (saved) filters for the data query
+            $this->loadFiltersFromSession();
             $this->loadTotalCount();
+            $data = $this->getData();
+
+            // Restore user's unsaved edits so the UI is not cleared
+            $this->filterValues = $uiFilterValues;
+            $this->searchQuery = $uiSearchQuery;
+
+            return view('model-browser::livewire.base', [
+                'data' => $data,
+            ]);
         }
 
         return view('model-browser::livewire.base', [
@@ -704,12 +748,18 @@ class BaseModelBrowser extends Component
                 if (! array_key_exists('column', $config)) {
                     continue;
                 }
+                // Skip invalid filter values
+                $result = $this->validateFilterValue($term['key'], $term['value']);
+                if ($result['error']) {
+                    continue;
+                }
                 $this->applyCondition(
                     $query,
                     $config['column'],
                     $config['relation'] ?? null,
                     $config['type'] ?? self::FILTER_STRING,
-                    $term['value']
+                    $term['value'],
+                    $config['timezone'] ?? null,
                 );
             }
         }
@@ -718,17 +768,25 @@ class BaseModelBrowser extends Component
     /**
      * Apply a single filter condition with AND semantics.
      */
-    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value): void
+    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value, ?string $timezone = null): void
     {
-        $applyWhere = function (Builder $q) use ($column, $type, $value) {
+        $applyWhere = function (Builder $q) use ($column, $type, $value, $timezone) {
             try {
+                $parseDate = function (string $v) use ($timezone) {
+                    $date = Carbon::parse($v);
+                    if ($timezone) {
+                        $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
+                    }
+                    return $date;
+                };
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
-                    self::FILTER_DATE_FROM => $q->where($column, '>=', Carbon::parse($value)->startOfDay()),
-                    self::FILTER_DATE_TO => $q->where($column, '<=', Carbon::parse($value)->endOfDay()),
+                    self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)),
+                    self::FILTER_DATE_TO => $q->where($column, '<=', $parseDate($value)),
                     self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
                     self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
-                    self::FILTER_DATE, self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
+                    self::FILTER_DATE => $q->where($column, $parseDate($value)),
+                    self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
                     default => $q->whereLikeUnaccented($column, $value),
                 };
             } catch (\Exception $e) {
