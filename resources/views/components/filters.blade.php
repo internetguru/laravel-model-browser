@@ -30,7 +30,7 @@
     >
         {{-- Search bar - always visible --}}
         <div class="mb-search__bar">
-            <form wire:submit.prevent="applySearch" class="mb-search__form">
+            <form wire:submit.prevent="applySearch" class="mb-search__form editable-skip">
                 <input
                     type="text"
                     class="mb-search__input"
