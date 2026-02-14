@@ -535,6 +535,28 @@ class BaseModelBrowser extends Component
     }
 
     /**
+     * Reload filters from session — used during poll to ensure the table
+     * reflects stored (saved) filters, not unsaved UI edits.
+     */
+    protected function loadFiltersFromSession(): void
+    {
+        if (empty($this->filterSessionKey)) {
+            return;
+        }
+
+        $sessionFilters = session($this->filterSessionKey, []);
+        $sessionQuery = session($this->filterSessionKey . '.query', '');
+
+        foreach ($this->filterConfig as $attribute => $config) {
+            $value = $sessionFilters[$attribute] ?? '';
+            $result = $this->validateFilterValue($attribute, $value);
+            $this->filterValues[$attribute] = $result['value'];
+        }
+
+        $this->searchQuery = $sessionQuery ?: $this->buildSearchQuery();
+    }
+
+    /**
      * Load total result count asynchronously.
      */
     public function loadTotalCount(): void
@@ -589,7 +611,22 @@ class BaseModelBrowser extends Component
     public function render()
     {
         if ($this->refreshInterval > 0) {
+            // Save user's unsaved UI state
+            $uiFilterValues = $this->filterValues;
+            $uiSearchQuery = $this->searchQuery;
+
+            // Use stored (saved) filters for the data query
+            $this->loadFiltersFromSession();
             $this->loadTotalCount();
+            $data = $this->getData();
+
+            // Restore user's unsaved edits so the UI is not cleared
+            $this->filterValues = $uiFilterValues;
+            $this->searchQuery = $uiSearchQuery;
+
+            return view('model-browser::livewire.base', [
+                'data' => $data,
+            ]);
         }
 
         return view('model-browser::livewire.base', [
