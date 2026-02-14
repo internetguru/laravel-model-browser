@@ -426,8 +426,14 @@ class BaseModelBrowser extends Component
             $key = $match[1];
             $value = ($match[2] ?? '') !== '' ? $match[2] : ($match[3] ?? '');
             $value = mb_substr(trim($value), 0, 255);
-            if ($value !== '' && isset($this->filterConfig[$key])) {
+            if ($value === '') {
+                return '';
+            }
+            if (isset($this->filterConfig[$key])) {
                 $terms[] = ['key' => $key, 'value' => $value, 'exact' => false];
+            } else {
+                // Unknown filter name → treat as fulltext
+                $terms[] = ['key' => null, 'value' => $match[0], 'exact' => false];
             }
 
             return '';
@@ -739,6 +745,11 @@ class BaseModelBrowser extends Component
                 // Specific filter — skip filters without explicit 'column'
                 $config = $this->filterConfig[$term['key']] ?? [];
                 if (! array_key_exists('column', $config)) {
+                    continue;
+                }
+                // Skip invalid filter values
+                $result = $this->validateFilterValue($term['key'], $term['value']);
+                if ($result['error']) {
                     continue;
                 }
                 $this->applyCondition(
