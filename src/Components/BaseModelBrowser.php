@@ -775,14 +775,14 @@ class BaseModelBrowser extends Component
                 $parseDate = function (string $v) use ($timezone) {
                     $date = Carbon::parse($v);
                     if ($timezone) {
-                        $date = $date->shiftTimezone($timezone);
+                        $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
                     }
                     return $date;
                 };
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
-                    self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)->startOfDay()),
-                    self::FILTER_DATE_TO => $q->where($column, '<=', $parseDate($value)->endOfDay()),
+                    self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)),
+                    self::FILTER_DATE_TO => $q->where($column, '<=', $parseDate($value)),
                     self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
                     self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
                     self::FILTER_DATE => $q->where($column, $parseDate($value)),

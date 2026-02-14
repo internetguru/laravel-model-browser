@@ -82,7 +82,7 @@
                             $label = $config['label'] ?? $attr;
                             $options = $config['options'] ?? [];
                             $inputType = match($type) {
-                                'date', 'date_from', 'date_to' => 'date',
+                                'date', 'date_from', 'date_to' => 'datetime-local',
                                 'number', 'number_from', 'number_to' => 'number',
                                 'options' => 'select',
                                 default => 'text',
