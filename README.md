@@ -181,11 +181,13 @@ Pass an associative array to the `filters` parameter. Each key is a filter attri
         'type' => 'date_from',
         'label' => 'From Date',
         'column' => 'created_at',
+        'timezone' => 'Europe/Prague',
     ],
     'to' => [
         'type' => 'date_to',
         'label' => 'To Date',
         'column' => 'created_at',
+        'timezone' => 'Europe/Prague',
     ],
     'symbol' => [
         'type' => 'string',
@@ -232,6 +234,7 @@ Note that `priceFrom` and `priceTo` have no `column` key — they are not auto-a
 | `options` | Array of options for the `options` type (e.g. `['value' => 'Label']`) |
 | `rules` | Custom Laravel validation rules (overrides default type-based rules) |
 | `url` | URL query parameter name to initialize the filter from (takes priority over session) |
+| `timezone` | Timezone for date filters — the parsed date value is shifted via `Carbon::shiftTimezone($tz)` (e.g. `'Europe/Prague'`) |
 
 ### Search Query Syntax
 
