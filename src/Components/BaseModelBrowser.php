@@ -782,7 +782,16 @@ class BaseModelBrowser extends Component
                 match ($type) {
                     self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
                     self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)),
-                    self::FILTER_DATE_TO => $q->where($column, '<=', $parseDate($value)),
+                    self::FILTER_DATE_TO => $q->where($column, '<=', (function () use ($value, $timezone) {
+                        $date = Carbon::parse($value);
+                        if ($date->format('H:i:s') === '00:00:00') {
+                            $date = $date->endOfDay();
+                        }
+                        if ($timezone) {
+                            $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
+                        }
+                        return $date;
+                    })()),
                     self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
                     self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
                     self::FILTER_DATE => $q->where($column, $parseDate($value)),
