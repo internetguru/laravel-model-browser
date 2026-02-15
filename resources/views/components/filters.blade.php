@@ -116,7 +116,6 @@
                                     :type="$inputType"
                                     :name="$attrName"
                                     :value="$filterValues[$attr] ?? ''"
-                                    :clearable="false"
                                     :placeholder="$filterPlaceholder"
                                     :wire:model="$modelName"
                                 >{{ $label }}</x-ig::input>
