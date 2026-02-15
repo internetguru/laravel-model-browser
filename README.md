@@ -227,7 +227,7 @@ Note that `priceFrom` and `priceTo` have no `column` key — they are not auto-a
 
 | Key | Description |
 |---|---|
-| `type` | Filter type: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options` (default: `string`) |
+| `type` | Filter type: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options` (default: `string`). **Note:** `date_to` interprets date-only values (without an explicit time) as end-of-day (23:59:59), so e.g. `to:2026-02-16` includes all records on Feb 16. When a specific time is provided, it is used as-is. |
 | `label` | Display label in the filter panel |
 | `column` | Database column name for auto-apply. **When set**, the filter is automatically applied to the query. **When omitted**, the filter is NOT auto-applied — use `HasModelBrowserFilters` trait for manual access. |
 | `relation` | Eloquent relation name — wraps the filter in `whereHas()`. Supports dot-notation for nested relations. |

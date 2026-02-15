@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.1.8] - 2026-02-15
+
+### Fixed
+
+- Update date_to to interpret 00:00 as end of the day.
+
 ## [3.1.7] - 2026-02-15
 
 ### Fixed
@@ -580,6 +586,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[3.1.8]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.1.7...v3.1.8
 [3.1.7]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.1.6...v3.1.7
 [3.1.6]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.1.5...v3.1.6
 [3.1.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.1.4...v3.1.5
