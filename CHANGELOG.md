@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Update major version to 4.
+
 ## [3.2.0] - 2026-02-25
 
 _Stable release based on [3.2.0-rc.1]._
