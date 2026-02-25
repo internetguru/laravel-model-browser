@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.2.0-rc.1] - 2026-02-25
 
+### Changed
+
+- Update laravel-common to v5.
+
 ## [3.1.9] - 2026-02-25
 
 ### Fixed
