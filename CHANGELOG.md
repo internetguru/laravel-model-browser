@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-03-11
+
+### Fixed
+
+- Allow decimal point numbers in number filters.
+
 ## [4.0.2] - 2026-03-11
 
 ### Fixed
@@ -627,6 +633,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[4.0.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.2...v4.0.3
 [4.0.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.1...v4.0.2
 [4.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.0...v4.0.1
 [4.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.2.0...v4.0.0
