@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
+use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -17,26 +18,39 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BaseModelBrowser extends Component
 {
+    use HasSearchFilters;
     use WithPagination;
 
     public const PER_PAGE_MIN = 3;
+
     public const PER_PAGE_MAX = 150;
+
     public const PER_PAGE_DEFAULT = 20;
+
     public const PER_PAGE_OPTIONS = [20, 50, 100];
+
     public const PER_PAGE_PREFERENCE = 'model_browser_per_page';
 
-    // Search query security limits
+    // Search query security limits — override trait constants
     public const SEARCH_MAX_LENGTH = 500;
+
     public const SEARCH_MAX_TERMS = 20;
 
     // Filter types
     public const FILTER_STRING = 'string';
+
     public const FILTER_NUMBER = 'number';
+
     public const FILTER_DATE = 'date';
+
     public const FILTER_DATE_FROM = 'date_from';
+
     public const FILTER_DATE_TO = 'date_to';
+
     public const FILTER_NUMBER_FROM = 'number_from';
+
     public const FILTER_NUMBER_TO = 'number_to';
+
     public const FILTER_OPTIONS = 'options';
 
     #[Locked]
@@ -328,7 +342,7 @@ class BaseModelBrowser extends Component
     {
         return array_filter(
             $this->filterValues,
-            fn($value, $key) => $value !== '' && $value !== null && ! $this->getErrorBag()->has('filter-' . $key),
+            fn ($value, $key) => $value !== '' && $value !== null && ! $this->getErrorBag()->has('filter-' . $key),
             ARRAY_FILTER_USE_BOTH
         );
     }
@@ -342,14 +356,10 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Clear all filters.
+     * Hook called after filters/search are changed.
      */
-    public function clearFilters(): void
+    protected function onFiltersChanged(): void
     {
-        foreach ($this->filterValues as $key => $value) {
-            $this->filterValues[$key] = '';
-        }
-        $this->searchQuery = '';
         $this->totalCount = null;
         $this->resetErrorBag();
         $this->saveFiltersToSession();
@@ -365,136 +375,12 @@ class BaseModelBrowser extends Component
             $this->filterValues[$attribute] = '';
             $this->totalCount = null;
             $this->resetErrorBag('filter-' . $attribute);
-            // Remove this key from search query, preserve rest
             $terms = $this->parseSearchTerms($this->searchQuery);
             $filtered = array_filter($terms, fn ($t) => $t['key'] !== $attribute);
             $this->searchQuery = $this->buildSearchQueryFromTerms($filtered);
             $this->saveFiltersToSession();
             $this->resetPage();
         }
-    }
-
-    /**
-     * Apply search query — parse, sync filter fields, save.
-     */
-    public function applySearch(): void
-    {
-        $this->searchQuery = $this->sanitizeSearchQuery($this->searchQuery);
-
-        // Populate filterValues from parsed terms (for filter panel sync)
-        foreach ($this->filterConfig as $attr => $config) {
-            $this->filterValues[$attr] = '';
-        }
-        foreach ($this->parseSearchTerms($this->searchQuery) as $term) {
-            if ($term['key'] !== null && isset($this->filterConfig[$term['key']])) {
-                $this->filterValues[$term['key']] = $term['value'];
-            }
-        }
-
-        $this->totalCount = null;
-        $this->resetErrorBag();
-        $this->saveFiltersToSession();
-        $this->resetPage();
-    }
-
-    /**
-     * Sanitize search query input against abuse.
-     */
-    protected function sanitizeSearchQuery(string $query): string
-    {
-        // Remove null bytes and control characters
-        $query = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $query);
-        // Collapse whitespace
-        $query = preg_replace('/\s+/', ' ', trim($query));
-
-        return mb_substr($query, 0, self::SEARCH_MAX_LENGTH);
-    }
-
-    /**
-     * Parse search query into structured terms.
-     * Returns array of ['key' => string|null, 'value' => string, 'exact' => bool]
-     * - key:value or key:"quoted value" → specific filter term
-     * - "quoted text" → exact match free text term (key = null, exact = true)
-     * - bare word → free text term (key = null, searches all string columns)
-     */
-    protected function parseSearchTerms(string $query): array
-    {
-        $query = $this->sanitizeSearchQuery($query);
-        $terms = [];
-
-        // Extract key:"quoted value" and key:value tokens
-        $remaining = preg_replace_callback('/(\w+):(?:"([^"]*)"|([^\s"]+))/', function ($match) use (&$terms) {
-            $key = $match[1];
-            $value = ($match[2] ?? '') !== '' ? $match[2] : ($match[3] ?? '');
-            $value = mb_substr(trim($value), 0, 255);
-            if ($value === '') {
-                return '';
-            }
-            if (isset($this->filterConfig[$key])) {
-                $terms[] = ['key' => $key, 'value' => $value, 'exact' => false];
-            } else {
-                // Unknown filter name → treat as fulltext
-                $terms[] = ['key' => null, 'value' => $match[0], 'exact' => false];
-            }
-
-            return '';
-        }, $query);
-
-        // Extract "quoted text" (exact match free text)
-        $remaining = preg_replace_callback('/"([^"]*)"/', function ($match) use (&$terms) {
-            $value = mb_substr(trim($match[1]), 0, 255);
-            if ($value !== '') {
-                $terms[] = ['key' => null, 'value' => $value, 'exact' => true];
-            }
-
-            return '';
-        }, $remaining);
-
-        // Remaining text → free text terms (each word is an OR term)
-        foreach (preg_split('/\s+/', trim($remaining), -1, PREG_SPLIT_NO_EMPTY) as $word) {
-            $word = mb_substr(trim($word), 0, 255);
-            if ($word !== '') {
-                $terms[] = ['key' => null, 'value' => $word, 'exact' => false];
-            }
-        }
-
-        return array_slice($terms, 0, self::SEARCH_MAX_TERMS);
-    }
-
-    /**
-     * Build search query string from current filter values.
-     */
-    protected function buildSearchQuery(): string
-    {
-        $parts = [];
-
-        foreach ($this->filterValues as $attr => $value) {
-            if ($value === '' || $value === null) {
-                continue;
-            }
-            $parts[] = str_contains($value, ' ') ? "{$attr}:\"{$value}\"" : "{$attr}:{$value}";
-        }
-
-        return implode(' ', $parts);
-    }
-
-    /**
-     * Build search query string from structured terms array.
-     */
-    protected function buildSearchQueryFromTerms(array $terms): string
-    {
-        $parts = [];
-        foreach ($terms as $term) {
-            if ($term['key'] === null) {
-                $parts[] = ($term['exact'] ?? false) ? '"' . $term['value'] . '"' : $term['value'];
-            } else {
-                $parts[] = str_contains($term['value'], ' ')
-                    ? "{$term['key']}:\"{$term['value']}\""
-                    : "{$term['key']}:{$term['value']}";
-            }
-        }
-
-        return implode(' ', $parts);
     }
 
     /**
@@ -777,6 +663,7 @@ class BaseModelBrowser extends Component
                     if ($timezone) {
                         $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
                     }
+
                     return $date;
                 };
                 match ($type) {
@@ -790,6 +677,7 @@ class BaseModelBrowser extends Component
                         if ($timezone) {
                             $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
                         }
+
                         return $date;
                     })()),
                     self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),

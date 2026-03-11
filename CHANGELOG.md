@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.1.0] - 2026-03-11
+
+_Stable release based on [4.1.0-rc.1]._
+
+## [4.1.0-rc.1] - 2026-03-11
+
+### Changed
+
+- Separate HasSearchFilters Trait.
+
 ## [4.0.3] - 2026-03-11
 
 ### Fixed
@@ -630,6 +640,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[4.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.3...v4.1.0
+[4.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v4.0.3
 [4.0.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.2...v4.0.3
 [4.0.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.1...v4.0.2
 [4.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.0...v4.0.1
