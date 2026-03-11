@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Separate HasSearchFilters Trait.
+
 ## [4.0.3] - 2026-03-11
 
 ### Fixed
