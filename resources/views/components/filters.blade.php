@@ -120,6 +120,7 @@
                                     :value="$filterValues[$attr] ?? ''"
                                     :placeholder="$filterPlaceholder"
                                     :wire:model="$modelName"
+                                    :step="$inputType === 'number' ? 'any' : null"
                                 >{{ $label }}</x-ig::input>
                             @endif
                         </div>
