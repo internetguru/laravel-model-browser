@@ -96,6 +96,7 @@
                             };
                             $attrName = "filter-$attr";
                             $modelName = "filterValues.$attr";
+                            $noAll = !empty($config['noAll']);
 
                             // Skip options filters with only one option
                             if ($inputType === 'select' && count($options) <= 1) {
@@ -108,7 +109,7 @@
                                     type="select"
                                     :name="$attrName"
                                     :value="$filterValues[$attr] ?? ''"
-                                    :options="['' => __('model-browser::global.filters.all')] + $options"
+                                    :options="$noAll ? $options : ['' => __('model-browser::global.filters.all')] + $options"
                                     :useoptionkeys="true"
                                     :wire:model="$modelName"
                                 >{{ $label }}</x-ig::input>

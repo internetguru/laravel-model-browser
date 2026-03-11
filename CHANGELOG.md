@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.0.2] - 2026-03-11
+
+### Fixed
+
+- Make 'All' option configurable by noAll"
+
 ## [4.0.1] - 2026-03-11
 
 ### Fixed
@@ -618,6 +624,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[4.0.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.1...v4.0.2
 [4.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.0...v4.0.1
 [4.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v3.2.0...v4.0.0
 [4.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v3.2.0
