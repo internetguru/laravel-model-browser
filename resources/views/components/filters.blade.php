@@ -1,4 +1,4 @@
-@props(['filterConfig', 'filterValues', 'searchQuery' => ''])
+@props(['filterConfig', 'filterValues', 'searchQuery' => '', 'placeholder' => null, 'submitIcon' => 'fa-magnifying-glass'])
 
 @php
     $urlParams = collect($filterConfig)->pluck('url')->filter()->values()->toArray();
@@ -7,6 +7,7 @@
         ->map(fn($c) => mb_strtolower($c['label'] ?? ''))
         ->values()
         ->implode(', ');
+    $placeholder ??= __('model-browser::global.filters.search');
 @endphp
 
 @if (!empty($filterConfig))
@@ -35,7 +36,7 @@
                     type="text"
                     class="mb-search__input"
                     x-model="query"
-                    placeholder="@lang('model-browser::global.filters.search')"
+                    placeholder="{{ $placeholder }}"
                     maxlength="500"
                 />
                 <button
@@ -58,7 +59,7 @@
                     <i class="fas fa-fw fa-sliders"></i>
                 </button>
                 <button type="submit" class="mb-search__btn mb-search__btn--submit">
-                    <i class="fas fa-fw fa-magnifying-glass"></i>
+                    <i class="fas fa-fw {{ $submitIcon }}"></i>
                 </button>
             </form>
             {{-- @if ($searchableLabels)
