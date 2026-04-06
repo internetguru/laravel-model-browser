@@ -302,15 +302,16 @@ class BaseModelBrowser extends Component
     protected function getOptionsRule(array $options): string
     {
         $validValues = [];
+        $isList = array_is_list($options);
         foreach ($options as $optionKey => $optionValue) {
             if (is_array($optionValue) && isset($optionValue['id'])) {
                 // Format: [['id' => 'value', 'name' => 'label'], ...]
                 $validValues[] = $optionValue['id'];
-            } elseif (is_numeric($optionKey)) {
+            } elseif ($isList) {
                 // Format: ['value1', 'value2', ...]
                 $validValues[] = $optionValue;
             } else {
-                // Format: ['value' => 'label', ...]
+                // Format: ['value' => 'label', ...] (including numeric keys like IDs)
                 $validValues[] = $optionKey;
             }
         }
