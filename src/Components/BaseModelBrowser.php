@@ -87,6 +87,7 @@ class BaseModelBrowser extends Component
      * - column: Database column name (defaults to the attribute key)
      * - relation: Eloquent relation name — wraps the filter in whereHas()
      * - options: Array of options for 'options' type
+     * - restrict: (bool) For 'options' type — restrict values to options list (default: false). When false, allows any string and uses LIKE matching.
      * - rules: Optional Laravel validation rules (overrides default type-based rules)
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
      * - timezone: Timezone for date filters — parsed date is shifted via Carbon::shiftTimezone($tz)
@@ -291,7 +292,9 @@ class BaseModelBrowser extends Component
         return match ($type) {
             self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'nullable|numeric',
             self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9 .:\/+\-]+$/iu'],
-            self::FILTER_OPTIONS => $this->getOptionsRule($config['options'] ?? []),
+            self::FILTER_OPTIONS => ! empty($config['restrict'])
+                ? $this->getOptionsRule($config['options'] ?? [])
+                : 'nullable|string|max:255',
             default => 'nullable|string|max:255',
         };
     }
@@ -640,11 +643,15 @@ class BaseModelBrowser extends Component
                 if ($result['error']) {
                     continue;
                 }
+                $type = $config['type'] ?? self::FILTER_STRING;
+                if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
+                    $type = self::FILTER_STRING;
+                }
                 $this->applyCondition(
                     $query,
                     $config['column'],
                     $config['relation'] ?? null,
-                    $config['type'] ?? self::FILTER_STRING,
+                    $type,
                     $term['value'],
                     $config['timezone'] ?? null,
                 );
