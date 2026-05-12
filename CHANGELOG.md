@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [4.1.3] - 2026-05-12
+
+### Fixed
+
+- Fix pagination count for complex queries.
+
 ## [4.1.2] - 2026-04-07
 
 ### Fixed
@@ -655,6 +661,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[4.1.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.2...v4.1.3
 [4.1.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.1...v4.1.2
 [4.1.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.0...v4.1.1
 [4.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.0.3...v4.1.0

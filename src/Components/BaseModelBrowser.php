@@ -460,7 +460,7 @@ class BaseModelBrowser extends Component
     {
         $query = $this->getQuery();
         $this->applyFiltersToQuery($query);
-        $this->totalCount = $query->count();
+        $this->totalCount = $query->toBase()->getCountForPagination();
     }
 
     public function paginationView()
