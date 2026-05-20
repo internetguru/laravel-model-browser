@@ -91,7 +91,7 @@
                     @endforeach
                 @else
                     <div class="grid-no-results">
-                        <div>@lang('model-browser::global.no-results') {{ collect($viewAttributes)->values()->implode(', ') }}</div>
+                        <div>@lang('model-browser::global.no-results-in', ['columns' => collect($viewAttributes)->values()->implode(', ')])</div>
                     </div>
                 @endif
             </div>
