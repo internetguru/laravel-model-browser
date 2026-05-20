@@ -611,9 +611,11 @@ class BaseModelBrowser extends Component
             }
             $type = $config['type'] ?? self::FILTER_STRING;
             if (in_array($type, [self::FILTER_STRING, self::FILTER_OPTIONS])) {
+                $preprocessor = $config['preprocessor'] ?? null;
                 $searchableColumns[] = [
                     'column' => $config['column'],
                     'relation' => $config['relation'] ?? null,
+                    'preprocessor' => ($preprocessor && \function_exists($preprocessor)) ? $preprocessor : null,
                 ];
             }
         }
@@ -628,7 +630,8 @@ class BaseModelBrowser extends Component
                 $query->where(function (Builder $sub) use ($term, $searchableColumns) {
                     foreach ($searchableColumns as $col) {
                         $sub->orWhere(function (Builder $q) use ($col, $term) {
-                            $this->applyCondition($q, $col['column'], $col['relation'], self::FILTER_STRING, $term['value']);
+                            $value = $col['preprocessor'] ? ($col['preprocessor'])($term['value']) : $term['value'];
+                            $this->applyCondition($q, $col['column'], $col['relation'], self::FILTER_STRING, $value);
                         });
                     }
                 });
@@ -647,10 +650,8 @@ class BaseModelBrowser extends Component
                 if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
                     $type = self::FILTER_STRING;
                 }
-                $value = $term['value'];
-                if (isset($config['preprocessor']) && is_callable($config['preprocessor'])) {
-                    $value = ($config['preprocessor'])($value);
-                }
+                $preprocessor = $config['preprocessor'] ?? null;
+                $value = ($preprocessor && \function_exists($preprocessor)) ? $preprocessor($term['value']) : $term['value'];
                 $this->applyCondition(
                     $query,
                     $config['column'],
