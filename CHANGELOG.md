@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.1.4] - 2026-05-20
+
+### Fixed
+
+- Show no results in which columns"
+
 ## [4.1.3] - 2026-05-12
 
 ### Fixed
@@ -658,6 +664,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[4.1.4]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.3...v4.1.4
 [4.1.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.2...v4.1.3
 [4.1.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.1...v4.1.2
 [4.1.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.0...v4.1.1

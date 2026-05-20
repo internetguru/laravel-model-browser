@@ -28,6 +28,7 @@ return [
         'descending' => 'Faldende',
     ],
     'no-results' => 'Ingen resultater',
+    'no-results-in' => 'Ingen resultater i :columns',
     'fullscreen' => 'Fuldskærm',
     'fullscreen-exit' => 'Forlad fuldskærm',
     'download-csv' => [

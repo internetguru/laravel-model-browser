@@ -28,6 +28,7 @@ return [
         'descending' => 'Descending',
     ],
     'no-results' => 'No results',
+    'no-results-in' => 'No results in :columns',
     'fullscreen' => 'Fullscreen',
     'fullscreen-exit' => 'Exit fullscreen',
     'download-csv' => [
