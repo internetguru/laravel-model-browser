@@ -91,7 +91,14 @@
                     @endforeach
                 @else
                     <div class="grid-no-results">
-                        <div>@lang('model-browser::global.no-results-in', ['columns' => collect($viewAttributes)->values()->implode(', ')])</div>
+                        @php
+                            $filterLabels = collect($filterConfig)->map(fn($c) => $c['label'] ?? '')->filter()->values();
+                        @endphp
+                        @if ($filterLabels->isNotEmpty())
+                            <div>@lang('model-browser::global.no-results-in', ['columns' => $filterLabels->implode(', ')])</div>
+                        @else
+                            <div>@lang('model-browser::global.no-results')</div>
+                        @endif
                     </div>
                 @endif
             </div>

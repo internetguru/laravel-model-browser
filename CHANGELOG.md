@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [4.1.5] - 2026-05-20
+
+### Fixed
+
+- Fix no results to show filters not view attributes.
+- Add preprocessor option for filters.
+
 ## [4.1.4] - 2026-05-20
 
 ### Fixed
@@ -667,6 +674,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[4.1.5]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.4...v4.1.5
 [4.1.4]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.3...v4.1.4
 [4.1.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.2...v4.1.3
 [4.1.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.1.1...v4.1.2

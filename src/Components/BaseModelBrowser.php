@@ -647,12 +647,16 @@ class BaseModelBrowser extends Component
                 if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
                     $type = self::FILTER_STRING;
                 }
+                $value = $term['value'];
+                if (isset($config['preprocessor']) && is_callable($config['preprocessor'])) {
+                    $value = ($config['preprocessor'])($value);
+                }
                 $this->applyCondition(
                     $query,
                     $config['column'],
                     $config['relation'] ?? null,
                     $type,
-                    $term['value'],
+                    $value,
                     $config['timezone'] ?? null,
                 );
             }
