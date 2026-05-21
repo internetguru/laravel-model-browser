@@ -78,6 +78,14 @@ class BaseModelBrowser extends Component
     public string $defaultSortDirection = 'asc';
 
     /**
+     * Relations to eager-load on every query (table render + CSV export).
+     * Accepts the same shape as Eloquent's `with()` — strings or
+     * ['relation' => fn(Builder $q) => ...].
+     */
+    #[Locked]
+    public array $with = [];
+
+    /**
      * Filter configuration.
      * Format: ['attribute' => ['type' => '...', 'label' => '...', ...]]
      *
@@ -91,6 +99,7 @@ class BaseModelBrowser extends Component
      * - rules: Optional Laravel validation rules (overrides default type-based rules)
      * - url: Optional URL query parameter name to initialize filter from (takes priority over session)
      * - timezone: Timezone for date filters — parsed date is shifted via Carbon::shiftTimezone($tz)
+     * - ascii_fast: (bool) Column stores only ASCII (e-mail, login, slug, …). On SQLite, skips the unaccent() PHP UDF in LIKE matching for a large speedup on big tables.
      *
      * When 'column' is set, filters are auto-applied to the query.
      * When 'column' is omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
@@ -149,6 +158,7 @@ class BaseModelBrowser extends Component
         array $filters = [],
         string $filterSessionKey = '',
         int $refreshInterval = 0,
+        array $with = [],
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -169,6 +179,7 @@ class BaseModelBrowser extends Component
         $this->defaultSortDirection = $defaultSortDirection;
         $this->filterConfig = $filters;
         $this->refreshInterval = $refreshInterval;
+        $this->with = $with;
         if (! empty($filters) && ! $filterSessionKey) {
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
@@ -538,27 +549,32 @@ class BaseModelBrowser extends Component
 
     public function downloadCsv(): StreamedResponse
     {
-        $data = $this->getData(paginate: false);
+        $exportName = $this->generateExportFilename();
         $headers = array_values($this->viewAttributes);
-        $handle = fopen('php://memory', 'w+');
+        $attributes = $this->viewAttributes;
+        $query = $this->buildFilteredSortedQuery();
 
-        fputcsv($handle, $headers);
-        foreach ($data as $item) {
-            $row = [];
-            foreach ($this->viewAttributes as $attribute => $trans) {
-                $row[] = $this->itemValueStripped($item, $attribute);
-            }
-            fputcsv($handle, $row);
+        // chunk() needs a deterministic order; fall back to the primary key
+        // when no sort column is active.
+        $hasOrder = ! empty($query->getQuery()->orders);
+        if (! $hasOrder) {
+            $query->orderBy((new $this->model)->getKeyName());
         }
 
-        rewind($handle);
-        $csvContent = stream_get_contents($handle);
-        fclose($handle);
-
-        $exportName = $this->generateExportFilename();
-
-        return response()->streamDownload(function () use ($csvContent) {
-            echo $csvContent;
+        return response()->streamDownload(function () use ($headers, $query, $attributes) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, $headers);
+            $query->chunk(500, function ($rows) use ($out, $attributes) {
+                $this->format($rows);
+                foreach ($rows as $item) {
+                    $row = [];
+                    foreach ($attributes as $attribute => $_) {
+                        $row[] = $this->itemValueStripped($item, $attribute);
+                    }
+                    fputcsv($out, $row);
+                }
+            });
+            fclose($out);
         }, $exportName, ['Content-Type' => 'text/csv']);
     }
 
@@ -584,9 +600,15 @@ class BaseModelBrowser extends Component
      */
     protected function getQuery(): Builder
     {
-        return $this->modelMethod
+        $query = $this->modelMethod
             ? $this->model::{$this->modelMethod}()
             : $this->model::query();
+
+        if (! empty($this->with)) {
+            $query->with($this->with);
+        }
+
+        return $query;
     }
 
     /**
@@ -616,6 +638,7 @@ class BaseModelBrowser extends Component
                     'column' => $config['column'],
                     'relation' => $config['relation'] ?? null,
                     'preprocessor' => ($preprocessor && \function_exists($preprocessor)) ? $preprocessor : null,
+                    'ascii_fast' => ! empty($config['ascii_fast']),
                 ];
             }
         }
@@ -631,7 +654,7 @@ class BaseModelBrowser extends Component
                     foreach ($searchableColumns as $col) {
                         $sub->orWhere(function (Builder $q) use ($col, $term) {
                             $value = $col['preprocessor'] ? ($col['preprocessor'])($term['value']) : $term['value'];
-                            $this->applyCondition($q, $col['column'], $col['relation'], self::FILTER_STRING, $value);
+                            $this->applyCondition($q, $col['column'], $col['relation'], self::FILTER_STRING, $value, null, $col['ascii_fast']);
                         });
                     }
                 });
@@ -659,6 +682,7 @@ class BaseModelBrowser extends Component
                     $type,
                     $value,
                     $config['timezone'] ?? null,
+                    ! empty($config['ascii_fast']),
                 );
             }
         }
@@ -667,9 +691,9 @@ class BaseModelBrowser extends Component
     /**
      * Apply a single filter condition with AND semantics.
      */
-    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value, ?string $timezone = null): void
+    protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value, ?string $timezone = null, bool $asciiFast = false): void
     {
-        $applyWhere = function (Builder $q) use ($column, $type, $value, $timezone) {
+        $applyWhere = function (Builder $q) use ($column, $type, $value, $timezone, $asciiFast) {
             try {
                 $parseDate = function (string $v) use ($timezone) {
                     $date = Carbon::parse($v);
@@ -680,7 +704,7 @@ class BaseModelBrowser extends Component
                     return $date;
                 };
                 match ($type) {
-                    self::FILTER_STRING => $q->whereLikeUnaccented($column, $value),
+                    self::FILTER_STRING => $q->whereLikeUnaccented($column, $value, $asciiFast),
                     self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)),
                     self::FILTER_DATE_TO => $q->where($column, '<=', (function () use ($value, $timezone) {
                         $date = Carbon::parse($value);
@@ -697,7 +721,7 @@ class BaseModelBrowser extends Component
                     self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
                     self::FILTER_DATE => $q->where($column, $parseDate($value)),
                     self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
-                    default => $q->whereLikeUnaccented($column, $value),
+                    default => $q->whereLikeUnaccented($column, $value, $asciiFast),
                 };
             } catch (\Exception $e) {
                 // Invalid value (e.g. unparseable date), skip
@@ -734,9 +758,9 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Get data with database-level sorting and pagination.
+     * Build the filtered + sorted query (no pagination, no execution).
      */
-    protected function getData(bool $paginate = true, bool $applyFormats = true): Paginator|Collection
+    protected function buildFilteredSortedQuery(): Builder
     {
         $query = $this->getQuery();
 
@@ -750,6 +774,16 @@ class BaseModelBrowser extends Component
         if ($sortColumn) {
             $query->orderBy($sortColumn, $sortDirection);
         }
+
+        return $query;
+    }
+
+    /**
+     * Get data with database-level sorting and pagination.
+     */
+    protected function getData(bool $paginate = true, bool $applyFormats = true): Paginator|Collection
+    {
+        $query = $this->buildFilteredSortedQuery();
 
         if ($paginate) {
             // Use simplePaginate for better performance (no total count query)
