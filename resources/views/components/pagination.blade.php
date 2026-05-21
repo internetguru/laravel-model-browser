@@ -17,7 +17,7 @@
         {{ $itemStartNum }}–{{ $itemEndNum }}
         @lang('model-browser::pagination.of')
         @if ($totalCount === null)
-            <span x-data x-init="$wire.loadTotalCount()">@lang('model-browser::pagination.many')</span>
+            <span>@lang('model-browser::pagination.many')</span>
         @else
             {{ $totalCount }}
         @endif

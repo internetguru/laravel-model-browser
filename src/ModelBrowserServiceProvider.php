@@ -45,8 +45,12 @@ class ModelBrowserServiceProvider extends ServiceProvider
          * Supports SQLite (via custom unaccent function) and MySQL/MariaDB (via collation).
          *
          * Usage: $query->whereLikeUnaccented('name', $value)
+         *
+         * Pass $asciiFast=true when the column is known to store only ASCII
+         * (e-mail, login, slug, …). On SQLite this skips the unaccent() PHP UDF
+         * — which is invoked per row scanned and is the main filter-cost driver.
          */
-        Builder::macro('whereLikeUnaccented', function (string $column, string $value): Builder {
+        Builder::macro('whereLikeUnaccented', function (string $column, string $value, bool $asciiFast = false): Builder {
             /** @var Builder $this */
 
             // If the search value contains accented characters, do an exact (accent-sensitive) match
@@ -60,6 +64,13 @@ class ModelBrowserServiceProvider extends ServiceProvider
             $driver = $this->getConnection()->getDriverName();
 
             if ($driver === 'sqlite') {
+                if ($asciiFast) {
+                    return $this->whereRaw(
+                        "LOWER({$column}) LIKE LOWER(?)",
+                        ['%' . $value . '%']
+                    );
+                }
+
                 return $this->whereRaw(
                     "unaccent({$column}) LIKE ?",
                     ['%' . $value . '%']
