@@ -1,4 +1,7 @@
 <div class="model-browser model-browser-base">
+    @if ($totalCount === null)
+        <span x-data x-init="$wire.loadTotalCount()" style="display: none;"></span>
+    @endif
     <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
     <div class="my-5">

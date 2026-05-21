@@ -1,4 +1,7 @@
 <div wire:lazy class="model-browser model-browser-table">
+    @if ($totalCount === null)
+        <span x-data x-init="$wire.loadTotalCount()" style="display: none;"></span>
+    @endif
     <div
         wire:ignore.self
         class="table-wrapper"
