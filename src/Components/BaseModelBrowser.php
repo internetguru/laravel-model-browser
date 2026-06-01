@@ -3,7 +3,7 @@
 namespace Internetguru\ModelBrowser\Components;
 
 use Exception;
-use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -13,13 +13,11 @@ use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BaseModelBrowser extends Component
 {
     use HasSearchFilters;
-    use WithPagination;
 
     public const PER_PAGE_MIN = 3;
 
@@ -117,6 +115,9 @@ class BaseModelBrowser extends Component
     public int $refreshInterval = 0;
 
     public int $perPage = self::PER_PAGE_DEFAULT;
+
+    #[Url(as: 'skip', except: 0)]
+    public int $skip = 0;
 
     // #[Url(except: '', as: 'sort-column')]
     public string $sortColumn = '';
@@ -474,14 +475,29 @@ class BaseModelBrowser extends Component
         $this->totalCount = $query->toBase()->getCountForPagination();
     }
 
-    public function paginationView()
+    public function paginationView(): string
     {
         return 'model-browser::empty';
     }
 
-    public function paginationSimpleView()
+    public function paginationSimpleView(): string
     {
         return 'model-browser::empty';
+    }
+
+    public function previousPage(): void
+    {
+        $this->skip = max(0, $this->skip - $this->perPage);
+    }
+
+    public function nextPage(): void
+    {
+        $this->skip += $this->perPage;
+    }
+
+    public function resetPage(): void
+    {
+        $this->skip = 0;
     }
 
     public function updatedSortColumn()
@@ -786,10 +802,13 @@ class BaseModelBrowser extends Component
         $query = $this->buildFilteredSortedQuery();
 
         if ($paginate) {
-            // Use simplePaginate for better performance (no total count query)
-            $data = $query->simplePaginate($this->perPage);
+            // Clamp skip to a valid page boundary and derive page number
+            $this->skip = max(0, intval($this->skip / $this->perPage) * $this->perPage);
+            $page = intval($this->skip / $this->perPage) + 1;
+            Paginator::defaultSimpleView($this->paginationSimpleView());
+            $data = $query->simplePaginate($this->perPage, ['*'], 'page', $page);
 
-            if ($applyFormats) {
+            if ($applyFormats && $data instanceof Paginator) {
                 $data->setCollection($this->format($data->getCollection()));
             }
 
