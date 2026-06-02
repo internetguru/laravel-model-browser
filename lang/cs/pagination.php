@@ -7,5 +7,6 @@ return [
     'of' => 'z',
     'many' => 'mnoho',
     'show' => 'zobrazit',
+    'results' => 'výsledků',
 
 ];
