@@ -54,17 +54,14 @@ class BaseModelBrowserTest extends TestCase
 
     public function test_download_csv()
     {
-        // skip
-        $this->markTestSkipped('Need to fix this test');
-
-        $component = Livewire::test(BaseModelBrowser::class, [
+        Livewire::test(BaseModelBrowser::class, [
             'model' => User::class,
-        ]);
-
-        $response = $component->call('downloadCsv');
-
-        $response->assertHeader('Content-Type', 'text/csv');
-        $response->assertHeader('Content-Disposition', 'attachment; filename=data.csv');
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+        ])->call('downloadCsv')
+            ->assertFileDownloaded();
     }
 
     public function test_model_view()
@@ -152,5 +149,117 @@ class BaseModelBrowserTest extends TestCase
 
         $component->assertSet('defaultSortColumn', 'name');
         $component->assertSet('defaultSortDirection', 'desc');
+    }
+
+    public function test_mounts_with_filters_and_renders_search_bar()
+    {
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ])->assertSet('filterSessionKey', 'test-mb-filters')
+            ->assertViewIs('model-browser::livewire.base');
+    }
+
+    public function test_mounting_with_filters_requires_session_key()
+    {
+        $this->expectException(\Exception::class);
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+        ]);
+    }
+
+    public function test_search_query_filters_results_by_column()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Zenon Unique', 'email' => 'zenon@example.com']);
+        User::factory()->count(5)->create();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        $component->set('searchQuery', 'Zenon')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Zenon Unique');
+    }
+
+    public function test_apply_filters_builds_search_query()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        $component->set('filterValues.name', 'Alice')->call('applyFilters');
+        $component->assertSet('searchQuery', 'name:Alice');
+    }
+
+    public function test_clear_filters_resets_search_query()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        $component->set('searchQuery', 'name:Alice')->call('applySearch');
+        $component->assertSet('filterValues.name', 'Alice');
+
+        $component->call('clearFilters');
+        $component->assertSet('searchQuery', '')
+            ->assertSet('filterValues.name', '');
+    }
+
+    public function test_total_count_is_deferred_on_initial_render()
+    {
+        // The count is loaded by the "count" island after the initial render,
+        // not during mount/render, so it starts as null (placeholder).
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->assertSet('totalCount', null);
+    }
+
+    public function test_changing_filters_dispatches_count_refresh()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        // Each filter mutation must tell the count island to reload itself.
+        $component->set('searchQuery', 'Alice')->call('applySearch')
+            ->assertDispatched('mb-refresh-count')
+            ->assertSet('totalCount', null);
+
+        $component->call('clearFilters')
+            ->assertDispatched('mb-refresh-count');
+
+        $component->set('filterValues.name', 'Bob')->call('applyFilters')
+            ->assertDispatched('mb-refresh-count');
     }
 }
