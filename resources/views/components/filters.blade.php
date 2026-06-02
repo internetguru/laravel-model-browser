@@ -14,7 +14,6 @@
     <div
         x-data="{
             expanded: false,
-            query: $wire.entangle('searchQuery'),
             clearUrlParams() {
                 const params = @js($urlParams);
                 if (params.length === 0) return;
@@ -35,14 +34,14 @@
                 <input
                     type="text"
                     class="mb-search__input"
-                    x-model="query"
+                    wire:model="searchQuery"
                     placeholder="{{ $placeholder }}"
                     maxlength="500"
                 />
                 <button
                     type="button"
                     class="mb-search__btn"
-                    x-show="query"
+                    x-show="$wire.searchQuery"
                     x-on:click="clearUrlParams(); $wire.clearFilters()"
                     x-cloak
                     title="@lang('model-browser::global.filters.clear-all')"

@@ -8,6 +8,14 @@ A Laravel package to browse models and show them in cards, tables, etc.
 | Staging | ![tests](https://github.com/internetguru/laravel-model-browser/actions/workflows/test.yml/badge.svg?branch=staging) | ![coverage](https://raw.githubusercontent.com/internetguru/laravel-model-browser/refs/heads/badges/staging-coverage.svg) |
 | Dev | ![tests](https://github.com/internetguru/laravel-model-browser/actions/workflows/test.yml/badge.svg?branch=dev) | ![coverage](https://raw.githubusercontent.com/internetguru/laravel-model-browser/refs/heads/badges/dev-coverage.svg) |
 
+## Requirements
+
+- PHP 8.4+
+- Laravel 11, 12, or 13
+- Livewire 4
+
+> **Livewire 3 → 4:** As of version 4.3, this package requires Livewire 4. Support for Livewire 3 (and Laravel 9/10) has been dropped. The components are class-based and registered by the package's service provider, so no application changes are needed beyond upgrading Livewire itself.
+
 ## Installation
 
 1. Install the package via Composer:
@@ -423,7 +431,7 @@ In this example:
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file.
 - **Fullscreen** — Toggle fullscreen mode for the table view.
-- **Lazy Loading** — Components use `wire:lazy` for deferred rendering.
+- **Deferred count** — The total result count is shown as a summary line above the table and loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands). The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 
 ## License & Commercial Terms
 

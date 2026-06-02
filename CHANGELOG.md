@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** Migrate to Livewire 4.
+- Mark `downloadCsv()` as `#[Renderless]` to improve the performance.
+- Expose the paginated rows as a computed property and load the total count inside a dedicated Livewire 4 "count" island, so loading/refreshing the count no longer re-runs the data query.
+- Move the total result count out of each pagination bar into a single summary line (pagination bars now show the current range only).
+
+### Removed
+
+- Drop support for Livewire 3 and Laravel 9 / 10.
+- Remove the non-functional `wire:lazy` attribute from the table component.
+
+### Fixed
+
+- Un-skip and fix the CSV download test.
+
 ## [4.2.1] - 2026-06-02
 
 ### Fixed

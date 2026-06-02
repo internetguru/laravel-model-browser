@@ -9,18 +9,11 @@
     $itemEndNum = $data->count() < $data->perPage() ? $itemStartNum + $data->count() - 1 : $currentPage * $data->perPage();
 
     $perPageOptions = $perPageOptions ?? [20, 50, 100];
-    $totalCount = $totalCount ?? null;
 @endphp
 
 <nav role="navigation" aria-label="Pagination Navigation" class="d-flex align-items-center justify-content-end gap-3 my-3">
     <div class="d-flex align-items-center gap-1 flex-wrap">
         {{ $itemStartNum }}–{{ $itemEndNum }}
-        @lang('model-browser::pagination.of')
-        @if ($totalCount === null)
-            <span>@lang('model-browser::pagination.many')</span>
-        @else
-            {{ $totalCount }}
-        @endif
         <span class="text-muted mx-1">&nbsp;</span>
         @lang('model-browser::pagination.show')
         <select

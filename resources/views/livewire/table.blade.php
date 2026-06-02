@@ -1,7 +1,4 @@
-<div wire:lazy class="model-browser model-browser-table">
-    @if ($totalCount === null)
-        <span x-data x-init="$wire.loadTotalCount()" style="display: none;"></span>
-    @endif
+<div class="model-browser model-browser-table">
     <div
         wire:ignore.self
         class="table-wrapper"
@@ -37,8 +34,12 @@
 
         <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
+        @island(name: 'count')
+            @include('model-browser::partials.count')
+        @endisland
+
         <div>
-            <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
+            <x-model-browser::pagination :data="$this->rows" :$perPageOptions />
         </div>
 
         <div
@@ -74,8 +75,8 @@
                     @endforeach
                 </div>
 
-                @if ($data->isNotEmpty())
-                    @foreach($data as $row)
+                @if ($this->rows->isNotEmpty())
+                    @foreach($this->rows as $row)
                         <div @class([
                             'grid-row',
                             'grid-row-light' => ($loop->index / $lightDarkStep) % 2 == 1,
@@ -108,7 +109,7 @@
         </div>
 
         <div>
-            <x-model-browser::pagination :$data :$perPageOptions :$totalCount />
+            <x-model-browser::pagination :data="$this->rows" :$perPageOptions />
         </div>
 
         <x-model-browser::csv-buttons />

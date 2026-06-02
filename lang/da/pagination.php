@@ -7,5 +7,6 @@ return [
     'of' => 'af',
     'many' => 'mange',
     'show' => 'vis',
+    'results' => 'resultater',
 
 ];

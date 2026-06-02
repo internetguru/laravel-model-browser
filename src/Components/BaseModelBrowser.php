@@ -3,14 +3,16 @@
 namespace Internetguru\ModelBrowser\Components;
 
 use Exception;
-use Illuminate\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -380,6 +382,9 @@ class BaseModelBrowser extends Component
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
+        // Reload the count island only (the data query re-runs in this same
+        // request via the rows() computed, so the count must not).
+        $this->dispatch('mb-refresh-count');
     }
 
     /**
@@ -396,6 +401,7 @@ class BaseModelBrowser extends Component
             $this->searchQuery = $this->buildSearchQueryFromTerms($filtered);
             $this->saveFiltersToSession();
             $this->resetPage();
+            $this->dispatch('mb-refresh-count');
         }
     }
 
@@ -440,6 +446,7 @@ class BaseModelBrowser extends Component
             $this->totalCount = null;
             $this->saveFiltersToSession();
             $this->resetPage();
+            $this->dispatch('mb-refresh-count');
         }
     }
 
@@ -447,31 +454,33 @@ class BaseModelBrowser extends Component
      * Reload filters from session — used during poll to ensure the table
      * reflects stored (saved) filters, not unsaved UI edits.
      */
-    protected function loadFiltersFromSession(): void
+    /**
+     * The search query used to build the data/count queries.
+     *
+     * For auto-refreshing tables, the query is built from the stored (saved)
+     * filters in the session rather than the live UI properties, so polling
+     * never reflects the user's unsaved, in-progress edits.
+     */
+    protected function effectiveSearchQuery(): string
     {
-        if (empty($this->filterSessionKey)) {
-            return;
+        if ($this->refreshInterval > 0 && $this->filterSessionKey) {
+            return (string) session($this->filterSessionKey . '.query', '');
         }
 
-        $sessionFilters = session($this->filterSessionKey, []);
-        $sessionQuery = session($this->filterSessionKey . '.query', '');
-
-        foreach ($this->filterConfig as $attribute => $config) {
-            $value = $sessionFilters[$attribute] ?? '';
-            $result = $this->validateFilterValue($attribute, $value);
-            $this->filterValues[$attribute] = $result['value'];
-        }
-
-        $this->searchQuery = $sessionQuery ?: $this->buildSearchQuery();
+        return $this->searchQuery;
     }
 
     /**
-     * Load total result count asynchronously.
+     * Load the total result count.
+     *
+     * Triggered inside the "count" island (see the count partial), so it only
+     * re-renders that island — the data query in the rows() computed is never
+     * touched.
      */
     public function loadTotalCount(): void
     {
         $query = $this->getQuery();
-        $this->applyFiltersToQuery($query);
+        $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
         $this->totalCount = $query->toBase()->getCountForPagination();
     }
 
@@ -532,30 +541,23 @@ class BaseModelBrowser extends Component
         }
     }
 
+    /**
+     * The paginated rows for the current page.
+     *
+     * Exposed as a computed property so the (potentially expensive) data query
+     * is only executed when the "results" island actually renders. When an
+     * island-scoped action runs (e.g. loadTotalCount in the "count" island),
+     * the results island is skipped and this query never runs.
+     */
+    #[Computed]
+    public function rows(): Paginator|Collection
+    {
+        return $this->getData();
+    }
+
     public function render()
     {
-        if ($this->refreshInterval > 0) {
-            // Save user's unsaved UI state
-            $uiFilterValues = $this->filterValues;
-            $uiSearchQuery = $this->searchQuery;
-
-            // Use stored (saved) filters for the data query
-            $this->loadFiltersFromSession();
-            $this->loadTotalCount();
-            $data = $this->getData();
-
-            // Restore user's unsaved edits so the UI is not cleared
-            $this->filterValues = $uiFilterValues;
-            $this->searchQuery = $uiSearchQuery;
-
-            return view('model-browser::livewire.base', [
-                'data' => $data,
-            ]);
-        }
-
-        return view('model-browser::livewire.base', [
-            'data' => $this->getData(),
-        ]);
+        return view('model-browser::livewire.base');
     }
 
     public function getAlignment(string $attribute, mixed $value): string
@@ -563,6 +565,7 @@ class BaseModelBrowser extends Component
         return $this->alignments[$attribute] ?? (is_numeric($value) ? 'end' : 'start');
     }
 
+    #[Renderless]
     public function downloadCsv(): StreamedResponse
     {
         $exportName = $this->generateExportFilename();
@@ -633,9 +636,9 @@ class BaseModelBrowser extends Component
      * Free text (no key:) searches all string-type filter columns (OR within one term).
      * Column defaults to the filter attribute key when not explicitly set.
      */
-    protected function applyFiltersToQuery(Builder $query): void
+    protected function applyFiltersToQuery(Builder $query, ?string $searchQuery = null): void
     {
-        $terms = $this->parseSearchTerms($this->searchQuery);
+        $terms = $this->parseSearchTerms($searchQuery ?? $this->searchQuery);
 
         if (empty($terms)) {
             return;
@@ -781,7 +784,7 @@ class BaseModelBrowser extends Component
         $query = $this->getQuery();
 
         // Auto-apply filters that have 'column' configured
-        $this->applyFiltersToQuery($query);
+        $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
 
         // Apply database-level sorting (single column)
         // User sorting only when enableSort is true, default sort always applies
