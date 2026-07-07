@@ -24,10 +24,6 @@
                 <p>@lang('model-browser::global.no-results')</p>
             @endif
         </div>
-
-        <div class="my-5">
-            <x-model-browser::pagination :data="$this->rows" :$perPageOptions />
-        </div>
     </div>
 
     <x-model-browser::csv-buttons />
