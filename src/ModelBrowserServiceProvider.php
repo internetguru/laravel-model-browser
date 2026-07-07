@@ -78,8 +78,11 @@ class ModelBrowserServiceProvider extends ServiceProvider
             }
 
             // MySQL / MariaDB
+            // CONVERT(... USING utf8mb4) gives the placeholder an explicit charset before
+            // COLLATE is applied — some MySQL/PDO configurations otherwise infer the bound
+            // parameter's charset as 'binary', which is incompatible with utf8mb4_unicode_ci.
             return $this->whereRaw(
-                "{$column} COLLATE utf8mb4_unicode_ci LIKE ? COLLATE utf8mb4_unicode_ci",
+                "{$column} COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci",
                 ['%' . $value . '%']
             );
         });
