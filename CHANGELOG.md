@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Remove the bottom pagination bar from the table and grid views, keeping only the top one.
+
 ## [5.0.0] - 2026-06-02
 
 _Stable release based on [5.0.0-rc.1]._
