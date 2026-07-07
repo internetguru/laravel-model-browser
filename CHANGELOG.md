@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.1.0] - 2026-07-07
+
+_Stable release based on [5.1.0-rc.1]._
+
 ## [5.1.0-rc.1] - 2026-07-07
 
 ### Removed
@@ -723,6 +727,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[5.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.0.0...v5.1.0
 [5.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v5.0.0
 [5.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v4.2.1...v5.0.0
 [5.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v4.2.1
