@@ -44,7 +44,7 @@
 
         <div
             @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif
-            class="table-responsive"
+            class="table-responsive mb-4"
         >
             <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
                 <div class="grid-header">
@@ -106,10 +106,6 @@
                     </div>
                 @endif
             </div>
-        </div>
-
-        <div>
-            <x-model-browser::pagination :data="$this->rows" :$perPageOptions />
         </div>
 
         <x-model-browser::csv-buttons />
