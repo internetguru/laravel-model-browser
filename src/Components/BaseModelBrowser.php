@@ -581,6 +581,11 @@ class BaseModelBrowser extends Component
         }
 
         return response()->streamDownload(function () use ($headers, $query, $attributes) {
+            // Large exports can easily exceed max_execution_time, and since
+            // headers are already sent, the resulting error dump would end up
+            // inside the downloaded CSV.
+            @set_time_limit(0);
+
             $out = fopen('php://output', 'w');
             fputcsv($out, $headers);
 
