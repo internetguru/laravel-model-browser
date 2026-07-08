@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.2.1] - 2026-07-08
+
+### Fixed
+
+- Lift the PHP execution time limit while streaming a CSV export.
+- Add a top margin between the table and the CSV download button.
+- Fix the CSV download button icon with FontAwesome SVG replacement.
+
 ## [5.2.0] - 2026-07-08
 
 _Stable release based on [5.2.0-rc.1]._
@@ -748,6 +756,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[5.2.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.2.0...v5.2.1
 [5.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.1.1...v5.2.0
 [5.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v5.1.1
 [5.1.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.1.0...v5.1.1

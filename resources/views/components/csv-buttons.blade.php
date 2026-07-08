@@ -6,7 +6,7 @@
     server, which is how the spinner knows the download has started.
 --}}
 <div
-    class="d-flex justify-content-center"
+    class="d-flex justify-content-center mt-3"
     x-data="{
         downloading: false,
         pollTimer: null,
@@ -53,7 +53,17 @@
         x-on:click="download()"
         x-bind:disabled="downloading"
     >
-        <i class="fa-solid fa-fw pe-2" x-bind:class="downloading ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+        {{--
+            The icons are toggled via x-show on wrapper spans (not by swapping
+            classes) because FontAwesome's SVG replacement (dom.watch) swaps
+            the <i> for an <svg>, which breaks Alpine class bindings on it.
+        --}}
+        {{--
+            The pe-2 spacing sits on the span, not the icon — padding on the
+            icon itself would offset the fa-spin rotation center.
+        --}}
+        <span class="pe-2" x-show="!downloading"><i class="fa-solid fa-fw fa-download"></i></span>
+        <span class="pe-2" x-show="downloading" style="display: none"><i class="fa-solid fa-fw fa-spinner fa-spin"></i></span>
         @lang('model-browser::global.download-csv.label')
     </button>
 </div>
