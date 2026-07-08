@@ -570,11 +570,11 @@ class BaseModelBrowser extends Component
     {
         $exportName = $this->generateExportFilename();
         $headers = array_values($this->viewAttributes);
-        $attributes = $this->viewAttributes;
+        $attributes = array_keys($this->viewAttributes);
         $query = $this->buildFilteredSortedQuery();
 
-        // chunk() needs a deterministic order; fall back to the primary key
-        // when no sort column is active.
+        // Offset-based chunking (lazy) needs a deterministic order; fall back
+        // to the primary key when no sort column is active.
         $hasOrder = ! empty($query->getQuery()->orders);
         if (! $hasOrder) {
             $query->orderBy((new $this->model)->getKeyName());
@@ -583,16 +583,27 @@ class BaseModelBrowser extends Component
         return response()->streamDownload(function () use ($headers, $query, $attributes) {
             $out = fopen('php://output', 'w');
             fputcsv($out, $headers);
-            $query->chunk(500, function ($rows) use ($out, $attributes) {
-                $this->format($rows);
-                foreach ($rows as $item) {
-                    $row = [];
-                    foreach ($attributes as $attribute => $_) {
-                        $row[] = $this->itemValueStripped($item, $attribute);
-                    }
-                    fputcsv($out, $row);
+
+            // cursor() streams rows from a single query, but does not support
+            // eager loading — fall back to offset chunking when relations are
+            // requested.
+            $rows = empty($this->with) ? $query->cursor() : $query->lazy(500);
+
+            $count = 0;
+            foreach ($rows as $item) {
+                $this->formatItem($item);
+                $row = [];
+                foreach ($attributes as $attribute) {
+                    $row[] = $this->itemValueStripped($item, $attribute);
                 }
-            });
+                fputcsv($out, $row);
+                if (++$count % 500 === 0) {
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
+                    flush();
+                }
+            }
             fclose($out);
         }, $exportName, ['Content-Type' => 'text/csv']);
     }
@@ -845,16 +856,19 @@ class BaseModelBrowser extends Component
 
     protected function format(Collection $data): Collection
     {
-        return $data->transform(function ($item) {
-            foreach ($this->formats as $attribute => $format) {
-                $value = Arr::get($item, $attribute);
-                if ($value === null) {
-                    continue;
-                }
-                $item->{$attribute . 'Formatted'} = $format($value, $item);
-            }
+        return $data->transform(fn ($item) => $this->formatItem($item));
+    }
 
-            return $item;
-        });
+    protected function formatItem($item)
+    {
+        foreach ($this->formats as $attribute => $format) {
+            $value = Arr::get($item, $attribute);
+            if ($value === null) {
+                continue;
+            }
+            $item->{$attribute . 'Formatted'} = $format($value, $item);
+        }
+
+        return $item;
     }
 }

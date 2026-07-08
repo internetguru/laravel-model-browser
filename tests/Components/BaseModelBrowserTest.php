@@ -3,6 +3,7 @@
 namespace Tests\Components;
 
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -62,6 +63,62 @@ class BaseModelBrowserTest extends TestCase
             ],
         ])->call('downloadCsv')
             ->assertFileDownloaded();
+    }
+
+    public function test_download_csv_stream_endpoint()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+        ]);
+
+        $response = $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), [
+                'snapshot' => json_encode($component->snapshot),
+                'token' => 'testtoken123',
+            ]);
+
+        $response->assertOk();
+        $response->assertDownload();
+        $response->assertCookie('mb_csv_download', 'testtoken123', encrypted: false);
+
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Name,Email', $content);
+        foreach (User::all() as $user) {
+            $this->assertStringContainsString($user->email, $content);
+        }
+    }
+
+    public function test_download_csv_stream_endpoint_rejects_tampered_snapshot()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+        ]);
+
+        $snapshot = $component->snapshot;
+        $snapshot['data']['model'] = 'App\\Models\\SomethingElse';
+
+        $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), [
+                'snapshot' => json_encode($snapshot),
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_download_csv_stream_endpoint_rejects_invalid_payload()
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), [
+                'snapshot' => 'not-json',
+            ])
+            ->assertBadRequest();
     }
 
     public function test_model_view()

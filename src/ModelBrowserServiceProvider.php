@@ -2,10 +2,13 @@
 
 namespace Internetguru\ModelBrowser;
 
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 use Internetguru\ModelBrowser\Components\TableModelBrowser;
+use Internetguru\ModelBrowser\Http\Controllers\CsvDownloadController;
 use Livewire\Livewire;
 
 class ModelBrowserServiceProvider extends ServiceProvider
@@ -24,6 +27,16 @@ class ModelBrowserServiceProvider extends ServiceProvider
         Livewire::component('table-model-browser', TableModelBrowser::class);
 
         $this->registerQueryMacros();
+
+        // Direct CSV streaming endpoint — bypasses Livewire's buffered,
+        // base64-encoded file downloads (see CsvDownloadController).
+        Route::post('model-browser/download-csv', CsvDownloadController::class)
+            ->middleware('web')
+            ->name('model-browser.download-csv');
+
+        // The download-started cookie is read back by the CSV button's JS,
+        // so it must stay unencrypted.
+        EncryptCookies::except('mb_csv_download');
 
         $this->publishes([
             __DIR__ . '/../resources/views' => resource_path('views/vendor/model-browser'),
