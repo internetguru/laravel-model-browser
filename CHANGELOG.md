@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Stream CSV exports directly to the browser through a dedicated endpoint (`model-browser/download-csv`) instead of Livewire's buffered, base64-encoded file downloads — large exports start immediately and no longer hold the whole file in memory.
+- Read CSV export rows with a single streamed query (`cursor()`, or `lazy()` when eager loads are configured) instead of offset-based `chunk()`.
+
+### Added
+
+- Show a spinner on the CSV download button until the download starts (the button is disabled meanwhile).
+
 ## [5.1.1] - 2026-07-07
 
 ### Fixed
