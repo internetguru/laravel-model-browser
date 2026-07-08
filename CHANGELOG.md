@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.2.0] - 2026-07-08
+
+_Stable release based on [5.2.0-rc.1]._
+
+## [5.2.0-rc.1] - 2026-07-08
+
+### Changed
+
+- Stream CSV exports directly to the browser through a dedicated endpoint (`model-browser/download-csv`) instead of Livewire's buffered, base64-encoded file downloads — large exports start immediately and no longer hold the whole file in memory.
+- Read CSV export rows with a single streamed query (`cursor()`, or `lazy()` when eager loads are configured) instead of offset-based `chunk()`.
+
+### Added
+
+- Show a spinner on the CSV download button until the download starts (the button is disabled meanwhile).
+
 ## [5.1.1] - 2026-07-07
 
 ### Fixed
@@ -733,6 +748,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[5.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.1.1...v5.2.0
+[5.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v5.1.1
 [5.1.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.1.0...v5.1.1
 [5.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.0.0...v5.1.0
 [5.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v5.0.0
