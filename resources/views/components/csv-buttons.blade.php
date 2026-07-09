@@ -5,14 +5,26 @@
     file download. A client-generated token is echoed back as a cookie by the
     server, which is how the spinner knows the download has started.
 --}}
+@props(['exportLimit' => (int) config('model-browser.export_limit')])
 <div
-    class="d-flex justify-content-center mt-3"
+    class="d-flex flex-column align-items-center mt-3"
     x-data="{
         downloading: false,
         pollTimer: null,
         currentToken: null,
+        exportLimit: @js($exportLimit),
+        {{--
+            totalCount loads asynchronously inside the 'count' island, so the
+            over-limit state must be read reactively from $wire rather than
+            rendered server-side (this markup is outside that island).
+        --}}
+        get overLimit() {
+            return this.exportLimit > 0
+                && $wire.totalCount !== null
+                && $wire.totalCount > this.exportLimit;
+        },
         download() {
-            if (this.downloading) return;
+            if (this.downloading || this.overLimit) return;
             this.downloading = true;
             const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
             const form = document.createElement('form');
@@ -51,7 +63,7 @@
     <button
         class="btn btn-icon btn-white btn-shadow"
         x-on:click="download()"
-        x-bind:disabled="downloading"
+        x-bind:disabled="downloading || overLimit"
     >
         {{--
             The icons are toggled via x-show on wrapper spans (not by swapping
@@ -66,4 +78,7 @@
         <span class="pe-2" x-show="downloading" style="display: none"><i class="fa-solid fa-fw fa-spinner fa-spin"></i></span>
         @lang('model-browser::global.download-csv.label')
     </button>
+    <small class="text-muted mt-1" x-show="overLimit" style="display: none">
+        @lang('model-browser::global.download-csv.limit-exceeded', ['limit' => $exportLimit])
+    </small>
 </div>
