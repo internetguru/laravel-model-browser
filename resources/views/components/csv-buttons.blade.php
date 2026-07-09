@@ -7,7 +7,7 @@
 --}}
 @props(['exportLimit' => (int) config('model-browser.export_limit')])
 <div
-    class="d-flex flex-column align-items-center mt-3"
+    class="d-flex justify-content-center mt-3"
     x-data="{
         downloading: false,
         pollTimer: null,
@@ -24,7 +24,11 @@
                 && $wire.totalCount > this.exportLimit;
         },
         download() {
-            if (this.downloading || this.overLimit) return;
+            if (this.downloading) return;
+            if (this.overLimit) {
+                alert(@js(trans('model-browser::global.download-csv.limit-exceeded', ['limit' => $exportLimit])));
+                return;
+            }
             this.downloading = true;
             const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
             const form = document.createElement('form');
@@ -60,10 +64,16 @@
         }
     }"
 >
+    {{--
+        When over the export limit the button only looks disabled — a real
+        disabled attribute would swallow the click that triggers the
+        explanatory alert in download().
+    --}}
     <button
         class="btn btn-icon btn-white btn-shadow"
         x-on:click="download()"
-        x-bind:disabled="downloading || overLimit"
+        x-bind:disabled="downloading"
+        x-bind:style="overLimit ? 'opacity: .65; cursor: not-allowed;' : ''"
     >
         {{--
             The icons are toggled via x-show on wrapper spans (not by swapping
@@ -78,7 +88,4 @@
         <span class="pe-2" x-show="downloading" style="display: none"><i class="fa-solid fa-fw fa-spinner fa-spin"></i></span>
         @lang('model-browser::global.download-csv.label')
     </button>
-    <small class="text-muted mt-1" x-show="overLimit" style="display: none">
-        @lang('model-browser::global.download-csv.limit-exceeded', ['limit' => $exportLimit])
-    </small>
 </div>
