@@ -27,9 +27,10 @@ A Laravel package to browse models and show them in cards, tables, etc.
     composer update internetguru/laravel-model-browser
     ```
 
-2. Optionally publish the views and translations:
+2. Optionally publish the config, views, and translations:
 
     ```sh
+    php artisan vendor:publish --tag=config --provider="Internetguru\ModelBrowser\ModelBrowserServiceProvider"
     php artisan vendor:publish --tag=views --provider="Internetguru\ModelBrowser\ModelBrowserServiceProvider"
     php artisan vendor:publish --tag=translations --provider="Internetguru\ModelBrowser\ModelBrowserServiceProvider"
 
@@ -151,6 +152,14 @@ Auto-refresh interval in seconds. When set, the component polls the server and r
 
 ```php
 :refreshInterval="10"
+```
+
+### `exportLimit`
+
+Maximum number of rows a CSV export may contain. When the current (filtered) result count exceeds the limit, the download button is disabled and the export endpoint refuses the request. Defaults to the `model-browser.export_limit` config value (1500). Set to `0` for unlimited:
+
+```php
+:exportLimit="2000"
 ```
 
 ### TableModelBrowser-only Parameters
@@ -429,7 +438,7 @@ In this example:
 - **Pagination** — Simple pagination with configurable per-page options (default: 20, 50, 100). Shows result range and total count (loaded asynchronously). Per-page preference is saved per authenticated user.
 - **Auto-refresh** — Optional periodic data refresh via `refreshInterval` parameter.
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
-- **CSV Export** — Download the current filtered and sorted data as a CSV file.
+- **CSV Export** — Download the current filtered and sorted data as a CSV file. Exports are capped at `exportLimit` rows (per-instance parameter, defaults to the `model-browser.export_limit` config value of 1500; `0` disables the cap) — when the current result count exceeds it, the download button is disabled and the export endpoint refuses the request.
 - **Fullscreen** — Toggle fullscreen mode for the table view.
 - **Deferred count** — The total result count is shown as a summary line above the table and loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands). The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 

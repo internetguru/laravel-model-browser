@@ -15,7 +15,7 @@ class ModelBrowserServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        //
+        $this->mergeConfigFrom(__DIR__ . '/../config/model-browser.php', 'model-browser');
     }
 
     public function boot()
@@ -38,6 +38,9 @@ class ModelBrowserServiceProvider extends ServiceProvider
         // so it must stay unencrypted.
         EncryptCookies::except('mb_csv_download');
 
+        $this->publishes([
+            __DIR__ . '/../config/model-browser.php' => config_path('model-browser.php'),
+        ], 'config');
         $this->publishes([
             __DIR__ . '/../resources/views' => resource_path('views/vendor/model-browser'),
         ], 'views');

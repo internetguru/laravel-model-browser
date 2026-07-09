@@ -34,5 +34,6 @@ return [
     'download-csv' => [
         'label' => 'Download CSV',
         'confirm-filter' => 'Warning, items are filtered. Do you really want to download only filtered data?',
+        'limit-exceeded' => 'Export is limited to :limit rows. Narrow the results using filters.',
     ],
 ];

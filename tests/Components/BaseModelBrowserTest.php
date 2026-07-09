@@ -65,6 +65,63 @@ class BaseModelBrowserTest extends TestCase
             ->assertFileDownloaded();
     }
 
+    public function test_download_csv_rejected_over_export_limit()
+    {
+        config(['model-browser.export_limit' => 1]);
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+        ])->call('downloadCsv')
+            ->assertStatus(413);
+    }
+
+    public function test_export_limit_instance_param_overrides_config()
+    {
+        config(['model-browser.export_limit' => 1]);
+
+        // Instance param above the seeded row count → allowed
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+            'exportLimit' => 100,
+        ])->assertSet('exportLimit', 100)
+            ->call('downloadCsv')
+            ->assertFileDownloaded();
+
+        // Instance param below the seeded row count → rejected
+        config(['model-browser.export_limit' => 1500]);
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+            'exportLimit' => 5,
+        ])->call('downloadCsv')
+            ->assertStatus(413);
+    }
+
+    public function test_download_csv_allowed_with_export_limit_disabled()
+    {
+        config(['model-browser.export_limit' => 0]);
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+        ])->call('downloadCsv')
+            ->assertFileDownloaded();
+    }
+
     public function test_download_csv_stream_endpoint()
     {
         $component = Livewire::test(BaseModelBrowser::class, [
