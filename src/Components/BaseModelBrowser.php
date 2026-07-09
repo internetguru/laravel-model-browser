@@ -116,6 +116,13 @@ class BaseModelBrowser extends Component
     #[Locked]
     public int $refreshInterval = 0;
 
+    /**
+     * Maximum number of rows a CSV export may contain. 0 = unlimited.
+     * Defaults to the model-browser.export_limit config value.
+     */
+    #[Locked]
+    public int $exportLimit;
+
     public int $perPage = self::PER_PAGE_DEFAULT;
 
     #[Url(as: 'skip', except: 0)]
@@ -162,6 +169,7 @@ class BaseModelBrowser extends Component
         string $filterSessionKey = '',
         int $refreshInterval = 0,
         array $with = [],
+        ?int $exportLimit = null,
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -183,6 +191,7 @@ class BaseModelBrowser extends Component
         $this->filterConfig = $filters;
         $this->refreshInterval = $refreshInterval;
         $this->with = $with;
+        $this->exportLimit = $exportLimit ?? (int) config('model-browser.export_limit');
         if (! empty($filters) && ! $filterSessionKey) {
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
@@ -572,6 +581,13 @@ class BaseModelBrowser extends Component
         $headers = array_values($this->viewAttributes);
         $attributes = array_keys($this->viewAttributes);
         $query = $this->buildFilteredSortedQuery();
+
+        // The export button is disabled client-side when the result count
+        // exceeds the export limit, but the download endpoint is directly
+        // POSTable — enforce the limit here as well.
+        if ($this->exportLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->exportLimit) {
+            abort(413, trans('model-browser::global.download-csv.limit-exceeded', ['limit' => $this->exportLimit]));
+        }
 
         // Offset-based chunking (lazy) needs a deterministic order; fall back
         // to the primary key when no sort column is active.

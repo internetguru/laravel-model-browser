@@ -34,5 +34,6 @@ return [
     'download-csv' => [
         'label' => 'Download CSV',
         'confirm-filter' => 'Advarsel, elementer er filtreret. Vil du virkelig kun downloade filtrerede data?',
+        'limit-exceeded' => 'Eksport er begrænset til :limit rækker. Indsnævr resultaterne med filtre.',
     ],
 ];

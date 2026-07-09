@@ -26,6 +26,6 @@
         </div>
     </div>
 
-    <x-model-browser::csv-buttons />
+    <x-model-browser::csv-buttons :$exportLimit />
 
 </div>

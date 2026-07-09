@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Cap CSV exports at a configurable row limit ~ `exportLimit` parameter or `model-browser.export_limit` config, default 1500.
+
 ## [5.2.1] - 2026-07-08
 
 ### Fixed
