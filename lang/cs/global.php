@@ -35,5 +35,6 @@ return [
         'label' => 'Stáhnout CSV',
         'confirm-filter' => 'Pozor, data jsou filtrována. Opravdu chcete stáhnout pouze filtrovaná data?',
         'limit-exceeded' => 'Export je omezen na :limit řádků. Omezte výsledky pomocí filtrů.',
+        'confirm-limit' => 'Omezit na :limit záznamů?',
     ],
 ];
