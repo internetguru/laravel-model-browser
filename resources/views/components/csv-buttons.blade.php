@@ -25,8 +25,7 @@
         },
         download() {
             if (this.downloading) return;
-            if (this.overLimit) {
-                alert(@js(trans('model-browser::global.download-csv.limit-exceeded', ['limit' => $exportLimit])));
+            if (this.overLimit && !confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => $exportLimit])))) {
                 return;
             }
             this.downloading = true;
@@ -45,6 +44,7 @@
             add('_token', @js(csrf_token()));
             add('snapshot', $wire.__instance.snapshotEncoded);
             add('token', token);
+            add('truncate', this.overLimit ? '1' : '0');
             document.body.appendChild(form);
             form.submit();
             form.remove();
