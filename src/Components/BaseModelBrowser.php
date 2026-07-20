@@ -575,18 +575,20 @@ class BaseModelBrowser extends Component
     }
 
     #[Renderless]
-    public function downloadCsv(): StreamedResponse
+    public function downloadCsv(bool $truncate = false): StreamedResponse
     {
         $exportName = $this->generateExportFilename();
         $headers = array_values($this->viewAttributes);
         $attributes = array_keys($this->viewAttributes);
         $query = $this->buildFilteredSortedQuery();
 
-        // The export button is disabled client-side when the result count
-        // exceeds the export limit, but the download endpoint is directly
-        // POSTable — enforce the limit here as well.
+        // The export button asks the user to confirm truncating the export
+        // when over the limit; the download endpoint is directly POSTable,
+        // so refuse outright unless the client already confirmed truncation.
         if ($this->exportLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->exportLimit) {
-            abort(413, trans('model-browser::global.download-csv.limit-exceeded', ['limit' => $this->exportLimit]));
+            if (! $truncate) {
+                abort(413, trans('model-browser::global.download-csv.limit-exceeded', ['limit' => $this->exportLimit]));
+            }
         }
 
         // Offset-based chunking (lazy) needs a deterministic order; fall back
@@ -594,6 +596,10 @@ class BaseModelBrowser extends Component
         $hasOrder = ! empty($query->getQuery()->orders);
         if (! $hasOrder) {
             $query->orderBy((new $this->model)->getKeyName());
+        }
+
+        if ($this->exportLimit > 0) {
+            $query->limit($this->exportLimit);
         }
 
         return response()->streamDownload(function () use ($headers, $query, $attributes) {

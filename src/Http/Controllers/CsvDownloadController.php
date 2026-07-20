@@ -47,6 +47,6 @@ class CsvDownloadController
             ));
         }
 
-        return $component->downloadCsv();
+        return $component->downloadCsv($request->boolean('truncate'));
     }
 }
