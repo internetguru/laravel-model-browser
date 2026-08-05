@@ -28,7 +28,8 @@ return [
         'descending' => 'Sestupně',
     ],
     'no-results' => 'Žádné výsledky',
-    'no-results-in' => 'Žádné výsledky v :columns',
+    'no-results-filtered' => 'Žádné výsledky neodpovídají filtrům.',
+    'reset-filters' => 'Zrušit filtry',
     'fullscreen' => 'Celá obrazovka',
     'fullscreen-exit' => 'Ukončit celou obrazovku',
     'download-csv' => [
