@@ -28,7 +28,8 @@ return [
         'descending' => 'Descending',
     ],
     'no-results' => 'No results',
-    'no-results-in' => 'No results in :columns',
+    'no-results-filtered' => 'No results match your filters.',
+    'reset-filters' => 'Reset filters',
     'fullscreen' => 'Fullscreen',
     'fullscreen-exit' => 'Exit fullscreen',
     'download-csv' => [

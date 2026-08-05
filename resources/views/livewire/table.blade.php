@@ -96,10 +96,18 @@
                 @else
                     <div class="grid-no-results">
                         @php
-                            $filterLabels = collect($filterConfig)->map(fn($c) => $c['label'] ?? '')->filter()->values();
+                            $hasActiveFilters = filled($searchQuery)
+                                || collect($filterValues)->filter(fn($value) => filled($value))->isNotEmpty();
                         @endphp
-                        @if ($filterLabels->isNotEmpty())
-                            <div>@lang('model-browser::global.no-results-in', ['columns' => $filterLabels->implode(', ')])</div>
+                        @if ($hasActiveFilters)
+                            <div>
+                                @lang('model-browser::global.no-results-filtered')
+                                <button
+                                    type="button"
+                                    class="btn btn-link p-0 align-baseline"
+                                    x-on:click="$dispatch('mb-clear-url-params'); $wire.clearFilters()"
+                                >@lang('model-browser::global.reset-filters')</button>
+                            </div>
                         @else
                             <div>@lang('model-browser::global.no-results')</div>
                         @endif

@@ -28,7 +28,8 @@ return [
         'descending' => 'Faldende',
     ],
     'no-results' => 'Ingen resultater',
-    'no-results-in' => 'Ingen resultater i :columns',
+    'no-results-filtered' => 'Ingen resultater matcher dine filtre.',
+    'reset-filters' => 'Nulstil filtre',
     'fullscreen' => 'Fuldskærm',
     'fullscreen-exit' => 'Forlad fuldskærm',
     'download-csv' => [
