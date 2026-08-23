@@ -15,8 +15,9 @@
                 @foreach ($this->rows as $row)
                     <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                         @foreach ($viewAttributes as $column => $trans)
+                            @php $rawValue = $this->itemValueRaw($row, $column); @endphp
                             <dt>{{ $trans }}</dt>
-                            <dd>{!! $this->itemValue($row, $column) ?: '-' !!}</dd>
+                            <dd @if ($rawValue !== null) data-raw="{{ $rawValue }}" @endif>{!! $this->itemValue($row, $column) ?: '-' !!}</dd>
                         @endforeach
                     </dl>
                 @endforeach

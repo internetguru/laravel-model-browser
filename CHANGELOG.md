@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [6.0.0] - 2026-08-23
+
+_Stable release based on [6.0.0-rc.1]._
+
+## [6.0.0-rc.1] - 2026-08-23
+
+### Changed
+
+- **BREAKING:** CSV export cells now use the raw underlying attribute value by default instead of the `formats`-rendered display value. If a column's exported value must keep its previous formatted representation, add a matching `rawFormats` entry for it. Major version bumped due to this behavior change.
+
+### Added
+
+- `data-raw` HTML attribute on cells (also used as the CSV export cell value) ~ defaults to the underlying attribute value (empty only when that value is empty/null), overridable per attribute via the optional `rawFormats` parameter.
+
 ## [5.3.3] - 2026-08-05
 
 ### Fixed
@@ -784,6 +798,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[6.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.3.3...v6.0.0
+[6.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v5.3.3
 [5.3.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.3.2...v5.3.3
 [5.3.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.3.1...v5.3.2
 [5.3.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v5.3.0...v5.3.1
