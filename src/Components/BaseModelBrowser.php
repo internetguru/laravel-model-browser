@@ -68,6 +68,19 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $formats;
 
+    /**
+     * Optional raw-value formatters, keyed by attribute, for attributes
+     * whose display value (via `formats`) isn't suitable as-is for the
+     * `data-raw` HTML attribute or CSV export. Each function receives
+     * ($value, $item) and returns a plain value.
+     *
+     * By default (no entry needed here), the `data-raw` attribute and CSV
+     * export cell use the underlying attribute value; empty only when that
+     * value itself is empty/null.
+     */
+    #[Locked]
+    public array $rawFormats = [];
+
     #[Locked]
     public bool $enableSort = true;
 
@@ -161,6 +174,7 @@ class BaseModelBrowser extends Component
         string $model,
         array $viewAttributes = [],
         array $formats = [],
+        array $rawFormats = [],
         array $alignments = [],
         string $defaultSortColumn = '',
         string $defaultSortDirection = 'asc',
@@ -184,6 +198,7 @@ class BaseModelBrowser extends Component
             $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
         }
         $this->formats = $formats;
+        $this->rawFormats = $rawFormats;
         $this->alignments = $alignments;
         $this->enableSort = $enableSort;
         $this->defaultSortColumn = $defaultSortColumn;
@@ -559,7 +574,7 @@ class BaseModelBrowser extends Component
      * the results island is skipped and this query never runs.
      */
     #[Computed]
-    public function rows(): Paginator|Collection
+    public function rows(): Paginator
     {
         return $this->getData();
     }
@@ -618,10 +633,10 @@ class BaseModelBrowser extends Component
 
             $count = 0;
             foreach ($rows as $item) {
-                $this->formatItem($item);
+                $this->applyRawFormats($item);
                 $row = [];
                 foreach ($attributes as $attribute) {
-                    $row[] = $this->itemValueStripped($item, $attribute);
+                    $row[] = $this->itemValueRaw($item, $attribute);
                 }
                 fputcsv($out, $row);
                 if (++$count % 500 === 0) {
@@ -838,30 +853,16 @@ class BaseModelBrowser extends Component
     /**
      * Get data with database-level sorting and pagination.
      */
-    protected function getData(bool $paginate = true, bool $applyFormats = true): Paginator|Collection
+    protected function getData(): Paginator
     {
         $query = $this->buildFilteredSortedQuery();
 
-        if ($paginate) {
-            // Clamp skip to a valid page boundary and derive page number
-            $this->skip = max(0, intval($this->skip / $this->perPage) * $this->perPage);
-            $page = intval($this->skip / $this->perPage) + 1;
-            Paginator::defaultSimpleView($this->paginationSimpleView());
-            $data = $query->simplePaginate($this->perPage, ['*'], 'page', $page);
-
-            if ($applyFormats && $data instanceof Paginator) {
-                $data->setCollection($this->format($data->getCollection()));
-            }
-
-            return $data;
-        }
-
-        // For CSV export, get all data
-        $data = $query->get();
-
-        if ($applyFormats) {
-            $data = $this->format($data);
-        }
+        // Clamp skip to a valid page boundary and derive page number
+        $this->skip = max(0, intval($this->skip / $this->perPage) * $this->perPage);
+        $page = intval($this->skip / $this->perPage) + 1;
+        Paginator::defaultSimpleView($this->paginationSimpleView());
+        $data = $query->simplePaginate($this->perPage, ['*'], 'page', $page);
+        $data->setCollection($this->format($data->getCollection()));
 
         return $data;
     }
@@ -876,9 +877,20 @@ class BaseModelBrowser extends Component
         return Arr::get($item, $attribute);
     }
 
-    public function itemValueStripped($item, $attribute)
+    /**
+     * The raw (unformatted) value for an attribute. Uses the rawFormats
+     * callback when one is configured for it, otherwise falls back to the
+     * underlying attribute value. Also the value used for a CSV export cell.
+     * Empty/null only when the underlying value itself is empty/null.
+     */
+    public function itemValueRaw($item, $attribute)
     {
-        return strip_tags($this->itemValue($item, $attribute));
+        $rawAttribute = "{$attribute}Raw";
+        if (isset($item->{$rawAttribute})) {
+            return $item->{$rawAttribute};
+        }
+
+        return Arr::get($item, $attribute);
     }
 
     protected function format(Collection $data): Collection
@@ -888,6 +900,14 @@ class BaseModelBrowser extends Component
 
     protected function formatItem($item)
     {
+        $this->applyFormats($item);
+        $this->applyRawFormats($item);
+
+        return $item;
+    }
+
+    protected function applyFormats($item): void
+    {
         foreach ($this->formats as $attribute => $format) {
             $value = Arr::get($item, $attribute);
             if ($value === null) {
@@ -895,7 +915,16 @@ class BaseModelBrowser extends Component
             }
             $item->{$attribute . 'Formatted'} = $format($value, $item);
         }
+    }
 
-        return $item;
+    protected function applyRawFormats($item): void
+    {
+        foreach ($this->rawFormats as $attribute => $format) {
+            $value = Arr::get($item, $attribute);
+            if ($value === null) {
+                continue;
+            }
+            $item->{$attribute . 'Raw'} = $format($value, $item);
+        }
     }
 }

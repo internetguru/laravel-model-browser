@@ -16,6 +16,7 @@ class TableModelBrowser extends BaseModelBrowser
         string $model,
         array $viewAttributes = [],
         array $formats = [],
+        array $rawFormats = [],
         array $alignments = [],
         string $defaultSortColumn = '',
         string $defaultSortDirection = 'asc',
@@ -28,7 +29,7 @@ class TableModelBrowser extends BaseModelBrowser
         int $lightDarkStep = 1,
         array $columnWidths = [],
     ) {
-        parent::mount($model, $viewAttributes, $formats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit);
+        parent::mount($model, $viewAttributes, $formats, $rawFormats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
     }
