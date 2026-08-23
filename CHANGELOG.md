@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** CSV export cells now use the raw underlying attribute value by default instead of the `formats`-rendered display value. If a column's exported value must keep its previous formatted representation, add a matching `rawFormats` entry for it. Major version bumped due to this behavior change.
+
 ### Added
 
 - `data-raw` HTML attribute on cells (also used as the CSV export cell value) ~ defaults to the underlying attribute value (empty only when that value is empty/null), overridable per attribute via the optional `rawFormats` parameter.
