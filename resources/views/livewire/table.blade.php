@@ -82,11 +82,13 @@
                             'grid-row-light' => ($loop->index / $lightDarkStep) % 2 == 1,
                         ])>
                             @foreach($viewAttributes as $column => $trans)
+                                @php $rawValue = $this->itemValueRaw($row, $column); @endphp
                                 <div
                                     @class([
                                         'grid-cell',
                                         'text-' . $this->getAlignment($column, Arr::get($row, $column)),
                                     ])
+                                    @if ($rawValue !== null) data-raw="{{ $rawValue }}" @endif
                                 ><span>{!!
                                     $this->itemValue($row, $column)
                                 !!}</span></div>

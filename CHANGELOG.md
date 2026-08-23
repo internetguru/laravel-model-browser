@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `data-raw` HTML attribute on cells (also used as the CSV export cell value) ~ defaults to the underlying attribute value (empty only when that value is empty/null), overridable per attribute via the optional `rawFormats` parameter.
+
 ## [5.3.3] - 2026-08-05
 
 ### Fixed
