@@ -33,10 +33,12 @@
             <form wire:submit.prevent="applySearch" class="mb-search__form editable-skip">
                 <input
                     type="text"
+                    name="mb-search"
                     class="mb-search__input"
                     wire:model="searchQuery"
                     placeholder="{{ $placeholder }}"
                     maxlength="500"
+                    autocomplete="on"
                 />
                 <button
                     type="button"
