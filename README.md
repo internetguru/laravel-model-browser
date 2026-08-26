@@ -440,6 +440,7 @@ In this example:
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file. Exports are capped at `exportLimit` rows (per-instance parameter, defaults to the `model-browser.export_limit` config value of 1500; `0` disables the cap) — when the current result count exceeds it, the download button is disabled and the export endpoint refuses the request.
 - **Fullscreen** — Toggle fullscreen mode for the table view.
+- **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as their raw `data-raw` values (the same values the CSV export uses), not the `formats`-rendered display text.
 - **Deferred count** — The total result count is shown as a summary line above the table and loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands). The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 
 ## License & Commercial Terms
