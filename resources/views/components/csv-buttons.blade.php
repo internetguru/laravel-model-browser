@@ -7,7 +7,7 @@
 --}}
 @props(['exportLimit' => (int) config('model-browser.export_limit')])
 <div
-    class="d-flex justify-content-center mt-3"
+    class="d-flex justify-content-center"
     x-data="{
         downloading: false,
         pollTimer: null,

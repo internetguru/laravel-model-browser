@@ -32,6 +32,10 @@ return [
     'reset-filters' => 'Zrušit filtry',
     'fullscreen' => 'Celá obrazovka',
     'fullscreen-exit' => 'Ukončit celou obrazovku',
+    'copy-page' => [
+        'label' => 'Kopírovat stránku',
+        'title' => 'Zkopírovat řádky aktuální stránky do schránky',
+    ],
     'download-csv' => [
         'label' => 'Stáhnout CSV',
         'confirm-filter' => 'Pozor, data jsou filtrována. Opravdu chcete stáhnout pouze filtrovaná data?',

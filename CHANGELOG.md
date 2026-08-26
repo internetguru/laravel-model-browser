@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Copy page** button in both browser views ~ copies the current page's rows to the clipboard (plain-text TSV + HTML table) using the raw `data-raw` cell values.
+
 ## [6.0.1] - 2026-08-23
 
 ### Fixed

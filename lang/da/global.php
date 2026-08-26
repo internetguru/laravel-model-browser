@@ -32,6 +32,10 @@ return [
     'reset-filters' => 'Nulstil filtre',
     'fullscreen' => 'Fuldskærm',
     'fullscreen-exit' => 'Forlad fuldskærm',
+    'copy-page' => [
+        'label' => 'Kopiér side',
+        'title' => 'Kopiér rækkerne på den aktuelle side til udklipsholderen',
+    ],
     'download-csv' => [
         'label' => 'Download CSV',
         'confirm-filter' => 'Advarsel, elementer er filtreret. Vil du virkelig kun downloade filtrerede data?',
