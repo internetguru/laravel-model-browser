@@ -32,6 +32,10 @@ return [
     'reset-filters' => 'Reset filters',
     'fullscreen' => 'Fullscreen',
     'fullscreen-exit' => 'Exit fullscreen',
+    'copy-page' => [
+        'label' => 'Copy page',
+        'title' => 'Copy the rows of the current page to the clipboard',
+    ],
     'download-csv' => [
         'label' => 'Download CSV',
         'confirm-filter' => 'Warning, items are filtered. Do you really want to download only filtered data?',

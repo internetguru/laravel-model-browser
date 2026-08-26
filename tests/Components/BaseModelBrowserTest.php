@@ -376,4 +376,13 @@ class BaseModelBrowserTest extends TestCase
         $component->set('filterValues.name', 'Bob')->call('applyFilters')
             ->assertDispatched('mb-refresh-count');
     }
+
+    public function test_renders_copy_page_button()
+    {
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => \App\Models\User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->assertSee(__('model-browser::global.copy-page.label'))
+            ->assertSeeHtml('copyPage()');
+    }
 }

@@ -27,6 +27,9 @@
         </div>
     </div>
 
-    <x-model-browser::csv-buttons :$exportLimit />
+    <div class="d-flex justify-content-center align-items-start flex-wrap gap-3">
+        <x-model-browser::csv-buttons :$exportLimit />
+        <x-model-browser::copy-page-button />
+    </div>
 
 </div>
