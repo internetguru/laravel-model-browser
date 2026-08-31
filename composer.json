@@ -8,14 +8,14 @@
         "php": "^8.4",
         "livewire/livewire": "^4.0",
         "laravel/framework": "^11.0 || ^12.0 || ^13.0",
-        "internetguru/laravel-common": "^5"
+        "internetguru/laravel-common": "^5 || ^6"
     },
     "require-dev": {
         "laravel/pint": "^1.17",
         "orchestra/testbench": "^9.5 || ^10.0",
         "phpunit/php-code-coverage": "^11.0",
         "livewire/livewire": "^4.0",
-        "internetguru/laravel-common": "^5"
+        "internetguru/laravel-common": "^5 || ^6"
     },
     "license": "MIT",
     "autoload": {
