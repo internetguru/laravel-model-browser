@@ -106,6 +106,9 @@ class BaseModelBrowser extends Component
      * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options)
      * - label: Display label
      * - column: Database column name (defaults to the attribute key)
+     * - columns: OR group — a list of columns matched with OR instead of a single 'column'.
+     *   Each entry is either a column name or an array overriding column/relation/preprocessor/ascii_fast/type
+     *   for that column only (unspecified keys fall back to the filter's own config).
      * - relation: Eloquent relation name — wraps the filter in whereHas()
      * - options: Array of options for 'options' type
      * - restrict: (bool) For 'options' type — restrict values to options list (default: false). When false, allows any string and uses LIKE matching.
@@ -114,8 +117,8 @@ class BaseModelBrowser extends Component
      * - timezone: Timezone for date filters — parsed date is shifted via Carbon::shiftTimezone($tz)
      * - ascii_fast: (bool) Column stores only ASCII (e-mail, login, slug, …). On SQLite, skips the unaccent() PHP UDF in LIKE matching for a large speedup on big tables.
      *
-     * When 'column' is set, filters are auto-applied to the query.
-     * When 'column' is omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
+     * When 'column' or 'columns' is set, filters are auto-applied to the query.
+     * When both are omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
      */
     #[Locked]
     public array $filterConfig = [];
@@ -687,7 +690,7 @@ class BaseModelBrowser extends Component
      * Auto-apply search terms to the query.
      * Parses searchQuery into terms. All terms are AND'd together.
      * Free text (no key:) searches all string-type filter columns (OR within one term).
-     * Column defaults to the filter attribute key when not explicitly set.
+     * A keyed term targets the filter's 'column', or OR's across its 'columns' group.
      */
     protected function applyFiltersToQuery(Builder $query, ?string $searchQuery = null): void
     {
@@ -697,21 +700,15 @@ class BaseModelBrowser extends Component
             return;
         }
 
-        // Collect searchable columns for free text search (only filters with explicit 'column')
+        // Collect searchable columns for free text search (only filters with explicit 'column'/'columns')
         $searchableColumns = [];
         foreach ($this->filterConfig as $attr => $config) {
-            if (! array_key_exists('column', $config)) {
+            $type = $config['type'] ?? self::FILTER_STRING;
+            if (! in_array($type, [self::FILTER_STRING, self::FILTER_OPTIONS])) {
                 continue;
             }
-            $type = $config['type'] ?? self::FILTER_STRING;
-            if (in_array($type, [self::FILTER_STRING, self::FILTER_OPTIONS])) {
-                $preprocessor = $config['preprocessor'] ?? null;
-                $searchableColumns[] = [
-                    'column' => $config['column'],
-                    'relation' => $config['relation'] ?? null,
-                    'preprocessor' => ($preprocessor && \function_exists($preprocessor)) ? $preprocessor : null,
-                    'ascii_fast' => ! empty($config['ascii_fast']),
-                ];
+            foreach ($this->getFilterColumns($config) as $col) {
+                $searchableColumns[] = $col;
             }
         }
 
@@ -731,9 +728,10 @@ class BaseModelBrowser extends Component
                     }
                 });
             } else {
-                // Specific filter — skip filters without explicit 'column'
+                // Specific filter — skip filters without explicit 'column'/'columns'
                 $config = $this->filterConfig[$term['key']] ?? [];
-                if (! array_key_exists('column', $config)) {
+                $columns = $this->getFilterColumns($config);
+                if (empty($columns)) {
                     continue;
                 }
                 // Skip invalid filter values
@@ -741,23 +739,68 @@ class BaseModelBrowser extends Component
                 if ($result['error']) {
                     continue;
                 }
-                $type = $config['type'] ?? self::FILTER_STRING;
-                if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
-                    $type = self::FILTER_STRING;
+                $applyColumn = function (Builder $q, array $col) use ($config, $term) {
+                    $type = $col['type'];
+                    if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
+                        $type = self::FILTER_STRING;
+                    }
+                    $value = $col['preprocessor'] ? ($col['preprocessor'])($term['value']) : $term['value'];
+                    $this->applyCondition($q, $col['column'], $col['relation'], $type, $value, $col['timezone'], $col['ascii_fast']);
+                };
+
+                if (count($columns) === 1) {
+                    $applyColumn($query, $columns[0]);
+
+                    continue;
                 }
-                $preprocessor = $config['preprocessor'] ?? null;
-                $value = ($preprocessor && \function_exists($preprocessor)) ? $preprocessor($term['value']) : $term['value'];
-                $this->applyCondition(
-                    $query,
-                    $config['column'],
-                    $config['relation'] ?? null,
-                    $type,
-                    $value,
-                    $config['timezone'] ?? null,
-                    ! empty($config['ascii_fast']),
-                );
+
+                // OR group — the term matches when any of the configured columns matches
+                $query->where(function (Builder $sub) use ($columns, $applyColumn) {
+                    foreach ($columns as $col) {
+                        $sub->orWhere(fn (Builder $q) => $applyColumn($q, $col));
+                    }
+                });
             }
         }
+    }
+
+    /**
+     * Normalize a filter config into the list of columns it targets.
+     *
+     * A filter either targets a single 'column' or an OR group of 'columns'.
+     * Each 'columns' entry is a column name, or an array overriding any of
+     * column/relation/preprocessor/ascii_fast/type/timezone for that column
+     * only — anything not overridden falls back to the filter's own config.
+     *
+     * @return array<int, array{column: string, relation: ?string, preprocessor: ?string, ascii_fast: bool, type: string, timezone: ?string}>
+     */
+    protected function getFilterColumns(array $config): array
+    {
+        $normalize = function (array $spec) use ($config): array {
+            $preprocessor = $spec['preprocessor'] ?? $config['preprocessor'] ?? null;
+
+            return [
+                'column' => $spec['column'],
+                'relation' => $spec['relation'] ?? $config['relation'] ?? null,
+                'preprocessor' => ($preprocessor && \function_exists($preprocessor)) ? $preprocessor : null,
+                'ascii_fast' => ! empty($spec['ascii_fast'] ?? $config['ascii_fast'] ?? false),
+                'type' => $spec['type'] ?? $config['type'] ?? self::FILTER_STRING,
+                'timezone' => $spec['timezone'] ?? $config['timezone'] ?? null,
+            ];
+        };
+
+        if (! empty($config['columns'])) {
+            return array_map(
+                fn ($spec) => $normalize(is_array($spec) ? $spec : ['column' => $spec]),
+                array_values($config['columns'])
+            );
+        }
+
+        if (array_key_exists('column', $config)) {
+            return [$normalize(['column' => $config['column']])];
+        }
+
+        return [];
     }
 
     /**
@@ -795,7 +838,7 @@ class BaseModelBrowser extends Component
                     self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
                     default => $q->whereLikeUnaccented($column, $value, $asciiFast),
                 };
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Invalid value (e.g. unparseable date), skip
             }
         };
