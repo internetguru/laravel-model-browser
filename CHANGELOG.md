@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `exportAttributes` parameter ~ columns that are hidden in the table but included in the CSV export, e.g. a related user's e-mail next to their name.
+
 ## [6.3.0] - 2026-09-02
 
 _Stable release based on [6.3.0-rc.1]._
@@ -844,6 +850,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [6.3.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.2.0...v6.3.0
 [6.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.2.0
 [6.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.1.1...v6.2.0

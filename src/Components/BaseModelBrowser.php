@@ -81,6 +81,20 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $rawFormats = [];
 
+    /**
+     * Attributes included in the CSV export, mapped to their labels, hidden
+     * in the table. They follow the `viewAttributes` columns, in the order
+     * given here. An entry whose key is also a view attribute moves that
+     * column into this block instead of duplicating it, so a hidden column
+     * can be exported next to the visible one it belongs with.
+     *
+     * Only attributes with a single value per row belong here: own columns,
+     * or dot paths over to-one relations (`customer.email`). A to-many
+     * relation has no single value to put in a cell.
+     */
+    #[Locked]
+    public array $exportAttributes = [];
+
     #[Locked]
     public bool $enableSort = true;
 
@@ -186,6 +200,7 @@ class BaseModelBrowser extends Component
     public function mount(
         string $model,
         array $viewAttributes = [],
+        array $exportAttributes = [],
         array $formats = [],
         array $rawFormats = [],
         array $alignments = [],
@@ -210,6 +225,7 @@ class BaseModelBrowser extends Component
             $defaultFillables = (new $model)->getFillable();
             $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
         }
+        $this->exportAttributes = $exportAttributes;
         $this->formats = $formats;
         $this->rawFormats = $rawFormats;
         $this->alignments = $alignments;
@@ -654,8 +670,9 @@ class BaseModelBrowser extends Component
     public function downloadCsv(bool $truncate = false): StreamedResponse
     {
         $exportName = $this->generateExportFilename();
-        $headers = array_values($this->viewAttributes);
-        $attributes = array_keys($this->viewAttributes);
+        $columns = $this->exportColumns();
+        $headers = array_values($columns);
+        $attributes = array_keys($columns);
         $query = $this->buildFilteredSortedQuery();
 
         // The export button asks the user to confirm truncating the export
@@ -709,6 +726,21 @@ class BaseModelBrowser extends Component
             }
             fclose($out);
         }, $exportName, ['Content-Type' => 'text/csv']);
+    }
+
+    /**
+     * The columns a CSV export contains, mapped to their labels: the visible
+     * columns, then the `exportAttributes` ones. A view attribute repeated in
+     * `exportAttributes` is exported once, in its `exportAttributes` position.
+     *
+     * @return array<string, string>
+     */
+    public function exportColumns(): array
+    {
+        return array_merge(
+            array_diff_key($this->viewAttributes, $this->exportAttributes),
+            $this->exportAttributes,
+        );
     }
 
     protected function generateExportFilename(): string
