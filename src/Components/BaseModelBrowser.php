@@ -152,7 +152,12 @@ class BaseModelBrowser extends Component
 
     /**
      * Search query string with Gmail-style syntax (e.g. "name:John role:admin").
+     *
+     * Mirrored into the `q` query parameter, so the active filter is part of the
+     * URL (shareable, bookmarkable) and every change pushes a history entry —
+     * the browser's back/forward buttons then move between filter states.
      */
+    #[Url(as: 'q', except: '', history: true)]
     public string $searchQuery = '';
 
     /**
@@ -172,6 +177,11 @@ class BaseModelBrowser extends Component
      */
     #[Locked]
     public string $filterSessionKey = '';
+
+    /**
+     * Whether the count island has already been told to reload in this request.
+     */
+    protected bool $countRefreshRequested = false;
 
     public function mount(
         string $model,
@@ -226,11 +236,15 @@ class BaseModelBrowser extends Component
 
     /**
      * Initialize filter values from URL, session, or defaults.
-     * Priority: URL query parameter > Session > empty
-     * When any URL filter is present, all other filters are cleared.
+     * Priority: per-filter `url` query parameters > the `q` search query parameter > session > empty
+     * When any per-filter URL parameter is present, all other filters are cleared.
      */
     protected function initializeFilters(): void
     {
+        // The #[Url] attribute on $searchQuery runs before mount(), so the `q`
+        // query parameter (if any) is already reflected in the property here.
+        $urlQuery = $this->sanitizeSearchQuery($this->searchQuery);
+
         // Load from session
         $sessionFilters = session($this->filterSessionKey, []);
         $sessionQuery = session($this->filterSessionKey . '.query', '');
@@ -248,6 +262,17 @@ class BaseModelBrowser extends Component
             }
         }
 
+        // When `q` is present it fully describes the filter state — session values
+        // must not leak into it, otherwise back/forward would resurrect them.
+        $queryFilters = [];
+        if (! $hasUrlFilters && $urlQuery !== '') {
+            foreach ($this->parseSearchTerms($urlQuery) as $term) {
+                if ($term['key'] !== null) {
+                    $queryFilters[$term['key']] = $term['value'];
+                }
+            }
+        }
+
         foreach ($this->filterConfig as $attribute => $config) {
             $value = '';
 
@@ -260,9 +285,11 @@ class BaseModelBrowser extends Component
                 }
             }
 
-            // Fall back to session only if no URL filters are present
+            // Fall back to the `q` parameter, then to the session
             if ($value === '' && ! $hasUrlFilters) {
-                $value = $sessionFilters[$attribute] ?? '';
+                $value = $urlQuery !== ''
+                    ? ($queryFilters[$attribute] ?? '')
+                    : ($sessionFilters[$attribute] ?? '');
             }
 
             $result = $this->validateFilterValue($attribute, $value);
@@ -273,6 +300,9 @@ class BaseModelBrowser extends Component
         // Build or restore search query
         if ($hasUrlFilters) {
             $this->searchQuery = $this->buildSearchQuery();
+        } elseif ($urlQuery !== '') {
+            // Keep the query verbatim so free-text terms survive a page reload
+            $this->searchQuery = $urlQuery;
         } elseif ($sessionQuery) {
             $this->searchQuery = $sessionQuery;
         } else {
@@ -401,6 +431,18 @@ class BaseModelBrowser extends Component
     }
 
     /**
+     * Re-apply the search query whenever the property itself changes.
+     *
+     * Besides plain edits this also covers the browser's back/forward buttons:
+     * Livewire restores the pushed `q` value by setting the property directly,
+     * so the filter panel, session and pagination have to follow.
+     */
+    public function updatedSearchQuery(): void
+    {
+        $this->applySearch();
+    }
+
+    /**
      * Hook called after filters/search are changed.
      */
     protected function onFiltersChanged(): void
@@ -409,8 +451,24 @@ class BaseModelBrowser extends Component
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
-        // Reload the count island only (the data query re-runs in this same
-        // request via the rows() computed, so the count must not).
+        $this->requestCountRefresh();
+    }
+
+    /**
+     * Reload the count island only (the data query re-runs in this same request
+     * via the rows() computed, so the count must not).
+     *
+     * A single request can change the filters more than once — e.g. the deferred
+     * `searchQuery` update and the `applySearch` call that follows it — so the
+     * event is dispatched at most once to avoid duplicate island round-trips.
+     */
+    protected function requestCountRefresh(): void
+    {
+        if ($this->countRefreshRequested) {
+            return;
+        }
+
+        $this->countRefreshRequested = true;
         $this->dispatch('mb-refresh-count');
     }
 
@@ -428,7 +486,7 @@ class BaseModelBrowser extends Component
             $this->searchQuery = $this->buildSearchQueryFromTerms($filtered);
             $this->saveFiltersToSession();
             $this->resetPage();
-            $this->dispatch('mb-refresh-count');
+            $this->requestCountRefresh();
         }
     }
 
@@ -473,7 +531,7 @@ class BaseModelBrowser extends Component
             $this->totalCount = null;
             $this->saveFiltersToSession();
             $this->resetPage();
-            $this->dispatch('mb-refresh-count');
+            $this->requestCountRefresh();
         }
     }
 
