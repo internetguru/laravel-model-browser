@@ -86,6 +86,22 @@ Attributes displayed as columns/cards, mapped to their labels:
 ]"
 ```
 
+### `exportAttributes`
+
+Attributes included in the CSV export, mapped to their labels. They are hidden in the table and follow the `viewAttributes` columns, in the order given here. An entry whose key is also a view attribute is exported once, in its `exportAttributes` position — so a hidden column can be exported next to the visible one it belongs with:
+
+```php
+:viewAttributes="['created_at' => __('summary.created_at'), 'customer.name' => __('summary.ordered_by')]"
+:exportAttributes="[
+    'customer.name' => __('summary.ordered_by'),
+    'customer.email' => __('summary.ordered_by_email'),
+]"
+```
+
+The export above has three columns: `created_at`, `customer.name`, `customer.email`.
+
+Only attributes with a single value per row belong here: own columns, or dot paths over to-one relations. A to-many relation has no single value to put in a cell. `formats` are irrelevant for these columns (nothing renders them); `rawFormats` apply as usual. Eager-load the relations they reach through via `with` to avoid an N+1 query per exported row.
+
 ### `formats`
 
 Formatting functions for attribute values. Each function receives `($value, $item)` and returns the formatted output (HTML is allowed). Values are passed as global function name strings:

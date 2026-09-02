@@ -149,6 +149,58 @@ class BaseModelBrowserTest extends TestCase
         }
     }
 
+    public function test_export_attributes_are_exported_but_not_displayed()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+            ],
+            'exportAttributes' => [
+                'email' => 'Email',
+            ],
+        ]);
+
+        $component->assertSee('Name');
+        $component->assertDontSee('Email');
+        foreach (User::all() as $user) {
+            $component->assertDontSee($user->email);
+        }
+
+        $response = $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), [
+                'snapshot' => json_encode($component->snapshot),
+            ]);
+
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Name,Email', $content);
+        foreach (User::all() as $user) {
+            $this->assertStringContainsString($user->email, $content);
+        }
+    }
+
+    public function test_export_attribute_repositions_a_visible_column()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+                'created_at' => 'Created At',
+            ],
+            'exportAttributes' => [
+                'name' => 'Name',
+                'email' => 'Email',
+            ],
+        ]);
+
+        $response = $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), [
+                'snapshot' => json_encode($component->snapshot),
+            ]);
+
+        $this->assertStringStartsWith('"Created At",Name,Email', $response->streamedContent());
+    }
+
     public function test_download_csv_stream_endpoint_rejects_tampered_snapshot()
     {
         $component = Livewire::test(BaseModelBrowser::class, [

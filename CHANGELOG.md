@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `exportAttributes` parameter ~ columns that are hidden in the table but included in the CSV export, e.g. a related user's e-mail next to their name.
+
 ## [6.3.0] - 2026-09-02
 
 _Stable release based on [6.3.0-rc.1]._

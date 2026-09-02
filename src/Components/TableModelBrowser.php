@@ -15,6 +15,7 @@ class TableModelBrowser extends BaseModelBrowser
     public function mount(
         string $model,
         array $viewAttributes = [],
+        array $exportAttributes = [],
         array $formats = [],
         array $rawFormats = [],
         array $alignments = [],
@@ -29,7 +30,7 @@ class TableModelBrowser extends BaseModelBrowser
         int $lightDarkStep = 1,
         array $columnWidths = [],
     ) {
-        parent::mount($model, $viewAttributes, $formats, $rawFormats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit);
+        parent::mount($model, $viewAttributes, $exportAttributes, $formats, $rawFormats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
     }
