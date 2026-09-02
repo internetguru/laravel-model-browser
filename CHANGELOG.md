@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Filter config key `columns` ~ an OR group of columns for a single filter, so e.g. a name + e-mail pair can be collapsed into one input. Each entry may override `column`, `relation`, `preprocessor`, `ascii_fast`, `type` or `timezone` for that column only.
+
 ## [6.1.1] - 2026-08-31
 
 ### Changed

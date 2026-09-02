@@ -310,6 +310,60 @@ class BaseModelBrowserTest extends TestCase
         $component->assertSee('Zenon Unique');
     }
 
+    public function test_or_column_group_matches_any_of_its_columns()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Zenon Unique', 'email' => 'someone@example.com']);
+        User::factory()->create(['name' => 'Someone Else', 'email' => 'zenon@example.com']);
+        User::factory()->count(5)->create();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'filters' => [
+                'user' => [
+                    'type' => 'string',
+                    'label' => 'User',
+                    'columns' => ['name', ['column' => 'email', 'ascii_fast' => true]],
+                ],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        // Matches the name of one user and the e-mail of another
+        $component->set('searchQuery', 'user:zenon')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 2);
+
+        // Non-matching value must not fall back to matching anything
+        $component->set('searchQuery', 'user:nonexistentxyz')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 0);
+    }
+
+    public function test_or_column_group_is_anded_with_other_terms()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Zenon Unique', 'email' => 'zenon@example.com']);
+        User::factory()->create(['name' => 'Zenon Other', 'email' => 'other@example.com']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'filters' => [
+                'user' => [
+                    'type' => 'string',
+                    'label' => 'User',
+                    'columns' => ['name', 'email'],
+                ],
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        $component->set('searchQuery', 'user:zenon name:"Zenon Other"')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Zenon Other');
+    }
+
     public function test_apply_filters_builds_search_query()
     {
         $component = Livewire::test(BaseModelBrowser::class, [
@@ -380,7 +434,7 @@ class BaseModelBrowserTest extends TestCase
     public function test_renders_copy_page_button()
     {
         Livewire::test(BaseModelBrowser::class, [
-            'model' => \App\Models\User::class,
+            'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
         ])->assertSee(__('model-browser::global.copy-page.label'))
             ->assertSeeHtml('copyPage()');
