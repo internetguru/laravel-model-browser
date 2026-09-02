@@ -186,7 +186,7 @@ Custom CSS grid column widths per attribute. Defaults to `minmax(4em, 1fr)`:
 
 ## Filters
 
-The filter system provides a search bar with Gmail-style query syntax and an expandable filter panel. Filters are persisted in the session and can be initialized from URL query parameters.
+The filter system provides a search bar with Gmail-style query syntax and an expandable filter panel. The active filter lives in the `q` URL query parameter (see [Filter State in the URL](#filter-state-in-the-url)), is persisted in the session, and can additionally be initialized from per-filter URL query parameters.
 
 ### Configuration
 
@@ -373,7 +373,21 @@ Filters with a `url` key can be initialized from URL query parameters. When any 
 
 Link: `/orders?filter-status=active`
 
-The URL parameters are automatically cleaned from the browser address bar after initialization.
+The URL parameters are automatically cleaned from the browser address bar after initialization — the resulting filter is then carried by the `q` parameter like any other.
+
+### Filter State in the URL
+
+The whole search query is mirrored into the `q` query parameter, so the current filter is part of the URL:
+
+```
+/orders?q=status%3Aactive+name%3A%22John+Doe%22
+```
+
+- The URL is shareable and bookmarkable — opening it applies exactly that filter.
+- Every filter change pushes a browser history entry, so **back/forward moves between filter states**.
+- On a plain page load without `q`, the filter is restored from the session and the URL is updated to match.
+
+Priority on mount is: per-filter `url` parameters > `q` > session. When `q` is present it fully describes the filter state, so session values are never merged into it — otherwise navigating back would resurrect cleared filters.
 
 ## Full Example
 
