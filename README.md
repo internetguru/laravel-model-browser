@@ -246,12 +246,46 @@ Note that `priceFrom` and `priceTo` have no `column` key — they are not auto-a
 |---|---|
 | `type` | Filter type: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options` (default: `string`). **Note:** `date_to` interprets date-only values (without an explicit time) as end-of-day (23:59:59), so e.g. `to:2026-02-16` includes all records on Feb 16. When a specific time is provided, it is used as-is. |
 | `label` | Display label in the filter panel |
-| `column` | Database column name for auto-apply. **When set**, the filter is automatically applied to the query. **When omitted**, the filter is NOT auto-applied — use `HasModelBrowserFilters` trait for manual access. |
+| `column` | Database column name for auto-apply. **When set**, the filter is automatically applied to the query. **When omitted** (and no `columns`), the filter is NOT auto-applied — use `HasModelBrowserFilters` trait for manual access. |
+| `columns` | OR group — a list of columns matched with `OR` instead of a single `column` (see [OR Column Groups](#or-column-groups)) |
 | `relation` | Eloquent relation name — wraps the filter in `whereHas()`. Supports dot-notation for nested relations. |
 | `options` | Array of options for the `options` type (e.g. `['value' => 'Label']`) |
 | `rules` | Custom Laravel validation rules (overrides default type-based rules) |
 | `url` | URL query parameter name to initialize the filter from (takes priority over session) |
 | `timezone` | Timezone for date filters — the parsed date value is shifted via `Carbon::shiftTimezone($tz)` (e.g. `'Europe/Prague'`) |
+
+### OR Column Groups
+
+A single filter can match against several columns at once. Use `columns` instead of `column` — the filter's value matches when **any** of the listed columns matches, while the filter as a whole is still AND'd with every other term.
+
+The typical case is collapsing a name + e-mail pair into one input:
+
+```php
+'customer' => [
+    'type' => 'string',
+    'label' => 'Customer',
+    'relation' => 'customer',
+    'rules' => 'nullable|string|max:60',
+    'columns' => ['name', ['column' => 'email', 'ascii_fast' => true]],
+],
+```
+
+`customer:novak` then matches customers whose **name** or **e-mail** contains `novak`, and the filter panel shows one input instead of two.
+
+Each `columns` entry is either a plain column name or an array overriding `column`, `relation`, `preprocessor`, `ascii_fast`, `type` or `timezone` **for that column only**. Anything not overridden falls back to the filter's own config, so the shared `relation` above applies to both columns. Columns may also live in different relations:
+
+```php
+'party' => [
+    'type' => 'string',
+    'label' => 'Party',
+    'columns' => [
+        ['column' => 'name', 'relation' => 'customer'],
+        ['column' => 'name', 'relation' => 'author'],
+    ],
+],
+```
+
+All columns of an OR group also take part in free-text search, exactly as separate `column` filters would.
 
 ### Search Query Syntax
 
