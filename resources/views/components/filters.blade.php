@@ -20,7 +20,9 @@
 
                 const url = new URL(window.location.href);
                 params.forEach(param => url.searchParams.delete(param));
-                window.history.replaceState({}, '', url.toString());
+                // Keep the existing state — Livewire stores the tracked query
+                // string values there for back/forward navigation.
+                window.history.replaceState(window.history.state, '', url.toString());
             },
         }"
         x-on:mb-clear-url-params.window="clearUrlParams()"

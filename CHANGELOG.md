@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Reflect the active filter in the URL via the `q` query parameter ~ browser-filter URLs are shareable and bookmarkable, and back/forward navigates between filter states.
+
+### Changed
+
+- Filter initialization priority is now per-filter `url` parameters > `q` > session. A `q` parameter fully describes the filter state, so session values are no longer merged into it.
+
 ## [6.2.0] - 2026-09-02
 
 _Stable release based on [6.2.0-rc.1]._
@@ -830,6 +840,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [6.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.1.1...v6.2.0
 [6.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.1.1
 [6.1.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.1.0...v6.1.1

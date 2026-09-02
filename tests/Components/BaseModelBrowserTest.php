@@ -431,6 +431,110 @@ class BaseModelBrowserTest extends TestCase
             ->assertDispatched('mb-refresh-count');
     }
 
+    public function test_search_query_is_initialized_from_the_q_url_parameter()
+    {
+        session()->put('test-mb-filters', ['name' => 'FromSession']);
+        session()->put('test-mb-filters.query', 'name:FromSession');
+
+        Livewire::withQueryParams(['q' => 'name:Alice extra'])
+            ->test(BaseModelBrowser::class, [
+                'model' => User::class,
+                'viewAttributes' => ['name' => 'Name'],
+                'filters' => [
+                    'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+                ],
+                'filterSessionKey' => 'test-mb-filters',
+            ])
+            // The URL fully describes the filter state — the session must not leak in
+            ->assertSet('searchQuery', 'name:Alice extra')
+            ->assertSet('filterValues.name', 'Alice');
+
+        $this->assertSame('Alice', session('test-mb-filters.name'));
+    }
+
+    public function test_per_filter_url_parameter_takes_priority_over_the_q_parameter()
+    {
+        Livewire::withQueryParams(['q' => 'name:Alice', 'filter-name' => 'Bob'])
+            ->test(BaseModelBrowser::class, [
+                'model' => User::class,
+                'viewAttributes' => ['name' => 'Name'],
+                'filters' => [
+                    'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name', 'url' => 'filter-name'],
+                ],
+                'filterSessionKey' => 'test-mb-filters',
+            ])
+            ->assertSet('searchQuery', 'name:Bob')
+            ->assertSet('filterValues.name', 'Bob')
+            ->assertDispatched('mb-clear-url-params');
+    }
+
+    public function test_session_filters_are_restored_when_no_url_parameter_is_present()
+    {
+        session()->put('test-mb-filters', ['name' => 'FromSession']);
+        session()->put('test-mb-filters.query', 'name:FromSession');
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ])->assertSet('searchQuery', 'name:FromSession')
+            ->assertSet('filterValues.name', 'FromSession');
+    }
+
+    public function test_setting_the_search_query_alone_applies_it()
+    {
+        // Back/forward navigation restores the pushed `q` value by setting the
+        // property directly — without any accompanying action call.
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        $component->set('skip', 40);
+        $component->set('searchQuery', 'name:Alice')
+            ->assertSet('filterValues.name', 'Alice')
+            ->assertSet('skip', 0)
+            ->assertDispatched('mb-refresh-count');
+
+        $this->assertSame('Alice', session('test-mb-filters.name'));
+
+        // Navigating back to an empty filter must clear the panel again
+        $component->set('searchQuery', '')
+            ->assertSet('filterValues.name', '');
+
+        $this->assertNull(session('test-mb-filters.name'));
+    }
+
+    public function test_count_refresh_is_dispatched_once_per_request()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        // The deferred searchQuery update and the applySearch call it submits
+        // with both change the filters — the count island must only reload once.
+        $component->set('searchQuery', 'name:Alice')->call('applySearch');
+
+        $dispatched = array_filter(
+            $component->effects['dispatches'] ?? [],
+            fn ($dispatch) => $dispatch['name'] === 'mb-refresh-count'
+        );
+
+        $this->assertCount(1, $dispatched);
+    }
+
     public function test_renders_copy_page_button()
     {
         Livewire::test(BaseModelBrowser::class, [
