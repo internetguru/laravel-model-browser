@@ -29,7 +29,17 @@ class BaseModelBrowser extends Component
 
     public const PER_PAGE_OPTIONS = [20, 50, 100];
 
-    public const PER_PAGE_PREFERENCE = 'model_browser_per_page';
+    /**
+     * How many further rows the "load more" button adds to the current window.
+     */
+    public const PER_PAGE_STEP = 20;
+
+    /**
+     * The filter value standing for "this filter has no value at all", written
+     * as `attribute:""` in the search query — e.g. `ordered_by:""` lists the
+     * orders nobody is named on.
+     */
+    public const FILTER_EMPTY = '""';
 
     // Search query security limits — override trait constants
     public const SEARCH_MAX_LENGTH = 500;
@@ -153,7 +163,19 @@ class BaseModelBrowser extends Component
     #[Locked]
     public int $exportLimit;
 
+    /**
+     * Rows per page — also the step the previous/next buttons move by.
+     */
     public int $perPage = self::PER_PAGE_DEFAULT;
+
+    /**
+     * Rows the "load more" button has appended to the current page, on top of `perPage`.
+     *
+     * Paging is deliberately unaffected by this: the previous/next buttons always move by
+     * `perPage` and drop the extra rows, so a page is always the same size however much
+     * was loaded into the one before it.
+     */
+    public int $extraRows = 0;
 
     #[Url(as: 'skip', except: 0)]
     public int $skip = 0;
@@ -240,11 +262,6 @@ class BaseModelBrowser extends Component
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
         $this->initializeFilters();
-        // Read per-page from user preference
-        if (auth()->check()) {
-            $preferred = auth()->user()->getPreference(self::PER_PAGE_PREFERENCE);
-            $this->perPage = (int) ($preferred ?? self::PER_PAGE_DEFAULT);
-        }
         $this->updatedPerPage();
         $this->updatedSortColumn();
         $this->updatedSortDirection();
@@ -597,17 +614,20 @@ class BaseModelBrowser extends Component
 
     public function previousPage(): void
     {
+        $this->extraRows = 0;
         $this->skip = max(0, $this->skip - $this->perPage);
     }
 
     public function nextPage(): void
     {
+        $this->extraRows = 0;
         $this->skip += $this->perPage;
     }
 
     public function resetPage(): void
     {
         $this->skip = 0;
+        $this->extraRows = 0;
     }
 
     public function updatedSortColumn()
@@ -633,13 +653,40 @@ class BaseModelBrowser extends Component
         $this->resetPage();
     }
 
+    /**
+     * Show another `PER_PAGE_STEP` rows below the ones already on the page.
+     *
+     * Only this page grows: `perPage` is untouched, so the previous/next buttons keep
+     * moving by a default page and the rows loaded here are dropped on the way. Nothing
+     * about it is remembered for the next visit.
+     */
+    public function loadMore(): void
+    {
+        $this->extraRows = max(0, min(
+            self::PER_PAGE_MAX - $this->perPage,
+            $this->extraRows + self::PER_PAGE_STEP,
+        ));
+    }
+
+    /**
+     * How many rows the current page shows: a full page plus whatever "load more" added.
+     */
+    public function windowSize(): int
+    {
+        return $this->perPage + $this->extraRows;
+    }
+
+    /**
+     * Change the page size, and with it the step the previous/next buttons move by.
+     *
+     * The shipped views offer no control for this — the page holds `PER_PAGE_DEFAULT`
+     * rows and "load more" grows it — so this is here for a host rendering its own,
+     * and it lasts for the current visit only.
+     */
     public function setPerPage(int $value): void
     {
         $this->perPage = $value;
         $this->updatedPerPage();
-        if (auth()->check()) {
-            auth()->user()->setPreference(self::PER_PAGE_PREFERENCE, $this->perPage);
-        }
     }
 
     /**
@@ -824,6 +871,16 @@ class BaseModelBrowser extends Component
                 if (empty($columns)) {
                     continue;
                 }
+                // `attribute:""` asks for the rows this filter finds nothing on
+                if ($term['value'] === self::FILTER_EMPTY) {
+                    $query->whereNot(function (Builder $sub) use ($columns) {
+                        foreach ($columns as $col) {
+                            $sub->orWhere(fn (Builder $q) => $this->applyPresence($q, $col));
+                        }
+                    });
+
+                    continue;
+                }
                 // Skip invalid filter values
                 $result = $this->validateFilterValue($term['key'], $term['value']);
                 if ($result['error']) {
@@ -891,6 +948,35 @@ class BaseModelBrowser extends Component
         }
 
         return [];
+    }
+
+    /**
+     * Match the rows where this column carries a value.
+     *
+     * Negated by the caller, this is what `attribute:""` searches for: a filter over a
+     * relation finds nothing when the relation itself is missing, so the check is nested
+     * in `whereHas` exactly like a value match would be.
+     *
+     * @param  array{column: string, relation: ?string}  $col
+     */
+    protected function applyPresence(Builder $query, array $col): void
+    {
+        $present = fn (Builder $q) => $q
+            ->whereNotNull($col['column'])
+            ->where($col['column'], '!=', '');
+
+        if (! $col['relation']) {
+            $present($query);
+
+            return;
+        }
+
+        $nested = $present;
+        foreach (array_reverse(explode('.', $col['relation'])) as $part) {
+            $inner = $nested;
+            $nested = fn (Builder $q) => $q->whereHas($part, $inner);
+        }
+        $nested($query);
     }
 
     /**
@@ -985,16 +1071,29 @@ class BaseModelBrowser extends Component
 
     /**
      * Get data with database-level sorting and pagination.
+     *
+     * The page starts on a `perPage` boundary but may be taller than one page when
+     * "load more" has been used, so the offset cannot be derived from the page size the
+     * way `simplePaginate()` does it — the window is taken by hand instead. One row
+     * beyond it is fetched so the paginator knows whether anything follows.
      */
     protected function getData(): Paginator
     {
         $query = $this->buildFilteredSortedQuery();
 
         // Clamp skip to a valid page boundary and derive page number
-        $this->skip = max(0, intval($this->skip / $this->perPage) * $this->perPage);
-        $page = intval($this->skip / $this->perPage) + 1;
+        $this->skip = max(0, intdiv($this->skip, $this->perPage) * $this->perPage);
+        $page = intdiv($this->skip, $this->perPage) + 1;
+        $window = $this->windowSize();
+
         Paginator::defaultSimpleView($this->paginationSimpleView());
-        $data = $query->simplePaginate($this->perPage, ['*'], 'page', $page);
+
+        $data = new Paginator(
+            $query->skip($this->skip)->take($window + 1)->get(),
+            $window,
+            $page,
+            ['path' => Paginator::resolveCurrentPath()],
+        );
         $data->setCollection($this->format($data->getCollection()));
 
         return $data;

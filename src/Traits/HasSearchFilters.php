@@ -20,6 +20,12 @@ trait HasSearchFilters
     public const SEARCH_MAX_TERMS = 20;
 
     /**
+     * The filter value standing for "this filter has no value at all", written as
+     * `attribute:""` in the search query.
+     */
+    public const FILTER_EMPTY = '""';
+
+    /**
      * Hook called after filters/search are changed.
      * Override this in the using class to persist or react to changes.
      */
@@ -106,12 +112,22 @@ trait HasSearchFilters
 
         $remaining = preg_replace_callback('/(\w+):(?:"([^"]*)"|([^\s"]+))/', function ($match) use (&$terms) {
             $key = $match[1];
-            $value = ($match[2] ?? '') !== '' ? $match[2] : ($match[3] ?? '');
+            // `key:""` is written with quotes, `key:value` without — the two branches of
+            // the pattern above, told apart by what follows the colon.
+            $quoted = str_starts_with(substr($match[0], strlen($key) + 1), '"');
+            $value = $quoted ? ($match[2] ?? '') : ($match[3] ?? '');
             $value = mb_substr(trim($value), 0, 255);
+            $isConfigured = isset($this->filterConfig[$key]);
             if ($value === '') {
+                // An explicit `key:""` searches for rows the filter finds nothing on;
+                // anything else empty carries no meaning and is dropped.
+                if ($quoted && $isConfigured) {
+                    $terms[] = ['key' => $key, 'value' => static::FILTER_EMPTY, 'exact' => false];
+                }
+
                 return '';
             }
-            if (isset($this->filterConfig[$key])) {
+            if ($isConfigured) {
                 $terms[] = ['key' => $key, 'value' => $value, 'exact' => false];
             } else {
                 $terms[] = ['key' => null, 'value' => $match[0], 'exact' => false];
