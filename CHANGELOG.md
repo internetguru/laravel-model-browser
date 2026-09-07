@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Add checkbox type.
+
 ## [6.5.0] - 2026-09-07
 
 _Stable release based on [6.5.0-rc.1]._

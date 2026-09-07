@@ -89,6 +89,7 @@
                                 'date', 'date_from', 'date_to' => 'date',
                                 'number', 'number_from', 'number_to' => 'number',
                                 'options' => 'select',
+                                'checkbox' => 'checkbox',
                                 default => 'text',
                             };
                             $filterPlaceholder = match($type) {
@@ -107,7 +108,15 @@
                             }
                         @endphp
                         <div class="mb-filters__item">
-                            @if ($inputType === 'select')
+                            @if ($inputType === 'checkbox')
+                                <x-ig::input
+                                    type="checkbox"
+                                    :name="$attrName"
+                                    :value="1"
+                                    :checked="(bool) ($filterValues[$attr] ?? false)"
+                                    :wire:model="$modelName"
+                                >{{ $label }}</x-ig::input>
+                            @elseif ($inputType === 'select')
                                 <x-ig::input
                                     type="select"
                                     :name="$attrName"
