@@ -6,7 +6,7 @@
     @endisland
 
     <div @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif>
-        <div class="my-5">
+        <div class="mb-4">
             <x-model-browser::pagination :data="$this->rows" :$perPageOptions />
         </div>
 

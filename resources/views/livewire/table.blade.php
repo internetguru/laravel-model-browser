@@ -26,10 +26,8 @@
         }"
     >
 
-        <div class="d-flex justify-content-end alig-items-center gap-3 m-3">
-            <div class="mt-3">
-                <x-model-browser::fullscreen-button />
-            </div>
+        <div class="d-flex justify-content-end align-items-center gap-3 mx-3 mt-3 mb-2">
+            <x-model-browser::fullscreen-button />
         </div>
 
         <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
