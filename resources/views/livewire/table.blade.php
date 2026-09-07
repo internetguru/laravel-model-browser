@@ -32,13 +32,13 @@
 
         <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
 
-        @island(name: 'count')
-            @include('model-browser::partials.count')
-        @endisland
-
-        <div>
-            <x-model-browser::pagination :data="$this->rows" :$perPageOptions />
-        </div>
+        <x-model-browser::pagination :data="$this->rows" :$skip>
+            <x-slot:count>
+                @island(name: 'count')
+                    @include('model-browser::partials.count')
+                @endisland
+            </x-slot:count>
+        </x-model-browser::pagination>
 
         <div
             @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif
@@ -115,6 +115,8 @@
                 @endif
             </div>
         </div>
+
+        <x-model-browser::load-more :data="$this->rows" />
 
         <div class="d-flex justify-content-center align-items-start flex-wrap mt-3 gap-3">
             <x-model-browser::csv-buttons :$exportLimit />

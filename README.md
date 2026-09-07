@@ -310,7 +310,22 @@ The search bar supports Gmail-style syntax:
 - **Free text**: `john` — searches across all `string`-type filter columns (with `column` set)
 - **Specific filter**: `name:john` — applies to the `name` filter
 - **Quoted values**: `name:"John Doe"` — for values containing spaces
+- **No value at all**: `name:""` — the rows the filter finds nothing on
 - **Combined**: `name:john from:2025-01-01` — all terms must match (AND)
+
+#### Searching for rows with no value
+
+`attribute:""` — an explicitly quoted empty value — matches the rows where the filter has
+nothing to match on, which is otherwise unreachable: a column that is `NULL` or empty, and,
+for a filter over a `relation`, a row whose relation is missing altogether. With an OR group
+of `columns`, a row qualifies only when *none* of them carries a value.
+
+```
+ordered_by:""     # orders nobody is named on
+```
+
+A bare `attribute:` with nothing after the colon is not this — it carries no value to search
+for and stays free text, as it always has.
 
 ### Auto-applied vs Manual Filters
 
@@ -499,13 +514,13 @@ In this example:
 
 ## Features
 
-- **Pagination** — Simple pagination with configurable per-page options (default: 20, 50, 100). Shows result range and total count (loaded asynchronously). Per-page preference is saved per authenticated user.
+- **Pagination** — One line above the table, reading `1–20 of 176` followed by the previous/next buttons, which move by `perPage` (`PER_PAGE_DEFAULT`, 20). A **Load more results** button under the table shows another `PER_PAGE_STEP` (20) rows below the ones already there, up to `PER_PAGE_MAX` in total. Only the current page grows: `perPage` is untouched, so the arrows always load a default page and drop the extra rows on the way, and nothing about it is remembered for the next visit. The extra rows are counted in `extraRows` and reset by paging and by any filter change.
 - **Auto-refresh** — Optional periodic data refresh via `refreshInterval` parameter.
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file. Exports are capped at `exportLimit` rows (per-instance parameter, defaults to the `model-browser.export_limit` config value of 1500; `0` disables the cap) — when the current result count exceeds it, the download button is disabled and the export endpoint refuses the request.
 - **Fullscreen** — Toggle fullscreen mode for the table view.
 - **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as their raw `data-raw` values (the same values the CSV export uses), not the `formats`-rendered display text.
-- **Deferred count** — The total result count is shown as a summary line above the table and loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands). The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
+- **Deferred count** — The total result count is the `of 176` half of the pagination line and is loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands), passed into the pagination component as its `count` slot. The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 
 ## License & Commercial Terms
 

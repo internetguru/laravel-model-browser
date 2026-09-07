@@ -362,6 +362,90 @@ class BaseModelBrowserTest extends TestCase
         $component->assertSee('Zenon Unique');
     }
 
+    public function test_empty_search_term_finds_the_rows_the_filter_has_no_value_on()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Named Person', 'email' => 'named@example.com']);
+        User::factory()->create(['name' => '', 'email' => 'blank@example.com']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-empty-filters',
+        ]);
+
+        $component->set('searchQuery', 'name:""')->call('applySearch');
+
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('blank@example.com')
+            ->assertDontSee('named@example.com');
+    }
+
+    public function test_an_empty_search_term_survives_a_round_trip_through_the_filter_panel()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-empty-roundtrip',
+        ]);
+
+        $component->set('searchQuery', 'name:""')->call('applySearch')
+            ->assertSet('filterValues.name', BaseModelBrowser::FILTER_EMPTY);
+
+        // Re-applying from the filter panel must not lose the term
+        $component->call('applyFilters')->assertSet('searchQuery', 'name:""');
+    }
+
+    public function test_empty_search_term_over_a_relation_finds_the_rows_without_a_value_on_it()
+    {
+        User::query()->delete();
+        $titled = User::factory()->create(['name' => 'Has A Titled Post']);
+        $untitled = User::factory()->create(['name' => 'Has An Untitled Post']);
+        User::factory()->create(['name' => 'Has No Post']);
+        $titled->posts()->create(['title' => 'Something']);
+        $untitled->posts()->create(['title' => null]);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'post' => ['type' => 'string', 'label' => 'Post', 'column' => 'title', 'relation' => 'posts'],
+            ],
+            'filterSessionKey' => 'test-mb-empty-relation',
+        ]);
+
+        $component->set('searchQuery', 'post:""')->call('applySearch');
+
+        // A missing relation and a relation carrying no value both count as empty
+        $component->call('loadTotalCount')->assertSet('totalCount', 2);
+        $component->assertSee('Has No Post')
+            ->assertSee('Has An Untitled Post')
+            ->assertDontSee('Has A Titled Post');
+    }
+
+    public function test_only_an_explicitly_quoted_empty_value_means_the_empty_filter()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-bare-key',
+        ]);
+
+        // A bare `name:` has no value to match on; it stays free text, as before
+        $component->set('searchQuery', 'name:')->call('applySearch')
+            ->assertSet('filterValues.name', '')
+            ->assertSet('searchQuery', 'name:');
+    }
+
     public function test_or_column_group_matches_any_of_its_columns()
     {
         User::query()->delete();

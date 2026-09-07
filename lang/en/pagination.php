@@ -8,5 +8,6 @@ return [
     'many' => 'many',
     'show' => 'show',
     'results' => 'results',
+    'load-more' => 'Load more results',
 
 ];

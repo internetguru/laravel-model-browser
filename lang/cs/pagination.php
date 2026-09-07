@@ -8,5 +8,6 @@ return [
     'many' => 'mnoho',
     'show' => 'zobrazit',
     'results' => 'výsledků',
+    'load-more' => 'Načíst další výsledky',
 
 ];
