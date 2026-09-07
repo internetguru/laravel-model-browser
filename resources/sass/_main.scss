@@ -227,6 +227,19 @@
             }
         }
 
+        &__checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            column-gap: $spacer;
+            row-gap: $spacer * 0.25;
+            margin-top: $spacer * 0.5;
+
+            // The shared input component spaces every field with .mt-3; the row does its own spacing
+            .mb-filters__item > div {
+                margin-top: 0;
+            }
+        }
+
         &__item {
             .form-floating {
                 margin-top: 0;
