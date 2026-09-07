@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [6.4.1] - 2026-09-07
+
+### Fixed
+
+- Minimize the vertical gaps before and after the filter bar in both the table and card browsers.
+
 ## [6.4.0] - 2026-09-02
 
 _Stable release based on [6.4.0-rc.1]._
@@ -857,6 +863,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[6.4.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.4.0...v6.4.1
 [6.4.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.3.0...v6.4.0
 [6.4.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.3.0
 [6.3.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.2.0...v6.3.0
