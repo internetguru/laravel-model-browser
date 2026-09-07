@@ -8,5 +8,6 @@ return [
     'many' => 'mange',
     'show' => 'vis',
     'results' => 'resultater',
+    'load-more' => 'Indlæs flere resultater',
 
 ];

@@ -2,7 +2,10 @@
 
 namespace Tests;
 
+use App\Models\User;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use InternetGuru\LaravelCommon\CommonServiceProvider;
 use Internetguru\ModelBrowser\ModelBrowserServiceProvider;
 use Livewire\LivewireServiceProvider;
@@ -31,6 +34,7 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         $this->loadLaravelMigrations(['--database' => 'testing']);
+        $this->createPostsTable();
 
         // Load your package's migrations if needed
         // $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
@@ -39,11 +43,24 @@ abstract class TestCase extends Orchestra
         $this->setUpTestData();
     }
 
+    /**
+     * A to-many relation off the users table, for exercising relation filters.
+     */
+    protected function createPostsTable(): void
+    {
+        Schema::dropIfExists('posts');
+        Schema::create('posts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id');
+            $table->string('title')->nullable();
+        });
+    }
+
     protected function setUpTestData()
     {
         // remove all users
-        \App\Models\User::query()->delete();
+        User::query()->delete();
         // create 10 users
-        \App\Models\User::factory()->count(10)->create();
+        User::factory()->count(10)->create();
     }
 }

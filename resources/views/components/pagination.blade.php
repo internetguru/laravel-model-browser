@@ -1,29 +1,28 @@
+{{--
+    The result window and the total count on one line: `1–20 of 176 [<] [>]`.
+
+    The total is passed in as the `count` slot rather than rendered here: it lives in
+    the component's "count" island, so it loads and refreshes on its own without
+    re-running the (potentially expensive) data query.
+--}}
 @php
     $prevContent = '<i class="fas fa-fw fa-chevron-left" title="' . __('model-browser::pagination.previous') . '"></i>';
     $nextContent = '<i class="fas fa-fw fa-chevron-right" title="' . __('model-browser::pagination.next') . '"></i>';
 
-    $firstPage = $data->onFirstPage();
+    $firstPage = $skip === 0;
     $morePages = $data->hasMorePages();
-    $currentPage = $data->currentPage();
-    $itemStartNum = ($currentPage - 1) * $data->perPage() + 1;
-    $itemEndNum = $data->count() < $data->perPage() ? $itemStartNum + $data->count() - 1 : $currentPage * $data->perPage();
-
-    $perPageOptions = $perPageOptions ?? [20, 50, 100];
+    // The page can be taller than one page's worth of rows once "load more" has been
+    // used, so the window is counted off the offset rather than off the page size.
+    $shown = $data->count();
+    $itemStartNum = $shown ? $skip + 1 : 0;
+    $itemEndNum = $shown ? $skip + $shown : 0;
 @endphp
 
-<nav role="navigation" aria-label="Pagination Navigation" class="d-flex align-items-center justify-content-end gap-3 my-3">
+<nav role="navigation" aria-label="Pagination Navigation" class="model-browser__pagination d-flex align-items-center justify-content-end gap-3 my-3">
     <div class="d-flex align-items-center gap-1 flex-wrap">
-        {{ $itemStartNum }}–{{ $itemEndNum }}
-        <span class="text-muted mx-1">&nbsp;</span>
-        @lang('model-browser::pagination.show')
-        <select
-            wire:change="setPerPage($event.target.value)"
-            class="form-select per-page-select d-inline-block w-auto"
-        >
-            @foreach ($perPageOptions as $option)
-                <option value="{{ $option }}" @selected($data->perPage() == $option)>{{ $option }}</option>
-            @endforeach
-        </select>
+        <span class="model-browser__pagination-range">{{ $itemStartNum }}–{{ $itemEndNum }}</span>
+        <span>@lang('model-browser::pagination.of')</span>
+        {{ $count }}
     </div>
     <div>
         @if ($firstPage)

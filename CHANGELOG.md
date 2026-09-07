@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Search for the rows a filter has no value on with `attribute:""` ~ e.g. `ordered_by:""` finds the orders nobody is named on. Over a `relation` it finds the rows missing the relation altogether.
+- "Load more results" button under the table ~ shows another 20 rows below the ones already there, without leaving the page.
+
+### Changed
+
+- The result window and the total count now share one line above the table, reading `1–20 of 176` next to the previous/next buttons.
+- Previous and next always move by one page of 20 and drop the rows "load more" added ~ every page is the same size, however much was loaded into the one before it.
+- Applications overriding the published `pagination` view have to follow ~ it now takes a `skip` prop and renders the total in a `count` slot.
+
+### Removed
+
+- The page-limit select, and with it the saved per-page preference (`PER_PAGE_PREFERENCE`) ~ a page holds 20 rows and grows on demand instead.
+
 ## [6.4.1] - 2026-09-07
 
 ### Fixed
