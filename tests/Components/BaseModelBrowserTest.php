@@ -3,7 +3,9 @@
 namespace Tests\Components;
 
 use App\Models\User;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Support\Facades\Schema;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -340,6 +342,54 @@ class BaseModelBrowserTest extends TestCase
                 'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
             ],
         ]);
+    }
+
+    public function test_checkbox_filter_round_trips_through_the_search_query()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'pending' => ['type' => 'checkbox', 'label' => 'Pending'],
+            ],
+            'filterSessionKey' => 'test-mb-checkbox',
+        ]);
+
+        // A checked box arrives from Livewire as a boolean and is stored as "1"
+        $component->set('filterValues.pending', true)->call('applyFilters');
+        $component->assertSet('filterValues.pending', '1')
+            ->assertSet('searchQuery', 'pending:1');
+        $this->assertSame('1', session('test-mb-checkbox')['pending']);
+
+        $component->set('filterValues.pending', false)->call('applyFilters');
+        $component->assertSet('filterValues.pending', '')
+            ->assertSet('searchQuery', '');
+    }
+
+    public function test_checkbox_filter_with_a_column_matches_the_flagged_rows()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->boolean('is_flagged')->default(0);
+        });
+
+        User::query()->delete();
+        User::factory()->create(['name' => 'Flagged Person'])->forceFill(['is_flagged' => 1])->save();
+        User::factory()->create(['name' => 'Plain Person']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'flagged' => ['type' => 'checkbox', 'label' => 'Flagged', 'column' => 'is_flagged'],
+            ],
+            'filterSessionKey' => 'test-mb-checkbox-column',
+        ]);
+
+        $component->call('loadTotalCount')->assertSet('totalCount', 2);
+
+        $component->set('filterValues.flagged', true)->call('applyFilters');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Flagged Person')->assertDontSee('Plain Person');
     }
 
     public function test_search_query_filters_results_by_column()
