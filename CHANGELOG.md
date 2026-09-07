@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [6.6.0] - 2026-09-07
+
+_Stable release based on [6.6.0-rc.1]._
+
 ## [6.6.0-rc.1] - 2026-09-07
 
 ### Added
@@ -890,6 +894,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[6.6.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.5.0...v6.6.0
 [6.6.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.5.0
 [6.5.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.4.1...v6.5.0
 [6.5.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.4.1
