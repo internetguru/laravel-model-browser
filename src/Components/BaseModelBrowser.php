@@ -63,6 +63,8 @@ class BaseModelBrowser extends Component
 
     public const FILTER_OPTIONS = 'options';
 
+    public const FILTER_CHECKBOX = 'checkbox';
+
     #[Locked]
     public string $model;
 
@@ -127,7 +129,7 @@ class BaseModelBrowser extends Component
      * Format: ['attribute' => ['type' => '...', 'label' => '...', ...]]
      *
      * Keys:
-     * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options)
+     * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options, checkbox)
      * - label: Display label
      * - column: Database column name (defaults to the attribute key)
      * - columns: OR group — a list of columns matched with OR instead of a single 'column'.
@@ -399,6 +401,7 @@ class BaseModelBrowser extends Component
             self::FILTER_OPTIONS => ! empty($config['restrict'])
                 ? $this->getOptionsRule($config['options'] ?? [])
                 : 'nullable|string|max:255',
+            self::FILTER_CHECKBOX => 'nullable|boolean',
             default => 'nullable|string|max:255',
         };
     }
@@ -1011,7 +1014,7 @@ class BaseModelBrowser extends Component
                     self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
                     self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
                     self::FILTER_DATE => $q->where($column, $parseDate($value)),
-                    self::FILTER_NUMBER, self::FILTER_OPTIONS => $q->where($column, $value),
+                    self::FILTER_NUMBER, self::FILTER_OPTIONS, self::FILTER_CHECKBOX => $q->where($column, $value),
                     default => $q->whereLikeUnaccented($column, $value, $asciiFast),
                 };
             } catch (Exception $e) {

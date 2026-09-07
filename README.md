@@ -260,7 +260,7 @@ Note that `priceFrom` and `priceTo` have no `column` key — they are not auto-a
 
 | Key | Description |
 |---|---|
-| `type` | Filter type: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options` (default: `string`). **Note:** `date_to` interprets date-only values (without an explicit time) as end-of-day (23:59:59), so e.g. `to:2026-02-16` includes all records on Feb 16. When a specific time is provided, it is used as-is. |
+| `type` | Filter type: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options`, `checkbox` (default: `string`). **Note:** `checkbox` renders a single on/off box whose value is `1` when checked and empty when not — with a `column` it matches `column = 1`, without one it is left to the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)). **Note:** `date_to` interprets date-only values (without an explicit time) as end-of-day (23:59:59), so e.g. `to:2026-02-16` includes all records on Feb 16. When a specific time is provided, it is used as-is. |
 | `label` | Display label in the filter panel |
 | `column` | Database column name for auto-apply. **When set**, the filter is automatically applied to the query. **When omitted** (and no `columns`), the filter is NOT auto-applied — use `HasModelBrowserFilters` trait for manual access. |
 | `columns` | OR group — a list of columns matched with `OR` instead of a single `column` (see [OR Column Groups](#or-column-groups)) |
