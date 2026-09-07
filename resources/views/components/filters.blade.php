@@ -8,6 +8,9 @@
         ->values()
         ->implode(', ');
     $placeholder ??= __('model-browser::global.filters.search');
+    // Checkboxes get their own row under the input grid, so they never sit in a grid cell
+    $checkboxConfig = collect($filterConfig)->filter(fn($c) => ($c['type'] ?? 'string') === 'checkbox')->all();
+    $inputConfig = collect($filterConfig)->filter(fn($c) => ($c['type'] ?? 'string') !== 'checkbox')->all();
 @endphp
 
 @if (!empty($filterConfig))
@@ -80,7 +83,7 @@
         >
             <form x-on:submit.prevent="expanded = false; $wire.applyFilters()" class="editable-skip">
                 <div class="mb-filters__fields">
-                    @foreach ($filterConfig as $attr => $config)
+                    @foreach ($inputConfig as $attr => $config)
                         @php
                             $type = $config['type'] ?? 'string';
                             $label = $config['label'] ?? $attr;
@@ -89,7 +92,6 @@
                                 'date', 'date_from', 'date_to' => 'date',
                                 'number', 'number_from', 'number_to' => 'number',
                                 'options' => 'select',
-                                'checkbox' => 'checkbox',
                                 default => 'text',
                             };
                             $filterPlaceholder = match($type) {
@@ -108,15 +110,7 @@
                             }
                         @endphp
                         <div class="mb-filters__item">
-                            @if ($inputType === 'checkbox')
-                                <x-ig::input
-                                    type="checkbox"
-                                    :name="$attrName"
-                                    :value="1"
-                                    :checked="(bool) ($filterValues[$attr] ?? false)"
-                                    :wire:model="$modelName"
-                                >{{ $label }}</x-ig::input>
-                            @elseif ($inputType === 'select')
+                            @if ($inputType === 'select')
                                 <x-ig::input
                                     type="select"
                                     :name="$attrName"
@@ -138,6 +132,27 @@
                         </div>
                     @endforeach
                 </div>
+
+                {{-- Checkboxes - own line under the fields --}}
+                @if (!empty($checkboxConfig))
+                    <div class="mb-filters__checkboxes">
+                        @foreach ($checkboxConfig as $attr => $config)
+                            @php
+                                $attrName = "filter-$attr";
+                                $modelName = "filterValues.$attr";
+                            @endphp
+                            <div class="mb-filters__item">
+                                <x-ig::input
+                                    type="checkbox"
+                                    :name="$attrName"
+                                    :value="1"
+                                    :checked="(bool) ($filterValues[$attr] ?? false)"
+                                    :wire:model="$modelName"
+                                >{{ $config['label'] ?? $attr }}</x-ig::input>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
 
                 {{-- Action buttons --}}
                 <div class="mb-filters__actions">
