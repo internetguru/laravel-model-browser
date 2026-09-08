@@ -27,6 +27,7 @@ class ModelBrowserServiceProvider extends ServiceProvider
         Livewire::component('table-model-browser', TableModelBrowser::class);
 
         $this->registerQueryMacros();
+        $this->registerSanitizeTypes();
 
         // Direct CSV streaming endpoint — bypasses Livewire's buffered,
         // base64-encoded file downloads (see CsvDownloadController).
@@ -52,6 +53,36 @@ class ModelBrowserServiceProvider extends ServiceProvider
     /**
      * Register query builder macros.
      */
+    /**
+     * Declare the sanitization type of the browser's client-writable state.
+     *
+     * internetguru/laravel-common normalizes input by what a value is, and
+     * reports anything it cannot type. Only four of this component's properties
+     * are writable by the client - the other sixteen are #[Locked] and are
+     * skipped for that reason - and `searchQuery` is already covered by the
+     * `search_query` default. Individual filter columns are declared per
+     * attribute in BaseModelBrowser::validateFilterValue(), where their
+     * configured type is known.
+     *
+     * Entries the application has already set win.
+     */
+    protected function registerSanitizeTypes(): void
+    {
+        $config = $this->app['config'];
+        $types = $config->get('ig-common.sanitize.types');
+
+        if (! is_array($types)) {
+            return;
+        }
+
+        $config->set('ig-common.sanitize.types', [
+            'filter_values' => 'search',
+            'sort_column' => 'code',
+            'sort_direction' => 'code',
+            ...$types,
+        ]);
+    }
+
     protected function registerQueryMacros(): void
     {
         $this->registerSqliteUnaccent();
