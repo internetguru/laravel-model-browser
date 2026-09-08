@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Declare what the search box and each filter hold, so internetguru/laravel-common can clean up what they submit. A number filter is treated as a number, a date filter as a date.
+
+### Changed
+
+- **Breaking.** Require Laravel 13 and internetguru/laravel-common 7. Support for Laravel 11, Laravel 12 and earlier laravel-common releases is dropped.
+
 ## [6.6.1] - 2026-09-07
 
 ### Fixed
@@ -897,6 +907,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [6.6.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.6.0...v6.6.1
 [6.6.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.5.0...v6.6.0
 [6.6.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.5.0
