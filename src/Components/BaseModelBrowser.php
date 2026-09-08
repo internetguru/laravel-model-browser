@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
+use InternetGuru\LaravelCommon\Support\Sanitizer;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -366,6 +367,8 @@ class BaseModelBrowser extends Component
         $config = $this->filterConfig[$attribute] ?? [];
         $rules = $this->getFilterRules($attribute, $config);
 
+        $this->declareSanitizeType($attribute, $config);
+
         $validator = Validator::make(
             [$attribute => $value],
             [$attribute => $rules]
@@ -379,6 +382,36 @@ class BaseModelBrowser extends Component
         }
 
         return ['value' => (string) $value, 'error' => null];
+    }
+
+    /**
+     * Tell the sanitizer what a filter column holds.
+     *
+     * A filter is keyed by an application-defined column name, so neither the
+     * name nor the generated rules ('nullable|string|max:255' for most of them)
+     * say what the value is - but the filter's configured type does. Declaring
+     * it here covers both the validator below and the component's own
+     * filterValues property for the rest of the request.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function declareSanitizeType(string $attribute, array $config): void
+    {
+        if (! class_exists(Sanitizer::class)) {
+            return;
+        }
+
+        $pipeline = match ($config['type'] ?? self::FILTER_STRING) {
+            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'number',
+            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => 'datetime',
+            self::FILTER_CHECKBOX => 'flag',
+            default => 'search',
+        };
+
+        app(Sanitizer::class)->declareTypes([
+            $attribute => $pipeline,
+            "filterValues.{$attribute}" => $pipeline,
+        ]);
     }
 
     /**
