@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- "Load more results" is a link rather than a button: asking for more of the rows already on the page is not an action on a par with the controls around the table.
+
 ## [7.0.0] - 2026-09-08
 
 _Stable release based on [7.0.0-rc.1]._
