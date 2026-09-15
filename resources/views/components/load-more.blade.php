@@ -5,9 +5,11 @@
 --}}
 @if ($data->hasMorePages())
     <div class="model-browser__load-more d-flex justify-content-center my-3 mb-5">
+        {{-- A link, not a button: this asks for more of what is already on the page,
+             which is not the same kind of act as the controls around it. --}}
         <button
             type="button"
-            class="btn btn-icon btn-white btn-shadow"
+            class="model-browser__load-more-link"
             wire:click="loadMore"
             wire:loading.attr="disabled"
         >@lang('model-browser::pagination.load-more')</button>
