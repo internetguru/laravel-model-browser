@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.1.0] - 2026-09-15
+
+_Stable release based on [7.1.0-rc.1]._
+
+## [7.1.0-rc.1] - 2026-09-15
+
+### Changed
+
+- "Load more results" is a link rather than a button: asking for more of the rows already on the page is not an action on a par with the controls around the table.
+
 ## [7.0.0] - 2026-09-08
 
 _Stable release based on [7.0.0-rc.1]._
@@ -911,6 +921,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[7.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.0.0...v7.1.0
+[7.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.0.0
 [7.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.6.1...v7.0.0
 [7.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v6.6.1
 [6.6.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.6.0...v6.6.1
