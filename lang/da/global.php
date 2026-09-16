@@ -36,6 +36,13 @@ return [
         'label' => 'Kopiér side',
         'title' => 'Kopiér rækkerne på den aktuelle side til udklipsholderen',
     ],
+    'stats' => [
+        'title' => 'Kolonnestatistik',
+        'filled' => ':count af :total rækker har en værdi',
+        'limit-exceeded' => 'Reducér antallet af rækker under :limit med filtre for at vise statistik.',
+        'copy' => 'Kopiér',
+        'copied' => 'Kopieret',
+    ],
     'download-csv' => [
         'label' => 'Download CSV',
         'confirm-filter' => 'Advarsel, elementer er filtreret. Vil du virkelig kun downloade filtrerede data?',

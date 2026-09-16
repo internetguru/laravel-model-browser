@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Number;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Computed;
@@ -65,6 +66,21 @@ class BaseModelBrowser extends Component
     public const FILTER_OPTIONS = 'options';
 
     public const FILTER_CHECKBOX = 'checkbox';
+
+    /**
+     * The statistics a column's menu offers, in the order they are listed.
+     *
+     * The `nz` ("non-zero") variants leave out the rows whose value is zero,
+     * null or empty — COUNTNZ is the count of the rows that carry a value at
+     * all, and is the one also shown in the column header on its own.
+     */
+    public const STATS = ['sum', 'avg', 'min', 'max', 'count', 'avgnz', 'minnz', 'countnz'];
+
+    /**
+     * The statistics that are row counts: plain integers, never run through
+     * the column's `formats` callback.
+     */
+    public const STATS_COUNTS = ['count', 'countnz'];
 
     #[Locked]
     public string $model;
@@ -167,6 +183,40 @@ class BaseModelBrowser extends Component
     public int $exportLimit;
 
     /**
+     * Attributes that are summarized: their header offers the statistics menu,
+     * and shows a plain COUNTNZ of its own when some of its rows are empty.
+     *
+     * Nothing else is summarized, so a browser naming none of them never runs
+     * the extra query.
+     */
+    #[Locked]
+    public array $statsAttributes = [];
+
+    /**
+     * Largest result count the statistics are computed for. 0 = unlimited.
+     *
+     * Summarizing walks the whole filtered result set, so above this many
+     * rows nothing is computed and the menu asks for narrower filters.
+     * Defaults to the model-browser.stats_limit config value.
+     */
+    #[Locked]
+    public int $statsLimit;
+
+    /**
+     * Per-column statistics, keyed by attribute. null until loaded (or when
+     * the result set is too large — see $statsOverLimit).
+     *
+     * @var array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}>|null
+     */
+    public ?array $stats = null;
+
+    /**
+     * Whether the result set is larger than `statsLimit`, so no statistics
+     * were computed for it.
+     */
+    public bool $statsOverLimit = false;
+
+    /**
      * Rows per page — also the step the previous/next buttons move by.
      */
     public int $perPage = self::PER_PAGE_DEFAULT;
@@ -218,9 +268,10 @@ class BaseModelBrowser extends Component
     public string $filterSessionKey = '';
 
     /**
-     * Whether the count island has already been told to reload in this request.
+     * Whether the count and stats islands have already been told to reload in
+     * this request.
      */
-    protected bool $countRefreshRequested = false;
+    protected bool $summaryRefreshRequested = false;
 
     public function mount(
         string $model,
@@ -237,6 +288,8 @@ class BaseModelBrowser extends Component
         int $refreshInterval = 0,
         array $with = [],
         ?int $exportLimit = null,
+        array $statsAttributes = [],
+        ?int $statsLimit = null,
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -261,6 +314,8 @@ class BaseModelBrowser extends Component
         $this->refreshInterval = $refreshInterval;
         $this->with = $with;
         $this->exportLimit = $exportLimit ?? (int) config('model-browser.export_limit');
+        $this->statsAttributes = array_values(array_intersect($statsAttributes, array_keys($this->viewAttributes)));
+        $this->statsLimit = $statsLimit ?? (int) config('model-browser.stats_limit');
         if (! empty($filters) && ! $filterSessionKey) {
             throw new Exception('Provide filterSessionKey when using filters configuration.');
         }
@@ -516,29 +571,34 @@ class BaseModelBrowser extends Component
      */
     protected function onFiltersChanged(): void
     {
-        $this->totalCount = null;
         $this->resetErrorBag();
         $this->saveFiltersToSession();
         $this->resetPage();
-        $this->requestCountRefresh();
+        $this->requestSummaryRefresh();
     }
 
     /**
-     * Reload the count island only (the data query re-runs in this same request
-     * via the rows() computed, so the count must not).
+     * Discard the count and the statistics, and reload the two islands that
+     * carry them (the data query re-runs in this same request via the rows()
+     * computed, so neither summary may re-run with it).
      *
      * A single request can change the filters more than once — e.g. the deferred
      * `searchQuery` update and the `applySearch` call that follows it — so the
-     * event is dispatched at most once to avoid duplicate island round-trips.
+     * events are dispatched at most once to avoid duplicate island round-trips.
      */
-    protected function requestCountRefresh(): void
+    protected function requestSummaryRefresh(): void
     {
-        if ($this->countRefreshRequested) {
+        $this->totalCount = null;
+        $this->stats = null;
+        $this->statsOverLimit = false;
+
+        if ($this->summaryRefreshRequested) {
             return;
         }
 
-        $this->countRefreshRequested = true;
+        $this->summaryRefreshRequested = true;
         $this->dispatch('mb-refresh-count');
+        $this->dispatch('mb-refresh-stats');
     }
 
     /**
@@ -548,14 +608,13 @@ class BaseModelBrowser extends Component
     {
         if (isset($this->filterValues[$attribute])) {
             $this->filterValues[$attribute] = '';
-            $this->totalCount = null;
             $this->resetErrorBag('filter-' . $attribute);
             $terms = $this->parseSearchTerms($this->searchQuery);
             $filtered = array_filter($terms, fn ($t) => $t['key'] !== $attribute);
             $this->searchQuery = $this->buildSearchQueryFromTerms($filtered);
             $this->saveFiltersToSession();
             $this->resetPage();
-            $this->requestCountRefresh();
+            $this->requestSummaryRefresh();
         }
     }
 
@@ -597,10 +656,9 @@ class BaseModelBrowser extends Component
             }
 
             $this->searchQuery = implode(' ', $parts);
-            $this->totalCount = null;
             $this->saveFiltersToSession();
             $this->resetPage();
-            $this->requestCountRefresh();
+            $this->requestSummaryRefresh();
         }
     }
 
@@ -636,6 +694,208 @@ class BaseModelBrowser extends Component
         $query = $this->getQuery();
         $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
         $this->totalCount = $query->toBase()->getCountForPagination();
+    }
+
+    /**
+     * Load the per-column statistics.
+     *
+     * Triggered inside the "stats" island (the table header), so it re-renders
+     * that island alone — the data query in the rows() computed is untouched.
+     *
+     * Only the `statsAttributes` columns are summarized, and a browser that
+     * names none never runs the query at all.
+     */
+    public function loadTotalStats(): void
+    {
+        $this->stats = null;
+        $this->statsOverLimit = false;
+
+        if (empty($this->statsAttributes)) {
+            return;
+        }
+
+        // The same rows a CSV export would contain — sorting is beside the point
+        // for a summary, but it keeps a grouped or aggregated query ordered by a
+        // column it actually selects.
+        $query = $this->buildFilteredSortedQuery();
+
+        if ($this->statsLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->statsLimit) {
+            $this->statsOverLimit = true;
+
+            return;
+        }
+
+        $this->stats = $this->summarize($query);
+    }
+
+    /**
+     * Walk the whole result set once and summarize every `statsAttributes` column.
+     *
+     * Values are read straight off the model (`formats` and `rawFormats` are
+     * display concerns and are not applied), so the numbers are in the
+     * attribute's own unit. A column counts as numeric only when every value
+     * it does have is a number — otherwise just its two row counts are of any
+     * use, and the rest stay null.
+     *
+     * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}>
+     */
+    protected function summarize(Builder $query): array
+    {
+        $attributes = $this->statsAttributes;
+        $totals = array_fill_keys($attributes, [
+            'count' => 0,
+            'countnz' => 0,
+            'filled' => 0,
+            'numbers' => 0,
+            'sum' => 0.0,
+            'min' => null,
+            'minnz' => null,
+            'max' => null,
+        ]);
+
+        // Offset-based chunking (lazy) needs a deterministic order; the query
+        // is unsorted here, so fall back to the primary key.
+        if (empty($query->getQuery()->orders)) {
+            $query->orderBy((new $this->model)->getKeyName());
+        }
+
+        // cursor() streams rows from a single query, but does not support
+        // eager loading — fall back to offset chunking when relations are
+        // requested.
+        $rows = empty($this->with) ? $query->cursor() : $query->lazy(500);
+
+        foreach ($rows as $item) {
+            foreach ($attributes as $attribute) {
+                $value = Arr::get($item, $attribute);
+                $totals[$attribute]['count']++;
+
+                if ($value === null || $value === '' || $value === false) {
+                    continue;
+                }
+
+                $totals[$attribute]['filled']++;
+
+                if (! is_numeric($value)) {
+                    $totals[$attribute]['countnz']++;
+
+                    continue;
+                }
+
+                $number = (float) $value;
+                $totals[$attribute]['numbers']++;
+                $totals[$attribute]['sum'] += $number;
+                $totals[$attribute]['min'] = min($totals[$attribute]['min'] ?? $number, $number);
+                $totals[$attribute]['max'] = max($totals[$attribute]['max'] ?? $number, $number);
+
+                if ($number == 0.0) {
+                    continue;
+                }
+
+                $totals[$attribute]['countnz']++;
+                $totals[$attribute]['minnz'] = min($totals[$attribute]['minnz'] ?? $number, $number);
+            }
+        }
+
+        $stats = [];
+        foreach ($totals as $attribute => $total) {
+            $numeric = $total['numbers'] > 0 && $total['numbers'] === $total['filled'];
+            $stats[$attribute] = [
+                'count' => $total['count'],
+                'countnz' => $total['countnz'],
+                'numeric' => $numeric,
+                'sum' => $numeric ? $total['sum'] : null,
+                'avg' => $numeric && $total['count'] ? $total['sum'] / $total['count'] : null,
+                'avgnz' => $numeric && $total['countnz'] ? $total['sum'] / $total['countnz'] : null,
+                'min' => $numeric ? $total['min'] : null,
+                'minnz' => $numeric ? $total['minnz'] : null,
+                'max' => $numeric ? $total['max'] : null,
+            ];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * The statistics of one column, or null while none are loaded.
+     *
+     * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}|null
+     */
+    public function columnStats(string $attribute): ?array
+    {
+        return $this->stats[$attribute] ?? null;
+    }
+
+    /**
+     * Whether a column's header should carry its bare COUNTNZ, i.e. whether
+     * some of its rows are empty and some are not.
+     */
+    public function showsCountOfFilledRows(string $attribute): bool
+    {
+        $stats = $this->columnStats($attribute);
+
+        return $stats !== null && $stats['count'] > 0 && $stats['countnz'] < $stats['count'];
+    }
+
+    /**
+     * The statistics of one column, ready for its menu: each one's name, the
+     * value as it is shown, and the plain number behind it for the clipboard.
+     * The statistics a column has nothing to say about are left out.
+     *
+     * @return array<int, array{key: string, label: string, display: string, raw: string}>
+     */
+    public function columnStatsRows(string $attribute): array
+    {
+        $stats = $this->columnStats($attribute);
+
+        if ($stats === null) {
+            return [];
+        }
+
+        $rows = [];
+        foreach (self::STATS as $key) {
+            $value = $stats[$key] ?? null;
+            if ($value === null) {
+                continue;
+            }
+            $rows[] = [
+                'key' => $key,
+                'label' => strtoupper($key),
+                'display' => $this->statDisplay($attribute, $key, $value),
+                'raw' => (string) (in_array($key, self::STATS_COUNTS, true) ? $value : round((float) $value, 4)),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One statistic rendered for display.
+     *
+     * Row counts are plain integers. The rest are in the column's own unit, so
+     * they go through its `formats` callback when it has one — a formatter
+     * that needs the row the value came from cannot render an aggregate, and
+     * falls back to a plain number.
+     */
+    public function statDisplay(string $attribute, string $stat, int|float|null $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        if (in_array($stat, self::STATS_COUNTS, true)) {
+            return (string) $value;
+        }
+
+        $format = $this->formats[$attribute] ?? null;
+        if ($format) {
+            try {
+                return (string) $format($value, null);
+            } catch (\Throwable) {
+                // Fall through to the plain number below.
+            }
+        }
+
+        return Number::format($value, maxPrecision: 2) ?? (string) $value;
     }
 
     public function paginationView(): string

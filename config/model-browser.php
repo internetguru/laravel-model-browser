@@ -17,4 +17,19 @@ return [
 
     'export_limit' => 1500,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Column Statistics Limit
+    |--------------------------------------------------------------------------
+    |
+    | Default largest result count the column statistics are computed for.
+    | Can be overridden per component instance via the `statsLimit`
+    | parameter. Summarizing walks the whole filtered result set, so above
+    | this many rows nothing is computed and the statistics menu asks for
+    | narrower filters instead. Set to 0 to disable the limit.
+    |
+    */
+
+    'stats_limit' => 1500,
+
 ];

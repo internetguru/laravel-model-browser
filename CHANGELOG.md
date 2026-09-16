@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.2.0] - 2026-09-16
+
+_Stable release based on [7.2.0-rc.1]._
+
+## [7.2.0-rc.1] - 2026-09-16
+
+### Added
+
+- Column statistics ~ an icon in the headers named by `statsAttributes` opens SUM, AVG, MIN, MAX, COUNT, AVGNZ, MINNZ and COUNTNZ, with a button copying them to the clipboard. Only one column's menu is open at a time, and its icon says so.
+- A summarized column's header shows how many of its rows have a value at all, e.g. "Ordered by (145)", whenever some of them are empty. The room for it is kept from the start, with a spinner in it while the statistics load, so columns do not jump when the counts arrive.
+- `statsLimit` parameter and `model-browser.stats_limit` config (1500) ~ above that many rows nothing is summarized and the menu asks for narrower filters.
+
 ## [7.1.0] - 2026-09-15
 
 _Stable release based on [7.1.0-rc.1]._
@@ -921,6 +933,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[7.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.1.0...v7.2.0
+[7.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.1.0
 [7.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.0.0...v7.1.0
 [7.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.0.0
 [7.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.6.1...v7.0.0
