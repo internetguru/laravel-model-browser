@@ -721,6 +721,135 @@ class BaseModelBrowserTest extends TestCase
         $this->assertCount(1, $dispatched);
     }
 
+    public function test_stats_summarize_a_numeric_column()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('score')->nullable();
+        });
+
+        User::query()->delete();
+        foreach ([10, 30, 0, null] as $score) {
+            User::factory()->create()->forceFill(['score' => $score])->save();
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['score' => 'Score'],
+            'statsAttributes' => ['score'],
+        ]);
+
+        $component->call('loadTotalStats');
+        $stats = $component->get('stats')['score'];
+
+        $this->assertTrue($stats['numeric']);
+        $this->assertSame(4, $stats['count']);
+        // The zero and the null both fall out of the non-zero count
+        $this->assertSame(2, $stats['countnz']);
+        $this->assertSame(40.0, $stats['sum']);
+        $this->assertSame(10.0, $stats['avg']);
+        $this->assertSame(20.0, $stats['avgnz']);
+        $this->assertSame(0.0, $stats['min']);
+        $this->assertSame(10.0, $stats['minnz']);
+        $this->assertSame(30.0, $stats['max']);
+    }
+
+    public function test_stats_of_a_text_column_are_only_its_row_counts()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Named Person']);
+        User::factory()->create()->forceFill(['name' => ''])->save();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name'],
+        ]);
+
+        $component->call('loadTotalStats');
+        $stats = $component->get('stats')['name'];
+
+        $this->assertFalse($stats['numeric']);
+        $this->assertSame(2, $stats['count']);
+        $this->assertSame(1, $stats['countnz']);
+        foreach (['sum', 'avg', 'avgnz', 'min', 'minnz', 'max'] as $key) {
+            $this->assertNull($stats[$key], $key);
+        }
+
+        // Only COUNT and COUNTNZ are worth listing in the menu
+        $this->assertSame(
+            ['count', 'countnz'],
+            array_column($component->instance()->columnStatsRows('name'), 'key'),
+        );
+    }
+
+    public function test_stats_are_not_computed_above_the_limit()
+    {
+        User::query()->delete();
+        User::factory()->count(5)->create();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name'],
+            'statsLimit' => 3,
+        ]);
+
+        $component->call('loadTotalStats')
+            ->assertSet('stats', null)
+            ->assertSet('statsOverLimit', true);
+    }
+
+    public function test_changing_the_filters_discards_the_loaded_stats()
+    {
+        User::query()->delete();
+        User::factory()->count(3)->create();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-stats-filters',
+        ]);
+
+        $component->call('loadTotalStats');
+        $this->assertNotNull($component->get('stats'));
+
+        $component->set('searchQuery', 'name:Nobody')->call('applySearch')
+            ->assertSet('stats', null);
+
+        $dispatched = array_filter(
+            $component->effects['dispatches'] ?? [],
+            fn ($dispatch) => $dispatch['name'] === 'mb-refresh-stats'
+        );
+
+        $this->assertCount(1, $dispatched);
+    }
+
+    public function test_nothing_is_summarized_without_stats_attributes()
+    {
+        User::query()->delete();
+        User::factory()->count(3)->create();
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->call('loadTotalStats')
+            ->assertSet('stats', null)
+            ->assertSet('statsOverLimit', false);
+    }
+
+    public function test_stats_are_only_offered_for_view_attributes()
+    {
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name', 'email'],
+        ])->assertSet('statsAttributes', ['name']);
+    }
+
     public function test_renders_copy_page_button()
     {
         Livewire::test(BaseModelBrowser::class, [

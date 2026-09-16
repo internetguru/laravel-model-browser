@@ -46,31 +46,78 @@
         >
             <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
                 <div class="grid-header">
-                    @foreach($viewAttributes as $column => $trans)
-                        <div class="grid-header-cell">
-                            <span class="d-flex align-items-center gap-1">
-                                @php
-                                    $activeSortColumn = $this->getActiveSortColumn();
-                                    $activeSortDirection = $this->getActiveSortDirection();
-                                    $isCurrentSortColumn = $activeSortColumn === $column;
-                                @endphp
-                                @if ($enableSort)
-                                    <span x-on:click="sortColumn('{{ $column }}')" style="cursor: pointer;">
-                                        @if ($isCurrentSortColumn)
-                                            <i @class([
-                                                "fas fa-fw",
-                                                "fa-up-long" => $activeSortDirection === 'asc',
-                                                "fa-down-long" => $activeSortDirection === 'desc',
-                                            ])></i>
-                                        @else
-                                            <i class="fas fa-fw fa-up-down"></i>
-                                        @endif
-                                    </span>
+                    {{--
+                        The header sits in the "stats" island: the per-column statistics
+                        load on their own and only these cells change when they arrive —
+                        the (potentially expensive) data query below never re-runs.
+
+                        Loading is what the island is for: `loadTotalStats` is called
+                        scoped to it, so the component itself does not render. It is
+                        `always` rendered otherwise — the cells carry the sort state
+                        too, which has to follow every ordinary re-render.
+                    --}}
+                    @island(name: 'stats', always: true)
+                        @if ($statsAttributes)
+                            <span
+                                style="display: none;"
+                                x-data
+                                @if ($stats === null && ! $statsOverLimit)
+                                    x-init="$wire.$island('stats').loadTotalStats()"
                                 @endif
-                                {{ $trans }}
-                            </span>
-                        </div>
-                    @endforeach
+                                x-on:mb-refresh-stats.window="$wire.$island('stats').loadTotalStats()"
+                            ></span>
+                        @endif
+                        @foreach($viewAttributes as $column => $trans)
+                            @php
+                                $hasStats = in_array($column, $statsAttributes, true);
+                                $columnStats = $this->columnStats($column);
+                            @endphp
+                            <div class="grid-header-cell @if ($hasStats) grid-header-cell--stats @endif">
+                                <span class="d-flex align-items-center gap-1">
+                                    @php
+                                        $activeSortColumn = $this->getActiveSortColumn();
+                                        $activeSortDirection = $this->getActiveSortDirection();
+                                        $isCurrentSortColumn = $activeSortColumn === $column;
+                                    @endphp
+                                    @if ($enableSort)
+                                        <span x-on:click="sortColumn('{{ $column }}')" style="cursor: pointer;">
+                                            @if ($isCurrentSortColumn)
+                                                <i @class([
+                                                    "fas fa-fw",
+                                                    "fa-up-long" => $activeSortDirection === 'asc',
+                                                    "fa-down-long" => $activeSortDirection === 'desc',
+                                                ])></i>
+                                            @else
+                                                <i class="fas fa-fw fa-up-down"></i>
+                                            @endif
+                                        </span>
+                                    @endif
+                                    {{ $trans }}
+                                    @if ($hasStats)
+                                        {{--
+                                            How many rows have a value at all, worth saying only
+                                            when some of them do not. The slot is rendered either
+                                            way and keeps its width, so a summarized column does
+                                            not jump when the count arrives or turns out to be moot.
+                                        --}}
+                                        <span
+                                            class="model-browser__stats-filled"
+                                            @if ($this->showsCountOfFilledRows($column))
+                                                title="@lang('model-browser::global.stats.filled', ['count' => $columnStats['countnz'], 'total' => $columnStats['count']])"
+                                            @endif
+                                        >@if ($columnStats === null && ! $statsOverLimit)<span class="model-browser__stats-icon"><i class="fa-solid fa-spinner fa-spin"></i></span>@elseif ($this->showsCountOfFilledRows($column))({{ $columnStats['countnz'] }})@endif</span>
+                                        <x-model-browser::column-stats
+                                            :label="$trans"
+                                            :rows="$this->columnStatsRows($column)"
+                                            :loaded="$columnStats !== null"
+                                            :over-limit="$statsOverLimit"
+                                            :limit="$statsLimit"
+                                        />
+                                    @endif
+                                </span>
+                            </div>
+                        @endforeach
+                    @endisland
                 </div>
 
                 @if ($this->rows->isNotEmpty())

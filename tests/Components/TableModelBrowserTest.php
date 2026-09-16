@@ -3,6 +3,8 @@
 namespace Tests\Components;
 
 use App\Models\User;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Internetguru\ModelBrowser\Components\TableModelBrowser;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -183,6 +185,84 @@ class TableModelBrowserTest extends TestCase
             TableModelBrowser::PER_PAGE_MAX - TableModelBrowser::PER_PAGE_DEFAULT,
         );
         $this->assertSame(TableModelBrowser::PER_PAGE_MAX, $component->instance()->windowSize());
+    }
+
+    public function test_header_counts_the_filled_rows_of_a_partly_empty_column()
+    {
+        User::query()->delete();
+        User::factory()->count(3)->create();
+        User::factory()->create()->forceFill(['name' => ''])->save();
+
+        $component = Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'statsAttributes' => ['name', 'email'],
+        ]);
+
+        // The slot is there from the start, holding each summarized column's width
+        // with a spinner in it, so nothing moves once the count arrives
+        $component->assertSeeHtml('model-browser__stats-filled');
+        $this->assertSame(2, substr_count($component->html(), 'model-browser__stats-icon'));
+
+        $component->call('loadTotalStats')->assertSeeHtml('(3)')
+            ->assertDontSeeHtml('model-browser__stats-icon')
+            ->assertSeeHtml('model-browser__stats-filled');
+
+        // Every row has an e-mail, so its header has nothing to add
+        $this->assertFalse($component->instance()->showsCountOfFilledRows('email'));
+    }
+
+    public function test_stats_menu_is_offered_only_on_the_configured_columns()
+    {
+        // A column nobody asked to summarize carries neither the menu nor the slot
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+        ])->assertDontSeeHtml('model-browser__stats-toggle')
+            ->assertDontSeeHtml('model-browser__stats-filled');
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'statsAttributes' => ['name'],
+        ])->assertSeeHtml('model-browser__stats-toggle')
+            ->assertSeeHtml('model-browser__stats-filled')
+            // One toggle, on the one configured column
+            ->assertSeeHtmlInOrder(['grid-header-cell--stats', 'Name', 'grid-header-cell', 'Email']);
+    }
+
+    public function test_stats_menu_lists_every_statistic_of_a_numeric_column()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('score')->nullable();
+        });
+
+        User::query()->delete();
+        User::factory()->create()->forceFill(['score' => 10])->save();
+        User::factory()->create()->forceFill(['score' => 30])->save();
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['score' => 'Score'],
+            'statsAttributes' => ['score'],
+        ])->call('loadTotalStats')
+            ->assertSeeHtmlInOrder(['SUM', 'AVG', 'MIN', 'MAX', 'COUNT', 'AVGNZ', 'MINNZ', 'COUNTNZ'])
+            ->assertSee(__('model-browser::global.stats.copy'));
+    }
+
+    public function test_stats_menu_asks_for_narrower_filters_above_the_limit()
+    {
+        User::query()->delete();
+        User::factory()->count(5)->create();
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name'],
+            'statsLimit' => 3,
+        ])->call('loadTotalStats')
+            ->assertSee(__('model-browser::global.stats.limit-exceeded', ['limit' => 3]))
+            ->assertDontSeeHtml('model-browser__stats-list');
     }
 
     public function test_renders_copy_page_button()
