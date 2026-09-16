@@ -36,6 +36,13 @@ return [
         'label' => 'Copy page',
         'title' => 'Copy the rows of the current page to the clipboard',
     ],
+    'stats' => [
+        'title' => 'Column statistics',
+        'filled' => ':count of :total rows have a value',
+        'limit-exceeded' => 'To show stats, reduce rows below :limit using filters.',
+        'copy' => 'Copy',
+        'copied' => 'Copied',
+    ],
     'download-csv' => [
         'label' => 'Download CSV',
         'confirm-filter' => 'Warning, items are filtered. Do you really want to download only filtered data?',

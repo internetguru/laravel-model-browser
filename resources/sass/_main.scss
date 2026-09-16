@@ -24,6 +24,12 @@
             align-items: center;
             overflow: hidden;
 
+            // The statistics menu itself is position: fixed, so it escapes this
+            // anyway — but its toggle must not be clipped away with the label.
+            &--stats {
+                overflow: visible;
+            }
+
             i {
                 color: #bcbcbc;
                 width: 0.5em !important;
@@ -256,6 +262,144 @@
 
     select {
         min-width: 8rem;
+    }
+}
+
+// A box of its own for a header icon, sized in advance and never by its content.
+//
+// FontAwesome replaces the <i> with an <svg> (dom.watch) after the page has been
+// laid out: until then the <i> is an empty inline element, and a column sized to
+// its header would jump the moment the real icon arrived. The <i>, and the <svg>
+// that takes its place, are both laid out inside this fixed box instead.
+@mixin header-icon-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+}
+
+// How many of a column's rows carry a value at all, next to its label. The slot
+// holds its width whatever is in it — a spinner while the statistics load, the
+// count once they are in, nothing when every row has a value — so a column never
+// resizes around it.
+.model-browser .model-browser__stats-filled {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    // Room for the widest count the default stats_limit can produce, "(1500)".
+    min-width: 3.25em;
+    min-height: 1em;
+    font-weight: 400;
+    color: var(--bs-secondary, #6c757d);
+    white-space: nowrap;
+}
+
+.model-browser .model-browser__stats-icon {
+    @include header-icon-box;
+
+    font-size: 1em;
+    opacity: 0.75;
+
+    // The header's sort arrows are styled down to half an em and greyed, and the
+    // padding would offset the fa-spin rotation centre; the box above fixes the size.
+    i {
+        padding-right: 0;
+        color: inherit;
+    }
+}
+
+.model-browser .model-browser__stats {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+
+    &-toggle {
+        @include header-icon-box;
+
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--bs-secondary, #6c757d);
+        font-size: 0.875em;
+        cursor: pointer;
+
+        &.active,
+        &:hover,
+        &:focus-visible {
+            color: var(--bs-link-color, #0d6efd);
+        }
+
+        // The header's sort arrows are styled down to half an em and greyed; this is
+        // a control of its own, and the box above already fixes its size.
+        svg {
+            padding-right: 0;
+            color: inherit;
+        }
+    }
+
+    // Laid out against the viewport, and placed on open: the header cell and the
+    // scroller around the table both clip their overflow. The z-index clears the
+    // fullscreen layer (1000).
+    &-menu {
+        position: fixed;
+        z-index: 1100;
+        min-width: 11rem;
+        max-width: calc(100vw - 1rem);
+        padding: 0.5rem 0.75rem;
+        background: var(--bs-body-bg, #fff);
+        border: thin solid var(--bs-border-color, #dfe1e5);
+        border-radius: 0.5rem;
+        box-shadow: $box-shadow;
+        font-weight: 400;
+        text-align: start;
+    }
+
+    &-note {
+        margin: 0;
+        max-width: 16rem;
+        color: var(--bs-secondary, #6c757d);
+        font-size: 0.875rem;
+    }
+
+    &-list {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: 1rem;
+        margin: 0;
+        font-size: 0.875rem;
+
+        dt {
+            font-weight: 500;
+            color: var(--bs-secondary, #6c757d);
+        }
+
+        dd {
+            margin: 0;
+            text-align: end;
+            white-space: nowrap;
+        }
+    }
+
+    &-copy {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        margin-top: 0.5rem;
+        padding: 0.25rem 0;
+        border: none;
+        border-top: thin solid var(--bs-border-color, #dfe1e5);
+        background: none;
+        color: var(--bs-link-color, #0d6efd);
+        font-size: 0.875rem;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--bs-link-hover-color, #0a58ca);
+        }
     }
 }
 

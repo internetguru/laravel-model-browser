@@ -178,6 +178,17 @@ Maximum number of rows a CSV export may contain. When the current (filtered) res
 :exportLimit="2000"
 ```
 
+### `statsAttributes` / `statsLimit`
+
+Columns that are summarized. Their header offers the statistics menu — an icon opening `SUM`, `AVG`, `MIN`, `MAX`, `COUNT`, `AVGNZ`, `MINNZ` and `COUNTNZ`, with a button copying the lot to the clipboard. See [Column Statistics](#column-statistics):
+
+```php
+:statsAttributes="['price', 'credit']"
+:statsLimit="1000"
+```
+
+`statsLimit` is the largest result count the statistics are computed for. Summarizing walks the whole filtered result set, so above it nothing is computed and the menu asks for narrower filters instead. Defaults to the `model-browser.stats_limit` config value (1500); set to `0` for unlimited.
+
 ### TableModelBrowser-only Parameters
 
 #### `lightDarkStep`
@@ -518,9 +529,43 @@ In this example:
 - **Auto-refresh** — Optional periodic data refresh via `refreshInterval` parameter.
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file. Exports are capped at `exportLimit` rows (per-instance parameter, defaults to the `model-browser.export_limit` config value of 1500; `0` disables the cap) — when the current result count exceeds it, the download button is disabled and the export endpoint refuses the request.
+- **Column statistics** — Table headers carry two related things, both loaded inside their own Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands) so the data query is never re-run for them. See [Column Statistics](#column-statistics).
 - **Fullscreen** — Toggle fullscreen mode for the table view.
 - **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as their raw `data-raw` values (the same values the CSV export uses), not the `formats`-rendered display text.
 - **Deferred count** — The total result count is the `of 176` half of the pagination line and is loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands), passed into the pagination component as its `count` slot. The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
+
+## Column Statistics
+
+A summarized column's header carries a bare count of the rows that have a value — `Ordered by (145)` — whenever some rows have one and some do not. The slot holding it is always there, wide enough for the count and showing a spinner until the statistics arrive, so a column never resizes around it. Both it and the menu's icon sit in a box of a fixed size, because FontAwesome replaces their `<i>` with an `<svg>` only after the page has been laid out. The columns named in `statsAttributes` additionally carry an icon opening the whole menu:
+
+| Statistic | |
+| :--- | :--- |
+| `SUM` | Total of the column's numbers |
+| `AVG` | `SUM` over `COUNT` |
+| `MIN` / `MAX` | Smallest / largest number, zeros included |
+| `COUNT` | Rows in the (filtered) result set |
+| `AVGNZ` | `SUM` over `COUNTNZ` |
+| `MINNZ` | Smallest number that is not zero |
+| `COUNTNZ` | Rows whose value is neither zero nor empty — the count also shown in the header |
+
+A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, using the plain numbers rather than the displayed ones.
+
+Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. `COUNT` and `COUNTNZ` are never formatted.
+
+Only columns whose every value is a number get the numeric statistics; the rest have nothing to offer but their two row counts, and the menu lists only those.
+
+Nothing outside `statsAttributes` is summarized: those columns carry neither the menu nor the count, and a browser naming none of them never runs the extra query.
+
+Statistics and the header counts are loaded together, after the table itself, and refresh whenever the filters change. Above `statsLimit` rows none are computed — the header counts disappear and the menu reads *"To show stats, reduce rows below 1500 using filters."*
+
+```php
+<livewire:table-model-browser
+    model="App\Models\Order"
+    :viewAttributes="['symbol' => 'Symbol', 'price' => 'Total', 'customer.name' => 'Ordered by']"
+    :formats="['price' => 'formatCurrency']"
+    :statsAttributes="['price']"
+/>
+```
 
 ## License & Commercial Terms
 
