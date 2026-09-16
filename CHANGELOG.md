@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [7.2.0-rc.1] - 2026-09-16
 
 ### Added
 
@@ -929,7 +929,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
-[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[7.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.1.0
 [7.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.0.0...v7.1.0
 [7.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.0.0
 [7.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v6.6.1...v7.0.0
