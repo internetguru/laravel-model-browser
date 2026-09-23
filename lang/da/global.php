@@ -38,7 +38,7 @@ return [
     ],
     'stats' => [
         'title' => 'Kolonnestatistik',
-        'limit-exceeded' => 'Reducér antallet af rækker under :limit med filtre for at vise statistik.',
+        'limit-exceeded' => 'Reducér antallet af resultater under :limit med filtre for at vise statistik.',
         'copy' => 'Kopiér',
         'copied' => 'Kopieret',
     ],
