@@ -196,9 +196,12 @@ class TableModelBrowserTest extends TestCase
         ]);
 
         $this->assertMatchesRegularExpression('/<button[^>]*model-browser__stats-toggle[^>]*disabled/', $component->html());
+        $component->assertDontSeeHtml('model-browser__stats-toggle--ready');
 
         $component->call('loadTotalStats');
         $this->assertDoesNotMatchRegularExpression('/<button[^>]*model-browser__stats-toggle[^>]*disabled/', $component->html());
+        $component->assertSeeHtml('model-browser__stats-toggle--ready')
+            ->assertDontSeeHtml('model-browser__stats-toggle--unavailable');
     }
 
     public function test_stats_menu_is_offered_only_on_the_configured_columns()
@@ -248,7 +251,9 @@ class TableModelBrowserTest extends TestCase
             'statsLimit' => 3,
         ])->call('loadTotalStats')
             ->assertSee(__('model-browser::global.stats.limit-exceeded', ['limit' => 3]))
-            ->assertDontSeeHtml('model-browser__stats-list');
+            ->assertDontSeeHtml('model-browser__stats-list')
+            ->assertSeeHtml('model-browser__stats-toggle--unavailable')
+            ->assertDontSeeHtml('model-browser__stats-toggle--ready');
     }
 
     public function test_stats_limit_reads_with_thousands_separators()
