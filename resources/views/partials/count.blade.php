@@ -15,7 +15,7 @@
 >
     @if ($totalCount === null)
         <span x-data x-init="$wire.$island('count').loadTotalCount()" style="display: none;"></span>
-        <span class="text-muted">@lang('model-browser::pagination.many')</span>
+        <span>@lang('model-browser::pagination.many')</span>
     @else
         {{ $totalCount }}
     @endif
