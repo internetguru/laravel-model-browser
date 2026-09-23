@@ -31,7 +31,7 @@
             }
 
             i {
-                color: #bcbcbc;
+                color: $gray-600;
                 width: 0.5em !important;
                 padding-right: 0.25em;
                 flex-shrink: 0;
@@ -73,7 +73,7 @@
                 &:empty:before,
                 mark:empty:before {
                     content: '""';
-                    color: #ced0d1;
+                    color: $gray-700;
                 }
 
                 mark:empty {
@@ -120,8 +120,7 @@
         }
 
         &__hint {
-            font-size: 0.75rem;
-            color: var(--bs-secondary, #6c757d);
+            color: var(--bs-body-color, #212529);
             padding: 0.25rem 1.25rem 0;
             position: absolute;
             top: 100%;
@@ -293,7 +292,7 @@
     min-width: 3.25em;
     min-height: 1em;
     font-weight: 400;
-    color: var(--bs-secondary, #6c757d);
+    color: var(--bs-body-color, #212529);
     white-space: nowrap;
 }
 
@@ -360,8 +359,7 @@
     &-note {
         margin: 0;
         max-width: 16rem;
-        color: var(--bs-secondary, #6c757d);
-        font-size: 0.875rem;
+        color: var(--bs-body-color, #212529);
     }
 
     &-list {
@@ -369,11 +367,9 @@
         grid-template-columns: auto 1fr;
         column-gap: 1rem;
         margin: 0;
-        font-size: 0.875rem;
 
         dt {
             font-weight: 500;
-            color: var(--bs-secondary, #6c757d);
         }
 
         dd {
@@ -393,7 +389,6 @@
         border-top: thin solid var(--bs-border-color, #dfe1e5);
         background: none;
         color: var(--bs-link-color, #0d6efd);
-        font-size: 0.875rem;
         cursor: pointer;
 
         &:hover,
