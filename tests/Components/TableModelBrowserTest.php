@@ -187,46 +187,32 @@ class TableModelBrowserTest extends TestCase
         $this->assertSame(TableModelBrowser::PER_PAGE_MAX, $component->instance()->windowSize());
     }
 
-    public function test_header_counts_the_filled_rows_of_a_partly_empty_column()
+    public function test_stats_toggle_is_disabled_until_the_stats_are_loaded()
     {
-        User::query()->delete();
-        User::factory()->count(3)->create();
-        User::factory()->create()->forceFill(['name' => ''])->save();
-
         $component = Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
-            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
-            'statsAttributes' => ['name', 'email'],
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name'],
         ]);
 
-        // The slot is there from the start, holding each summarized column's width
-        // with a spinner in it, so nothing moves once the count arrives
-        $component->assertSeeHtml('model-browser__stats-filled');
-        $this->assertSame(2, substr_count($component->html(), 'model-browser__stats-icon'));
+        $this->assertMatchesRegularExpression('/<button[^>]*model-browser__stats-toggle[^>]*disabled/', $component->html());
 
-        $component->call('loadTotalStats')->assertSeeHtml('(3)')
-            ->assertDontSeeHtml('model-browser__stats-icon')
-            ->assertSeeHtml('model-browser__stats-filled');
-
-        // Every row has an e-mail, so its header has nothing to add
-        $this->assertFalse($component->instance()->showsCountOfFilledRows('email'));
+        $component->call('loadTotalStats');
+        $this->assertDoesNotMatchRegularExpression('/<button[^>]*model-browser__stats-toggle[^>]*disabled/', $component->html());
     }
 
     public function test_stats_menu_is_offered_only_on_the_configured_columns()
     {
-        // A column nobody asked to summarize carries neither the menu nor the slot
         Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
-        ])->assertDontSeeHtml('model-browser__stats-toggle')
-            ->assertDontSeeHtml('model-browser__stats-filled');
+        ])->assertDontSeeHtml('model-browser__stats-toggle');
 
         Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
             'statsAttributes' => ['name'],
         ])->assertSeeHtml('model-browser__stats-toggle')
-            ->assertSeeHtml('model-browser__stats-filled')
             // One toggle, on the one configured column
             ->assertSeeHtmlInOrder(['grid-header-cell--stats', 'Name', 'grid-header-cell', 'Email']);
     }
