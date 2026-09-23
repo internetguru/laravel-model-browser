@@ -123,7 +123,11 @@
 >
     <button
         type="button"
-        class="model-browser__stats-toggle"
+        @class([
+            'model-browser__stats-toggle',
+            'model-browser__stats-toggle--ready' => $loaded && ! $overLimit,
+            'model-browser__stats-toggle--unavailable' => $overLimit,
+        ])
         x-bind:class="{ 'active': open }"
         x-ref="toggle"
         @disabled(! $loaded && ! $overLimit)

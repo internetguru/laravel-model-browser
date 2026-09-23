@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.4.2] - 2026-09-23
+
+### Changed
+
+- A column's statistics icon is blue once its statistics are in, light grey while they load, and dark grey when there are too many rows to count them.
+
 ## [7.4.1] - 2026-09-23
 
 ### Fixed
@@ -979,6 +985,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[7.4.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.1...v7.4.2
 [7.4.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.0...v7.4.1
 [7.4.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.3.1...v7.4.0
 [7.4.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.3.1
