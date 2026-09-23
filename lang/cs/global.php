@@ -38,7 +38,7 @@ return [
     ],
     'stats' => [
         'title' => 'Statistiky sloupce',
-        'limit-exceeded' => 'Pro zobrazení statistik omezte filtry počet řádků pod :limit.',
+        'limit-exceeded' => 'Pro zobrazení statistik omezte filtry počet výsledků pod :limit.',
         'copy' => 'Kopírovat',
         'copied' => 'Zkopírováno',
     ],
