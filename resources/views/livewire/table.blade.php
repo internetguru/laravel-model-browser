@@ -94,18 +94,6 @@
                                     @endif
                                     {{ $trans }}
                                     @if ($hasStats)
-                                        {{--
-                                            How many rows have a value at all, worth saying only
-                                            when some of them do not. The slot is rendered either
-                                            way and keeps its width, so a summarized column does
-                                            not jump when the count arrives or turns out to be moot.
-                                        --}}
-                                        <span
-                                            class="model-browser__stats-filled"
-                                            @if ($this->showsCountOfFilledRows($column))
-                                                title="@lang('model-browser::global.stats.filled', ['count' => $columnStats['countnz'], 'total' => $columnStats['count']])"
-                                            @endif
-                                        >@if ($columnStats === null && ! $statsOverLimit)<span class="model-browser__stats-icon"><i class="fa-solid fa-spinner fa-spin"></i></span>@elseif ($this->showsCountOfFilledRows($column))({{ $columnStats['countnz'] }})@endif</span>
                                         <x-model-browser::column-stats
                                             :label="$trans"
                                             :rows="$this->columnStatsRows($column)"

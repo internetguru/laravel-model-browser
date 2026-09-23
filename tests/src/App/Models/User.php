@@ -30,8 +30,18 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
+    public function getPostCountAttribute(): int
+    {
+        return $this->posts->count();
+    }
+
     public static function summary()
     {
         return self::query();
+    }
+
+    public static function withPosts()
+    {
+        return self::with('posts');
     }
 }

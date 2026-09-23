@@ -5,6 +5,7 @@ namespace Tests\Components;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 use Livewire\Livewire;
@@ -797,6 +798,27 @@ class BaseModelBrowserTest extends TestCase
         $component->call('loadTotalStats')
             ->assertSet('stats', null)
             ->assertSet('statsOverLimit', true);
+    }
+
+    public function test_stats_keep_the_relations_the_summary_method_eager_loads()
+    {
+        User::query()->delete();
+        foreach ([2, 0, 1, 3, 1] as $posts) {
+            User::factory()->create()->posts()->createMany(array_fill(0, $posts, ['title' => 'Post']));
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class . '@withPosts',
+            'viewAttributes' => ['post_count' => 'Posts'],
+            'statsAttributes' => ['post_count'],
+        ]);
+
+        DB::enableQueryLog();
+        $component->call('loadTotalStats');
+        $postQueries = array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], '"posts"'));
+
+        $this->assertSame(7.0, $component->get('stats')['post_count']['sum']);
+        $this->assertLessThan(User::count(), count($postQueries));
     }
 
     public function test_changing_the_filters_discards_the_loaded_stats()

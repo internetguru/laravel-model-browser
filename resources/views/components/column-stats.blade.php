@@ -5,9 +5,10 @@
 
     The rows are rendered server-side (see BaseModelBrowser::columnStatsRows)
     inside the header's "stats" island, so they arrive with the statistics and
-    without re-running the data query. The panel itself is `position: fixed`
-    and placed on open: the header cell and the scroller around the table both
-    clip their overflow, and a menu laid out inside them would be cut off.
+    without re-running the data query. Until they have, the icon is disabled.
+    The panel itself is `position: fixed` and placed on open: the header cell
+    and the scroller around the table both clip their overflow, and a menu laid
+    out inside them would be cut off.
 --}}
 @props(['label' => '', 'rows' => [], 'loaded' => false, 'overLimit' => false, 'limit' => 0])
 
@@ -17,11 +18,33 @@
         open: false,
         placed: false,
         copied: false,
+        {{--
+            Kept within the visual viewport: on a phone, a page wider than the
+            screen widens the layout viewport (and innerWidth) beyond what is seen.
+            The menu is moved to the visible left edge before it is measured, so
+            its width is not squeezed by the space right of the toggle.
+        --}}
         place() {
+            const gap = 8;
+            const viewport = window.visualViewport;
+            const left = viewport ? viewport.offsetLeft : 0;
+            const top = viewport ? viewport.offsetTop : 0;
+            const width = viewport ? viewport.width : document.documentElement.clientWidth;
+            const height = viewport ? viewport.height : document.documentElement.clientHeight;
             const button = $refs.toggle.getBoundingClientRect();
             const menu = $refs.menu;
-            menu.style.top = `${button.bottom + 4}px`;
-            menu.style.left = `${Math.max(8, Math.min(button.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+
+            menu.style.maxWidth = `${width - 2 * gap}px`;
+            menu.style.maxHeight = `${height - 2 * gap}px`;
+            menu.style.left = `${left + gap}px`;
+            menu.style.top = `${top + gap}px`;
+
+            let y = button.bottom + 4;
+            if (y + menu.offsetHeight > top + height - gap) {
+                y = button.top - 4 - menu.offsetHeight;
+            }
+            menu.style.top = `${Math.max(top + gap, Math.min(y, top + height - gap - menu.offsetHeight))}px`;
+            menu.style.left = `${Math.max(left + gap, Math.min(button.left, left + width - menu.offsetWidth - gap))}px`;
         },
         toggle() {
             this.open = !this.open;
@@ -96,12 +119,14 @@
     {{-- Capture, so the table's own horizontal scroller closes it too. --}}
     x-on:scroll.window.capture="open = false"
     x-on:resize.window="open = false"
+    x-on:mb-refresh-stats.window="open = false"
 >
     <button
         type="button"
         class="model-browser__stats-toggle"
         x-bind:class="{ 'active': open }"
         x-ref="toggle"
+        @disabled(! $loaded && ! $overLimit)
         x-on:click.stop="
             if (!open) $dispatch('stats-opened', $el);
             toggle();
@@ -121,9 +146,7 @@
     >
         @if ($overLimit)
             <p class="model-browser__stats-note">@lang('model-browser::global.stats.limit-exceeded', ['limit' => $limit])</p>
-        @elseif (! $loaded)
-            <p class="model-browser__stats-note"><i class="fa-solid fa-spinner fa-spin"></i></p>
-        @else
+        @elseif ($loaded)
             <dl class="model-browser__stats-list">
                 @foreach ($rows as $row)
                     <dt>{{ $row['label'] }}</dt>

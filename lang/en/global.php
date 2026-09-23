@@ -38,7 +38,6 @@ return [
     ],
     'stats' => [
         'title' => 'Column statistics',
-        'filled' => ':count of :total rows have a value',
         'limit-exceeded' => 'To show stats, reduce rows below :limit using filters.',
         'copy' => 'Copy',
         'copied' => 'Copied',

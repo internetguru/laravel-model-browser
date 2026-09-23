@@ -4,11 +4,13 @@ namespace Internetguru\ModelBrowser\Components;
 
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Number;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
@@ -759,10 +761,7 @@ class BaseModelBrowser extends Component
             $query->orderBy((new $this->model)->getKeyName());
         }
 
-        // cursor() streams rows from a single query, but does not support
-        // eager loading — fall back to offset chunking when relations are
-        // requested.
-        $rows = empty($this->with) ? $query->cursor() : $query->lazy(500);
+        $rows = $this->streamRows($query);
 
         foreach ($rows as $item) {
             foreach ($attributes as $attribute) {
@@ -816,6 +815,19 @@ class BaseModelBrowser extends Component
     }
 
     /**
+     * Stream the models of a query. cursor() runs a single query but ignores
+     * eager loading, so a query that eager loads relations — through `with` or
+     * in the model's own summary method — is walked in chunks instead, or every
+     * row would load its relations one by one.
+     *
+     * @return LazyCollection<int, Model>
+     */
+    protected function streamRows(Builder $query): LazyCollection
+    {
+        return empty($query->getEagerLoads()) ? $query->cursor() : $query->lazy(500);
+    }
+
+    /**
      * The statistics of one column, or null while none are loaded.
      *
      * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}|null
@@ -823,17 +835,6 @@ class BaseModelBrowser extends Component
     public function columnStats(string $attribute): ?array
     {
         return $this->stats[$attribute] ?? null;
-    }
-
-    /**
-     * Whether a column's header should carry its bare COUNTNZ, i.e. whether
-     * some of its rows are empty and some are not.
-     */
-    public function showsCountOfFilledRows(string $attribute): bool
-    {
-        $stats = $this->columnStats($attribute);
-
-        return $stats !== null && $stats['count'] > 0 && $stats['countnz'] < $stats['count'];
     }
 
     /**
@@ -1047,10 +1048,7 @@ class BaseModelBrowser extends Component
             $out = fopen('php://output', 'w');
             fputcsv($out, $headers);
 
-            // cursor() streams rows from a single query, but does not support
-            // eager loading — fall back to offset chunking when relations are
-            // requested.
-            $rows = empty($this->with) ? $query->cursor() : $query->lazy(500);
+            $rows = $this->streamRows($query);
 
             $count = 0;
             foreach ($rows as $item) {
