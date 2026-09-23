@@ -118,12 +118,12 @@ Formatting functions for attribute values. Each function receives `($value, $ite
 Define the formatting functions as global helpers, e.g. in a `helpers.php` file:
 
 ```php
-function formatDateTime($order, $value)
+function formatDateTime($value, $item)
 {
     return \Carbon\Carbon::parse($value)->format('d.m.Y H:i');
 }
 
-function formatCurrency($order, $value)
+function formatCurrency($value, $item)
 {
     return number_format($value / 100, 2) . ' CZK';
 }
