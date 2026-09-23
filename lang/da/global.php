@@ -38,7 +38,6 @@ return [
     ],
     'stats' => [
         'title' => 'Kolonnestatistik',
-        'filled' => ':count af :total rækker har en værdi',
         'limit-exceeded' => 'Reducér antallet af rækker under :limit med filtre for at vise statistik.',
         'copy' => 'Kopiér',
         'copied' => 'Kopieret',

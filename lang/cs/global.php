@@ -38,7 +38,6 @@ return [
     ],
     'stats' => [
         'title' => 'Statistiky sloupce',
-        'filled' => 'Hodnotu má :count z :total řádků',
         'limit-exceeded' => 'Pro zobrazení statistik omezte filtry počet řádků pod :limit.',
         'copy' => 'Kopírovat',
         'copied' => 'Zkopírováno',

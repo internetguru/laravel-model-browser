@@ -30,6 +30,6 @@ return [
     |
     */
 
-    'stats_limit' => 1500,
+    'stats_limit' => 5000,
 
 ];

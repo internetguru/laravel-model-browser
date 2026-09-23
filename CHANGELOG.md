@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- A column's statistics icon is greyed out and disabled until its statistics are in, instead of a spinner showing in the header.
+- `model-browser.stats_limit` defaults to 5000 rows.
+
+### Removed
+
+- A summarized column's header no longer shows how many of its rows have a value, e.g. "Ordered by (145)", and `showsCountOfFilledRows()` and the `model-browser::global.stats.filled` translation are gone with it.
+
+### Fixed
+
+- The statistics menu stays within the visible part of the screen on a phone, and its labels no longer break mid-word.
+- Column statistics and CSV exports keep the relations a model's summary method eager loads, instead of loading them row by row.
+
 ## [7.3.1] - 2026-09-23
 
 ### Fixed
@@ -953,6 +969,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [7.3.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.3.0...v7.3.1
 [7.3.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.2.0...v7.3.0
 [7.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.2.0
