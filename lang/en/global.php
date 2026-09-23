@@ -38,7 +38,7 @@ return [
     ],
     'stats' => [
         'title' => 'Column statistics',
-        'limit-exceeded' => 'To show stats, reduce rows below :limit using filters.',
+        'limit-exceeded' => 'To show stats, reduce results below :limit using filters.',
         'copy' => 'Copy',
         'copied' => 'Copied',
     ],

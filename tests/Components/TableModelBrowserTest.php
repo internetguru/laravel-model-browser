@@ -251,6 +251,18 @@ class TableModelBrowserTest extends TestCase
             ->assertDontSeeHtml('model-browser__stats-list');
     }
 
+    public function test_stats_limit_reads_with_thousands_separators()
+    {
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => ['name'],
+            'statsLimit' => 1500,
+        ])->set('statsOverLimit', true)
+            ->assertSee('To show stats, reduce results below 1,500 using filters.')
+            ->assertDontSeeHtml('model-browser__stats-list');
+    }
+
     public function test_renders_copy_page_button()
     {
         Livewire::test(TableModelBrowser::class, [

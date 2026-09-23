@@ -554,7 +554,7 @@ Only columns whose every value is a number get the numeric statistics; the rest 
 
 Nothing outside `statsAttributes` is summarized: those columns carry no menu, and a browser naming none of them never runs the extra query.
 
-Statistics are loaded after the table itself, and refresh whenever the filters change. Relations the query eager loads, through `with` or in the model's summary method, are loaded in chunks rather than row by row. Above `statsLimit` rows none are computed, and the menu reads *"To show stats, reduce rows below 5000 using filters."*
+Statistics are loaded after the table itself, and refresh whenever the filters change. Relations the query eager loads, through `with` or in the model's summary method, are loaded in chunks rather than row by row. Above `statsLimit` rows none are computed, and the menu reads *"To show stats, reduce results below 5,000 using filters."*
 
 ```php
 <livewire:table-model-browser

@@ -145,7 +145,7 @@
         style="display: none;"
     >
         @if ($overLimit)
-            <p class="model-browser__stats-note">@lang('model-browser::global.stats.limit-exceeded', ['limit' => $limit])</p>
+            <p class="model-browser__stats-note">@lang('model-browser::global.stats.limit-exceeded', ['limit' => Illuminate\Support\Number::format($limit)])</p>
         @elseif ($loaded)
             <dl class="model-browser__stats-list">
                 @foreach ($rows as $row)
