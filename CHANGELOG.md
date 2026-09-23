@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.3.1] - 2026-09-23
+
+### Fixed
+
+- Column statistics, their notes and the header counts read at full size in the body colour, and an empty cell mark and the sort icons are dark enough to see.
+
 ## [7.3.0] - 2026-09-23
 
 _Stable release based on [7.3.0-rc.1]._
@@ -947,6 +953,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[7.3.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.3.0...v7.3.1
 [7.3.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.2.0...v7.3.0
 [7.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.2.0
 [7.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.1.0...v7.2.0
