@@ -551,6 +551,57 @@ class BaseModelBrowserTest extends TestCase
         $component->assertSee('Zenon Other');
     }
 
+    public function test_date_range_over_a_relation_needs_both_bounds_on_the_same_row()
+    {
+        User::query()->delete();
+        $straddling = User::factory()->create(['name' => 'Posted Around The Range']);
+        $inside = User::factory()->create(['name' => 'Posted On The Closing Day']);
+        $straddling->posts()->create(['published_at' => '2026-01-10']);
+        $straddling->posts()->create(['published_at' => '2026-06-10']);
+        $inside->posts()->create(['published_at' => '2026-03-31 14:30:00']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'publishedFrom' => ['type' => 'date_from', 'label' => 'From', 'column' => 'published_at', 'relation' => 'posts'],
+                'publishedTo' => ['type' => 'date_to', 'label' => 'To', 'column' => 'published_at', 'relation' => 'posts'],
+            ],
+            'filterSessionKey' => 'test-mb-range-relation',
+        ]);
+
+        $component->set('searchQuery', 'publishedFrom:2026-03-01 publishedTo:2026-03-31')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Posted On The Closing Day')
+            ->assertDontSee('Posted Around The Range');
+
+        // A lone bound is met by any row
+        $component->set('searchQuery', 'publishedFrom:2026-03-01')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 2);
+    }
+
+    public function test_date_range_over_an_or_group_needs_both_bounds_on_the_same_column()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Created Before Updated After', 'created_at' => '2026-01-10', 'updated_at' => '2026-06-10']);
+        User::factory()->create(['name' => 'Updated In The Range', 'created_at' => '2026-01-10', 'updated_at' => '2026-03-10']);
+
+        $columns = ['created_at', 'updated_at'];
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'changedFrom' => ['type' => 'date_from', 'label' => 'From', 'columns' => $columns],
+                'changedTo' => ['type' => 'date_to', 'label' => 'To', 'columns' => $columns],
+            ],
+            'filterSessionKey' => 'test-mb-range-group',
+        ]);
+
+        $component->set('searchQuery', 'changedFrom:2026-03-01 changedTo:2026-03-31')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Updated In The Range');
+    }
+
     public function test_apply_filters_builds_search_query()
     {
         $component = Livewire::test(BaseModelBrowser::class, [

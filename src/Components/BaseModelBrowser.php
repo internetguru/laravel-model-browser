@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use Closure;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -1143,8 +1144,19 @@ class BaseModelBrowser extends Component
             }
         }
 
+        $ranges = $this->pairRangeTerms($terms);
+
         // All terms are AND'd together
-        foreach ($terms as $term) {
+        foreach ($terms as $index => $term) {
+            if (in_array($index, $ranges, true)) {
+                // Applied together with its lower bound
+                continue;
+            }
+            if (isset($ranges[$index])) {
+                $this->applyRangeTerms($query, $term, $terms[$ranges[$index]]);
+
+                continue;
+            }
             if ($term['key'] === null) {
                 // Free text → OR across searchable columns (match any), AND'd with other terms
                 if (empty($searchableColumns)) {
@@ -1203,6 +1215,74 @@ class BaseModelBrowser extends Component
                 });
             }
         }
+    }
+
+    /**
+     * Pair each lower bound term with an upper bound term over the same columns.
+     *
+     * Applied one by one, `from` and `to` over a to-many relation or an OR group may each be
+     * met by a different row, so a row before the range and another after it would match.
+     * A pair is applied as one condition per column instead, see applyRangeTerms().
+     *
+     * @param  array<int, array{key: ?string, value: string}>  $terms
+     * @return array<int, int> lower bound term index => upper bound term index
+     */
+    protected function pairRangeTerms(array $terms): array
+    {
+        $upperBounds = [
+            self::FILTER_DATE_FROM => self::FILTER_DATE_TO,
+            self::FILTER_NUMBER_FROM => self::FILTER_NUMBER_TO,
+        ];
+        $bounds = [];
+        foreach ($terms as $index => $term) {
+            $config = $this->filterConfig[$term['key'] ?? ''] ?? [];
+            $type = $config['type'] ?? null;
+            $target = array_map(fn ($col) => [$col['column'], $col['relation']], $this->getFilterColumns($config));
+            if (! in_array($type, [...array_keys($upperBounds), ...$upperBounds], true)
+                || empty($target)
+                || $term['value'] === self::FILTER_EMPTY
+                || $this->validateFilterValue($term['key'], $term['value'])['error']) {
+                continue;
+            }
+            $bounds[$index] = ['type' => $type, 'target' => $target];
+        }
+
+        $pairs = [];
+        foreach ($bounds as $fromIndex => $from) {
+            $upperType = $upperBounds[$from['type']] ?? null;
+            foreach ($bounds as $toIndex => $to) {
+                if ($to['type'] === $upperType && $to['target'] === $from['target'] && ! in_array($toIndex, $pairs, true)) {
+                    $pairs[$fromIndex] = $toIndex;
+                    break;
+                }
+            }
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * Apply a lower and an upper bound so both must hold for the same row of each column's
+     * relation. The columns are OR'd, as for a single term.
+     *
+     * @param  array{key: string, value: string}  $from
+     * @param  array{key: string, value: string}  $to
+     */
+    protected function applyRangeTerms(Builder $query, array $from, array $to): void
+    {
+        $fromColumns = $this->getFilterColumns($this->filterConfig[$from['key']]);
+        $toColumns = $this->getFilterColumns($this->filterConfig[$to['key']]);
+        $valueFor = fn (array $col, string $value) => $col['preprocessor'] ? ($col['preprocessor'])($value) : $value;
+
+        $query->where(function (Builder $sub) use ($fromColumns, $toColumns, $from, $to, $valueFor) {
+            foreach ($fromColumns as $i => $fromCol) {
+                $toCol = $toColumns[$i];
+                $sub->orWhere(fn (Builder $q) => $this->whereInRelation($q, $fromCol['relation'], function (Builder $row) use ($fromCol, $toCol, $from, $to, $valueFor) {
+                    $this->applyWhere($row, $fromCol['column'], $fromCol['type'], $valueFor($fromCol, $from['value']), $fromCol['timezone']);
+                    $this->applyWhere($row, $toCol['column'], $toCol['type'], $valueFor($toCol, $to['value']), $toCol['timezone']);
+                }));
+            }
+        });
     }
 
     /**
@@ -1278,51 +1358,64 @@ class BaseModelBrowser extends Component
      */
     protected function applyCondition(Builder $query, string $column, ?string $relation, string $type, string $value, ?string $timezone = null, bool $asciiFast = false): void
     {
-        $applyWhere = function (Builder $q) use ($column, $type, $value, $timezone, $asciiFast) {
-            try {
-                $parseDate = function (string $v) use ($timezone) {
-                    $date = Carbon::parse($v);
+        $this->whereInRelation($query, $relation, fn (Builder $q) => $this->applyWhere($q, $column, $type, $value, $timezone, $asciiFast));
+    }
+
+    /**
+     * Apply the callback to the query, nested in `whereHas` along the relation's dot path.
+     */
+    protected function whereInRelation(Builder $query, ?string $relation, Closure $apply): void
+    {
+        if (! $relation) {
+            $apply($query);
+
+            return;
+        }
+
+        $nested = $apply;
+        foreach (array_reverse(explode('.', $relation)) as $part) {
+            $inner = $nested;
+            $nested = fn (Builder $q) => $q->whereHas($part, $inner);
+        }
+        $nested($query);
+    }
+
+    /**
+     * Apply one filter condition on a column of the query's own table.
+     */
+    protected function applyWhere(Builder $query, string $column, string $type, string $value, ?string $timezone = null, bool $asciiFast = false): void
+    {
+        try {
+            $parseDate = function (string $v) use ($timezone) {
+                $date = Carbon::parse($v);
+                if ($timezone) {
+                    $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
+                }
+
+                return $date;
+            };
+            match ($type) {
+                self::FILTER_STRING => $query->whereLikeUnaccented($column, $value, $asciiFast),
+                self::FILTER_DATE_FROM => $query->where($column, '>=', $parseDate($value)),
+                self::FILTER_DATE_TO => $query->where($column, '<=', (function () use ($value, $timezone) {
+                    $date = Carbon::parse($value);
+                    if ($date->format('H:i:s') === '00:00:00') {
+                        $date = $date->endOfDay();
+                    }
                     if ($timezone) {
                         $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
                     }
 
                     return $date;
-                };
-                match ($type) {
-                    self::FILTER_STRING => $q->whereLikeUnaccented($column, $value, $asciiFast),
-                    self::FILTER_DATE_FROM => $q->where($column, '>=', $parseDate($value)),
-                    self::FILTER_DATE_TO => $q->where($column, '<=', (function () use ($value, $timezone) {
-                        $date = Carbon::parse($value);
-                        if ($date->format('H:i:s') === '00:00:00') {
-                            $date = $date->endOfDay();
-                        }
-                        if ($timezone) {
-                            $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
-                        }
-
-                        return $date;
-                    })()),
-                    self::FILTER_NUMBER_FROM => $q->where($column, '>=', $value),
-                    self::FILTER_NUMBER_TO => $q->where($column, '<=', $value),
-                    self::FILTER_DATE => $q->where($column, $parseDate($value)),
-                    self::FILTER_NUMBER, self::FILTER_OPTIONS, self::FILTER_CHECKBOX => $q->where($column, $value),
-                    default => $q->whereLikeUnaccented($column, $value, $asciiFast),
-                };
-            } catch (Exception $e) {
-                // Invalid value (e.g. unparseable date), skip
-            }
-        };
-
-        if ($relation) {
-            $parts = explode('.', $relation);
-            $nested = $applyWhere;
-            foreach (array_reverse($parts) as $part) {
-                $inner = $nested;
-                $nested = fn (Builder $q) => $q->whereHas($part, $inner);
-            }
-            $nested($query);
-        } else {
-            $applyWhere($query);
+                })()),
+                self::FILTER_NUMBER_FROM => $query->where($column, '>=', $value),
+                self::FILTER_NUMBER_TO => $query->where($column, '<=', $value),
+                self::FILTER_DATE => $query->where($column, $parseDate($value)),
+                self::FILTER_NUMBER, self::FILTER_OPTIONS, self::FILTER_CHECKBOX => $query->where($column, $value),
+                default => $query->whereLikeUnaccented($column, $value, $asciiFast),
+            };
+        } catch (Exception $e) {
+            // Invalid value (e.g. unparseable date), skip
         }
     }
 
