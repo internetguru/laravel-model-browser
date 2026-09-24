@@ -53,6 +53,7 @@ abstract class TestCase extends Orchestra
             $table->id();
             $table->foreignId('user_id');
             $table->string('title')->nullable();
+            $table->dateTime('published_at')->nullable();
         });
     }
 
