@@ -312,6 +312,10 @@ Each `columns` entry is either a plain column name or an array overriding `colum
 
 All columns of an OR group also take part in free-text search, exactly as separate `column` filters would.
 
+### Ranges
+
+A `date_from` and a `date_to` filter (or `number_from` and `number_to`) over the same `column`/`columns` and `relation` are applied as one range: both bounds must hold for the same related row, and for the same column of an OR group. With `from` and `to` over `posts.published_at`, a user with one post before the range and another after it is not listed. A lone bound, or two bounds over different columns, apply each on their own.
+
 ### Search Query Syntax
 
 The search bar supports Gmail-style syntax:

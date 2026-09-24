@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.4.3] - 2026-09-24
+
+### Fixed
+
+- A from and a to filter over the same columns are one range: both bounds must hold for the same related row, so a row before the range and another after it no longer match.
+
 ## [7.4.2] - 2026-09-23
 
 ### Changed
@@ -985,6 +991,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[7.4.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.2...v7.4.3
 [7.4.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.1...v7.4.2
 [7.4.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.0...v7.4.1
 [7.4.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.3.1...v7.4.0
