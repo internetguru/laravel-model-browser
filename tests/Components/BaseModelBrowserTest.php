@@ -345,6 +345,25 @@ class BaseModelBrowserTest extends TestCase
         ]);
     }
 
+    public function test_filter_names_must_be_kebab_case()
+    {
+        foreach (['createdBy', 'created_by', 'created-', '-created', 'created--by', 'created2'] as $name) {
+            try {
+                Livewire::test(BaseModelBrowser::class, [
+                    'model' => User::class,
+                    'filters' => [
+                        $name => ['type' => 'string', 'label' => 'Name'],
+                    ],
+                    'filterSessionKey' => 'test-mb-filter-name',
+                ]);
+                $this->fail("Filter name '{$name}' was accepted.");
+            } catch (\Illuminate\View\ViewException $e) {
+                $this->assertInstanceOf(\InvalidArgumentException::class, $e->getPrevious());
+                $this->assertStringContainsString("'{$name}'", $e->getMessage());
+            }
+        }
+    }
+
     public function test_checkbox_filter_round_trips_through_the_search_query()
     {
         $component = Livewire::test(BaseModelBrowser::class, [
@@ -564,19 +583,19 @@ class BaseModelBrowserTest extends TestCase
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
             'filters' => [
-                'publishedFrom' => ['type' => 'date_from', 'label' => 'From', 'column' => 'published_at', 'relation' => 'posts'],
-                'publishedTo' => ['type' => 'date_to', 'label' => 'To', 'column' => 'published_at', 'relation' => 'posts'],
+                'published-from' => ['type' => 'date_from', 'label' => 'From', 'column' => 'published_at', 'relation' => 'posts'],
+                'published-to' => ['type' => 'date_to', 'label' => 'To', 'column' => 'published_at', 'relation' => 'posts'],
             ],
             'filterSessionKey' => 'test-mb-range-relation',
         ]);
 
-        $component->set('searchQuery', 'publishedFrom:2026-03-01 publishedTo:2026-03-31')->call('applySearch');
+        $component->set('searchQuery', 'published-from:2026-03-01 published-to:2026-03-31')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 1);
         $component->assertSee('Posted On The Closing Day')
             ->assertDontSee('Posted Around The Range');
 
         // A lone bound is met by any row
-        $component->set('searchQuery', 'publishedFrom:2026-03-01')->call('applySearch');
+        $component->set('searchQuery', 'published-from:2026-03-01')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 2);
     }
 
@@ -591,13 +610,13 @@ class BaseModelBrowserTest extends TestCase
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
             'filters' => [
-                'changedFrom' => ['type' => 'date_from', 'label' => 'From', 'columns' => $columns],
-                'changedTo' => ['type' => 'date_to', 'label' => 'To', 'columns' => $columns],
+                'changed-from' => ['type' => 'date_from', 'label' => 'From', 'columns' => $columns],
+                'changed-to' => ['type' => 'date_to', 'label' => 'To', 'columns' => $columns],
             ],
             'filterSessionKey' => 'test-mb-range-group',
         ]);
 
-        $component->set('searchQuery', 'changedFrom:2026-03-01 changedTo:2026-03-31')->call('applySearch');
+        $component->set('searchQuery', 'changed-from:2026-03-01 changed-to:2026-03-31')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 1);
         $component->assertSee('Updated In The Range');
     }

@@ -2,6 +2,8 @@
 
 namespace Internetguru\ModelBrowser\Traits;
 
+use InvalidArgumentException;
+
 /**
  * Provides Gmail-style search query parsing and filter management for Livewire components.
  *
@@ -24,6 +26,20 @@ trait HasSearchFilters
      * `attribute:""` in the search query.
      */
     public const FILTER_EMPTY = '""';
+
+    /**
+     * Filter names are kebab case, e.g. `created-by`.
+     */
+    public const FILTER_NAME_PATTERN = '[a-z]+(?:-[a-z]+)*';
+
+    public function mountHasSearchFilters(): void
+    {
+        foreach (array_keys($this->filterConfig) as $name) {
+            if (! preg_match('/^' . self::FILTER_NAME_PATTERN . '$/D', (string) $name)) {
+                throw new InvalidArgumentException("Filter name '{$name}' must be kebab case, e.g. 'created-by'.");
+            }
+        }
+    }
 
     /**
      * Hook called after filters/search are changed.
@@ -110,7 +126,7 @@ trait HasSearchFilters
         $query = $this->sanitizeSearchQuery($query);
         $terms = [];
 
-        $remaining = preg_replace_callback('/(\w+):(?:"([^"]*)"|([^\s"]+))/', function ($match) use (&$terms) {
+        $remaining = preg_replace_callback('/(?<![\w-])(' . self::FILTER_NAME_PATTERN . '):(?:"([^"]*)"|([^\s"]+))/', function ($match) use (&$terms) {
             $key = $match[1];
             // `key:""` is written with quotes, `key:value` without — the two branches of
             // the pattern above, told apart by what follows the colon.

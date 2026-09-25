@@ -24,6 +24,7 @@ Livewire lists of Eloquent models as a table or cards, with Gmail-style search, 
 
 ## Filters
 
+- Filter names (the `filters` keys) are kebab case, such as `created-by`; any other name throws on mount.
 - Each `filters` entry has:
   - `type`: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options` or `checkbox`
   - `label`, and optionally `rules`, `url`, `timezone`

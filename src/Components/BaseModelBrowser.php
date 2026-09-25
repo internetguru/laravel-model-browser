@@ -147,6 +147,7 @@ class BaseModelBrowser extends Component
     /**
      * Filter configuration.
      * Format: ['attribute' => ['type' => '...', 'label' => '...', ...]]
+     * The attribute (filter name) is kebab case, e.g. 'created-by'.
      *
      * Keys:
      * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options, checkbox)

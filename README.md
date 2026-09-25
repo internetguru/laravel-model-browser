@@ -215,7 +215,7 @@ The filter system provides a search bar with Gmail-style query syntax and an exp
 
 ### Configuration
 
-Pass an associative array to the `filters` parameter. Each key is a filter attribute name, and each value is a config array:
+Pass an associative array to the `filters` parameter. Each key is a filter name in kebab case (e.g. `created-by`), and each value is a config array:
 
 ```php
 :filters="[
@@ -245,11 +245,11 @@ Pass an associative array to the `filters` parameter. Each key is a filter attri
         'rules' => 'nullable|string|max:32',
         'url' => 'voucher',
     ],
-    'priceFrom' => [
+    'price-from' => [
         'type' => 'number_from',
         'label' => 'Price From',
     ],
-    'priceTo' => [
+    'price-to' => [
         'type' => 'number_to',
         'label' => 'Price To',
     ],
@@ -263,7 +263,7 @@ Pass an associative array to the `filters` parameter. Each key is a filter attri
 filterSessionKey="order-browser-filters"
 ```
 
-Note that `priceFrom` and `priceTo` have no `column` key — they are not auto-applied and must be handled manually in the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)).
+Note that `price-from` and `price-to` have no `column` key — they are not auto-applied and must be handled manually in the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)).
 
 ### Filter Config Keys
 
@@ -334,7 +334,7 @@ for a filter over a `relation`, a row whose relation is missing altogether. With
 of `columns`, a row qualifies only when *none* of them carries a value.
 
 ```
-ordered_by:""     # orders nobody is named on
+ordered-by:""     # orders nobody is named on
 ```
 
 A bare `attribute:` with nothing after the colon is not this — it carries no value to search
@@ -349,7 +349,7 @@ Filters with a `column` key are **auto-applied** to the Eloquent query. Filters 
 'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name']
 
 // Manual filter (applied in your model scope via HasModelBrowserFilters):
-'priceFrom' => ['type' => 'number_from', 'label' => 'Price From']
+'price-from' => ['type' => 'number_from', 'label' => 'Price From']
 ```
 
 Typical reasons to omit `column` and handle filtering manually:
@@ -376,13 +376,13 @@ class Order extends Model
         $filters = (new static)->getModelBrowserFilters();
 
         // Manual filter: price is a computed sum of related charges
-        if ($priceFrom = $filters->get('priceFrom')) {
+        if ($priceFrom = $filters->get('price-from')) {
             $query->whereRaw(
                 '(SELECT SUM(amount) FROM charges WHERE charges.order_id = orders.id) >= ?',
                 [$priceFrom * 100]
             );
         }
-        if ($priceTo = $filters->get('priceTo')) {
+        if ($priceTo = $filters->get('price-to')) {
             $query->whereRaw(
                 '(SELECT SUM(amount) FROM charges WHERE charges.order_id = orders.id) <= ?',
                 [$priceTo * 100]
@@ -482,11 +482,11 @@ Below is a complete example of an order browser with auto-applied and manual fil
             'column' => 'ulid',
             'relation' => 'charges.voucher',
         ],
-        'priceFrom' => [
+        'price-from' => [
             'type' => 'number_from',
             'label' => __('summary.price_from'),
         ],
-        'priceTo' => [
+        'price-to' => [
             'type' => 'number_to',
             'label' => __('summary.price_to'),
         ],
@@ -522,7 +522,7 @@ Below is a complete example of an order browser with auto-applied and manual fil
 
 In this example:
 - `from`, `to`, `symbol`, `voucher`, `name`, `email` have `column` set → **auto-applied** to the query
-- `priceFrom`, `priceTo` have no `column` → **manual filters** handled in `Order::summary()` via `HasModelBrowserFilters`
+- `price-from`, `price-to` have no `column` → **manual filters** handled in `Order::summary()` via `HasModelBrowserFilters`
 - `voucher` uses `relation` with dot-notation (`charges.voucher`) for nested `whereHas()` and `url` for URL initialization
 
 ## Features

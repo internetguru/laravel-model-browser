@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Filter names must be kebab case, such as `created-by`, or the component throws an `InvalidArgumentException` on mount; rename keys like `createdBy` or `created_by` in `filters`, in `HasModelBrowserFilters` lookups and in saved `q` links.
+
 ## [7.4.3] - 2026-09-24
 
 ### Fixed
