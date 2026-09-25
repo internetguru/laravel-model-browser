@@ -450,11 +450,13 @@ class BaseModelBrowserTest extends TestCase
             'filterSessionKey' => 'test-mb-empty-filters',
         ]);
 
-        $component->set('searchQuery', 'name:""')->call('applySearch');
+        foreach (['name:', 'name:""'] as $search) {
+            $component->set('searchQuery', $search)->call('applySearch');
 
-        $component->call('loadTotalCount')->assertSet('totalCount', 1);
-        $component->assertSee('blank@example.com')
-            ->assertDontSee('named@example.com');
+            $component->call('loadTotalCount')->assertSet('totalCount', 1);
+            $component->assertSee('blank@example.com')
+                ->assertDontSee('named@example.com');
+        }
     }
 
     public function test_an_empty_search_term_survives_a_round_trip_through_the_filter_panel()
@@ -471,8 +473,8 @@ class BaseModelBrowserTest extends TestCase
         $component->set('searchQuery', 'name:""')->call('applySearch')
             ->assertSet('filterValues.name', BaseModelBrowser::FILTER_EMPTY);
 
-        // Re-applying from the filter panel must not lose the term
-        $component->call('applyFilters')->assertSet('searchQuery', 'name:""');
+        // Re-applying from the filter panel keeps the term, written the short way
+        $component->call('applyFilters')->assertSet('searchQuery', 'name:');
     }
 
     public function test_empty_search_term_over_a_relation_finds_the_rows_without_a_value_on_it()
@@ -493,7 +495,7 @@ class BaseModelBrowserTest extends TestCase
             'filterSessionKey' => 'test-mb-empty-relation',
         ]);
 
-        $component->set('searchQuery', 'post:""')->call('applySearch');
+        $component->set('searchQuery', 'post:')->call('applySearch');
 
         // A missing relation and a relation carrying no value both count as empty
         $component->call('loadTotalCount')->assertSet('totalCount', 2);
@@ -502,7 +504,7 @@ class BaseModelBrowserTest extends TestCase
             ->assertDontSee('Has A Titled Post');
     }
 
-    public function test_only_an_explicitly_quoted_empty_value_means_the_empty_filter()
+    public function test_a_bare_key_means_no_value_only_for_a_filter()
     {
         $component = Livewire::test(BaseModelBrowser::class, [
             'model' => User::class,
@@ -513,10 +515,43 @@ class BaseModelBrowserTest extends TestCase
             'filterSessionKey' => 'test-mb-bare-key',
         ]);
 
-        // A bare `name:` has no value to match on; it stays free text, as before
-        $component->set('searchQuery', 'name:')->call('applySearch')
-            ->assertSet('filterValues.name', '')
-            ->assertSet('searchQuery', 'name:');
+        $component->set('searchQuery', 'name: Alice')->call('applySearch')
+            ->assertSet('filterValues.name', BaseModelBrowser::FILTER_EMPTY)
+            ->call('applyFilters')
+            ->assertSet('searchQuery', 'name: Alice');
+
+        // A key that is no filter, and a value still being typed, stay free text
+        foreach (['note:', 'name:"Ali'] as $search) {
+            $component->set('searchQuery', $search)->call('applySearch')
+                ->assertSet('filterValues.name', '')
+                ->assertSet('searchQuery', $search);
+        }
+    }
+
+    public function test_no_value_typed_in_the_panel_is_valid_for_a_number_filter()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('credit')->nullable();
+        });
+
+        User::query()->delete();
+        User::factory()->create(['name' => 'Has Credit'])->forceFill(['credit' => 500])->save();
+        User::factory()->create(['name' => 'Has No Credit']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'credit' => ['type' => 'number', 'label' => 'Credit', 'column' => 'credit'],
+            ],
+            'filterSessionKey' => 'test-mb-number-empty',
+        ]);
+
+        $component->set('filterValues.credit', BaseModelBrowser::FILTER_EMPTY)->call('applyFilters')
+            ->assertHasNoErrors()
+            ->assertSet('searchQuery', 'credit:');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Has No Credit')->assertDontSee('Has Credit');
     }
 
     public function test_or_column_group_matches_any_of_its_columns()

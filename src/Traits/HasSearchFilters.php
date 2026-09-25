@@ -22,8 +22,8 @@ trait HasSearchFilters
     public const SEARCH_MAX_TERMS = 20;
 
     /**
-     * The filter value standing for "this filter has no value at all", written as
-     * `attribute:""` in the search query.
+     * The filter value standing for "this filter has no value at all", written as a bare
+     * `attribute:` in the search query (`attribute:""` reads the same).
      */
     public const FILTER_EMPTY = '""';
 
@@ -83,7 +83,7 @@ trait HasSearchFilters
         $parts = [];
         foreach ($this->filterValues as $attr => $value) {
             if ($value !== '' && $value !== null) {
-                $parts[] = str_contains($value, ' ') ? "{$attr}:\"{$value}\"" : "{$attr}:{$value}";
+                $parts[] = $this->formatSearchTerm($attr, $value);
             }
         }
         foreach ($freeText as $term) {
@@ -126,19 +126,22 @@ trait HasSearchFilters
         $query = $this->sanitizeSearchQuery($query);
         $terms = [];
 
-        $remaining = preg_replace_callback('/(?<![\w-])(' . self::FILTER_NAME_PATTERN . '):(?:"([^"]*)"|([^\s"]+))/', function ($match) use (&$terms) {
+        // A bare `key:` ends at a space or the end of the query, so an unfinished `key:"two` stays free text
+        $remaining = preg_replace_callback('/(?<![\w-])(' . self::FILTER_NAME_PATTERN . '):(?:"([^"]*)"|([^\s"]+)|(?=\s|$))/', function ($match) use (&$terms) {
             $key = $match[1];
-            // `key:""` is written with quotes, `key:value` without — the two branches of
+            // `key:""` is written with quotes, `key:value` without — the branches of
             // the pattern above, told apart by what follows the colon.
             $quoted = str_starts_with(substr($match[0], strlen($key) + 1), '"');
             $value = $quoted ? ($match[2] ?? '') : ($match[3] ?? '');
             $value = mb_substr(trim($value), 0, 255);
             $isConfigured = isset($this->filterConfig[$key]);
             if ($value === '') {
-                // An explicit `key:""` searches for rows the filter finds nothing on;
-                // anything else empty carries no meaning and is dropped.
-                if ($quoted && $isConfigured) {
+                // `key:` and `key:""` search for rows the filter finds nothing on. For a key
+                // that is no filter, a bare `key:` stays free text and `key:""` is dropped.
+                if ($isConfigured) {
                     $terms[] = ['key' => $key, 'value' => static::FILTER_EMPTY, 'exact' => false];
+                } elseif (! $quoted) {
+                    $terms[] = ['key' => null, 'value' => $match[0], 'exact' => false];
                 }
 
                 return '';
@@ -172,6 +175,18 @@ trait HasSearchFilters
     }
 
     /**
+     * Write one filter term of the search query: `key:value`, `key:"two words"`, or a bare `key:` for no value.
+     */
+    protected function formatSearchTerm(string $key, string $value): string
+    {
+        return match (true) {
+            $value === static::FILTER_EMPTY => "{$key}:",
+            str_contains($value, ' ') => "{$key}:\"{$value}\"",
+            default => "{$key}:{$value}",
+        };
+    }
+
+    /**
      * Build search query string from current filter values.
      */
     protected function buildSearchQuery(): string
@@ -182,7 +197,7 @@ trait HasSearchFilters
             if ($value === '' || $value === null) {
                 continue;
             }
-            $parts[] = str_contains($value, ' ') ? "{$attr}:\"{$value}\"" : "{$attr}:{$value}";
+            $parts[] = $this->formatSearchTerm($attr, $value);
         }
 
         return implode(' ', $parts);
@@ -198,9 +213,7 @@ trait HasSearchFilters
             if ($term['key'] === null) {
                 $parts[] = ($term['exact'] ?? false) ? '"' . $term['value'] . '"' : $term['value'];
             } else {
-                $parts[] = str_contains($term['value'], ' ')
-                    ? "{$term['key']}:\"{$term['value']}\""
-                    : "{$term['key']}:{$term['value']}";
+                $parts[] = $this->formatSearchTerm($term['key'], $term['value']);
             }
         }
 

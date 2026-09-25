@@ -339,23 +339,25 @@ The search bar supports Gmail-style syntax:
 - **Free text**: `john` — searches across all `string`-type filter columns (with `column` set)
 - **Specific filter**: `name:john` — applies to the `name` filter
 - **Quoted values**: `name:"John Doe"` — for values containing spaces
-- **No value at all**: `name:""` — the rows the filter finds nothing on
+- **No value at all**: `name:` — the rows the filter finds nothing on
 - **Range**: `price:1000..2000` — for `number` and `date` filters (see [Ranges](#ranges))
 - **Combined**: `name:john created:2025-01-01..` — all terms must match (AND)
 
 #### Searching for rows with no value
 
-`attribute:""` — an explicitly quoted empty value — matches the rows where the filter has
-nothing to match on, which is otherwise unreachable: a column that is `NULL` or empty, and,
-for a filter over a `relation`, a row whose relation is missing altogether. With an OR group
-of `columns`, a row qualifies only when *none* of them carries a value.
+A bare `attribute:`, followed by a space or the end of the query, matches the rows where the
+filter has nothing to match on: a column that is `NULL` or empty, and, for a filter over a
+`relation`, a row whose relation is missing altogether. With an OR group of `columns`, a row
+qualifies only when *none* of them carries a value. `attribute:""` reads the same, and the
+query built from the filter panel writes the bare form.
 
 ```
-ordered-by:""     # orders nobody is named on
+ordered-by:       # orders nobody is named on
+paid: novak       # unpaid orders, and the free text novak
 ```
 
-A bare `attribute:` with nothing after the colon is not this — it carries no value to search
-for and stays free text, as it always has.
+A bare key that is no configured filter, such as `note:`, stays free text, and so does an
+unfinished `name:"Jo`. In the filter panel, type `""` into a text field to search for no value.
 
 ### Auto-applied vs Manual Filters
 

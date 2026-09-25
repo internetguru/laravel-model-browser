@@ -130,9 +130,10 @@
                                         split(value) {
                                             const [from, ...rest] = String(value ?? '').split('..');
                                             this.written = [from.trim(), (rest.length ? rest.join('..') : from).trim()];
-                                            this.shown = @js($type === 'date')
-                                                ? [this.fullDate(this.written[0], false), this.fullDate(this.written[1], true)]
-                                                : [...this.written];
+                                            // No value at all ("") has nothing to show in a number or date input
+                                            this.shown = this.written.map((bound, i) => bound === @js(\Internetguru\ModelBrowser\Components\BaseModelBrowser::FILTER_EMPTY)
+                                                ? ''
+                                                : (@js($type === 'date') ? this.fullDate(bound, i === 1) : bound));
                                             [this.from, this.to] = this.shown;
                                             // Lets the date inputs' floating labels follow a value set without typing
                                             this.$nextTick(() => this.$root.querySelectorAll('input').forEach(

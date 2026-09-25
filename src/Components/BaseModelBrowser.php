@@ -41,7 +41,7 @@ class BaseModelBrowser extends Component
 
     /**
      * The filter value standing for "this filter has no value at all", written
-     * as `attribute:""` in the search query — e.g. `ordered_by:""` lists the
+     * as a bare `attribute:` in the search query — e.g. `ordered-by:` lists the
      * orders nobody is named on.
      */
     public const FILTER_EMPTY = '""';
@@ -423,6 +423,11 @@ class BaseModelBrowser extends Component
             return ['value' => '', 'error' => null];
         }
 
+        // No value at all is a valid search whatever the filter's type
+        if ($value === self::FILTER_EMPTY) {
+            return ['value' => $value, 'error' => null];
+        }
+
         $config = $this->filterConfig[$attribute] ?? [];
         $rules = $this->getFilterRules($attribute, $config);
 
@@ -688,7 +693,7 @@ class BaseModelBrowser extends Component
             $parts = [];
             foreach ($this->filterValues as $attr => $value) {
                 if ($value !== '' && $value !== null) {
-                    $parts[] = str_contains($value, ' ') ? "{$attr}:\"{$value}\"" : "{$attr}:{$value}";
+                    $parts[] = $this->formatSearchTerm($attr, $value);
                 }
             }
             foreach ($freeText as $term) {
