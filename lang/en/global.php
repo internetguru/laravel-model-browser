@@ -18,8 +18,9 @@ return [
         'all' => 'All',
         'search' => 'Search...',
         'search-hint' => 'Searching in: :fields',
-        'from' => 'From',
-        'to' => 'To',
+        'range-from' => ':label from',
+        'range-to' => ':label to',
+        'invalid-date' => 'Enter a date such as 2026-10-15, 2026-10, 2026 or 3 days ago.',
     ],
     'sort' => [
         'by' => 'Sort by',

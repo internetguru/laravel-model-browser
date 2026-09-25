@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `HasModelBrowserFilters::getModelBrowserFilterRange()` returns the bounds of a `number` or `date` filter, and `BaseModelBrowser::parseDatePeriod()` the first and last moment of a date bound.
+
+### Changed
+
+- **Breaking:** Filter names must be kebab case, such as `created-by`, or the component throws an `InvalidArgumentException` on mount; rename keys like `createdBy` or `created_by` in `filters`, in `HasModelBrowserFilters` lookups and in saved `q` links.
+- **Breaking:** A `number` or `date` filter takes a range, such as `price:1000..2000`, `price:..1000` or `price:1000..`, and the filter panel shows an input for each bound. A single value is matched exactly. A date bound covers the whole year, month or day it names, so `created:2026-10` is all of October, and relative bounds such as `"3 days ago"` or `"last month"` span the unit they name.
+- The filter panel lists its inputs one under another, with the two bounds of a range side by side.
+- A date filter shows an error for a bound that is not a date, instead of ignoring it.
+- A bare `paid:` searches for the rows a filter has no value on, like `paid:""`, and the query built from the filter panel writes it that way. A `""` typed into the panel is valid for every filter type.
+
+### Removed
+
+- **Breaking:** The `date_from`, `date_to`, `number_from` and `number_to` filter types and the `from` and `to` translations are gone; merge each from/to pair into one `number` or `date` filter, and read its bounds in model scopes with `getModelBrowserFilterRange()`.
+
 ## [7.4.3] - 2026-09-24
 
 ### Fixed
@@ -991,6 +1009,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [7.4.3]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.2...v7.4.3
 [7.4.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.1...v7.4.2
 [7.4.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.0...v7.4.1

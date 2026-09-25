@@ -18,8 +18,9 @@ return [
         'all' => 'Vše',
         'search' => 'Hledat...',
         'search-hint' => 'Vyhledává se ve sloupcích: :fields',
-        'from' => 'Od',
-        'to' => 'Do',
+        'range-from' => ':label od',
+        'range-to' => ':label do',
+        'invalid-date' => 'Zadejte datum, např. 2026-10-15, 2026-10, 2026 nebo 3 days ago.',
     ],
     'sort' => [
         'by' => 'Řadit podle',
