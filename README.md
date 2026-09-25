@@ -312,14 +312,25 @@ price:..1000        # up to 1000
 price:1000..        # 1000 and more
 price:1000          # exactly 1000, the range 1000..1000
 created:2026-03-01..2026-03-31
-created:2026-03-01  # the whole day
 ```
 
-A date bound without a time reaches the end of its day when it is the upper one, so a single date covers that whole day. Each bound is validated on its own against the filter's rules.
+A date bound stands for the whole period it names. The lower bound is the period's first moment and the upper bound its last, so a single value covers the whole period:
+
+```
+created:2026                    # the whole year
+created:2026-10                 # the whole month, also written 10.2026
+created:2026-09..2026-10        # September and October
+created:2026-10-15              # the whole day, also written 15.10.2026
+created:"3 days ago"            # that whole day
+created:"last month..yesterday" # from the first day of last month to the end of yesterday
+created:"2026-10-15 08:00"      # a bound with a time is that moment
+```
+
+Relative bounds are anything `Carbon::parse()` reads (in English), and they span the unit they name: day, week, month, year, hour or minute; `today`, `yesterday` and `tomorrow` are days. Dates are read in the filter's `timezone`. Each bound is validated on its own against the filter's rules, and a date bound that is not a date is an error.
 
 Both bounds must hold for the same related row, and for the same column of an OR group: with `published:2026-03-01..2026-03-31` over `posts.published_at`, a user with one post before the range and another after it is not listed.
 
-In the filter panel, a range filter shows two inputs, one for each bound, which are joined into the one value.
+In the filter panel, a range filter shows two inputs, one for each bound, which are joined into the one value. A date input shows the first or the last day of a bound's period; a bound left untouched keeps what was written, such as `2026-10` or `3 days ago`.
 
 ### Search Query Syntax
 
@@ -404,7 +415,7 @@ Available methods:
 
 - `getModelBrowserFilters()` — returns a `Collection` of active filter values
 - `getModelBrowserFilter(string $key, mixed $default = null)` — get a specific filter value
-- `getModelBrowserFilterRange(string $key)` — the bounds of a `number` or `date` filter as `['from' => ?string, 'to' => ?string]`, `null` for an open one
+- `getModelBrowserFilterRange(string $key)` — the bounds of a `number` or `date` filter as `['from' => ?string, 'to' => ?string]`, `null` for an open one; turn a date bound into its first and last moment with `BaseModelBrowser::parseDatePeriod($bound, $timezone)`
 - `hasModelBrowserFilter(string $key)` — check if a filter is set
 - `hasModelBrowserFilters()` — check if any filters are active
 

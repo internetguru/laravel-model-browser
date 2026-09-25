@@ -513,7 +513,19 @@ class BaseModelBrowser extends Component
 
         return match ($type) {
             self::FILTER_NUMBER => 'nullable|numeric',
-            self::FILTER_DATE => ['nullable', 'string', 'max:100', 'regex:/^(?!.*\.\.)[a-z0-9 .:\/+\-]+$/iu'],
+            self::FILTER_DATE => [
+                'nullable',
+                'string',
+                'max:100',
+                'regex:/^(?!.*\.\.)[a-z0-9 .:\/+\-]+$/iu',
+                function (string $attribute, mixed $value, Closure $fail) use ($config) {
+                    try {
+                        self::parseDatePeriod((string) $value, $config['timezone'] ?? null);
+                    } catch (Exception) {
+                        $fail(__('model-browser::global.filters.invalid-date'));
+                    }
+                },
+            ],
             self::FILTER_OPTIONS => ! empty($config['restrict'])
                 ? $this->getOptionsRule($config['options'] ?? [])
                 : 'nullable|string|max:255',
@@ -1361,8 +1373,8 @@ class BaseModelBrowser extends Component
                     $query,
                     $column,
                     $value,
-                    fn (string $bound) => $this->parseFilterDate($bound, $timezone),
-                    fn (string $bound) => $this->parseFilterDate($bound, $timezone, endOfDay: true),
+                    fn (string $bound) => self::parseDatePeriod($bound, $timezone)[0],
+                    fn (string $bound) => self::parseDatePeriod($bound, $timezone)[1],
                 ),
                 self::FILTER_OPTIONS, self::FILTER_CHECKBOX => $query->where($column, $value),
                 default => $query->whereLikeUnaccented($column, $value, $asciiFast),
@@ -1394,19 +1406,56 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Parse a date bound in the filter's timezone. A date-only upper bound reaches the end of its day.
+     * The period a date bound stands for, read in the filter's timezone.
+     *
+     * `2026` is the whole year, `2026-10` and `10.2026` the whole month, `2026-10-15` the whole day.
+     * A relative bound spans the unit it names: `3 days ago` is that day, `last month` that month.
+     * A bound with a time is that moment.
+     *
+     * @return array{0: Carbon, 1: Carbon} the first and the last moment, in the application timezone
+     *
+     * @throws Exception when the bound is not a date
      */
-    protected function parseFilterDate(string $value, ?string $timezone, bool $endOfDay = false): Carbon
+    public static function parseDatePeriod(string $value, ?string $timezone = null): array
     {
-        $date = Carbon::parse($value);
-        if ($endOfDay && $date->format('H:i:s') === '00:00:00') {
-            $date = $date->endOfDay();
-        }
-        if ($timezone) {
-            $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
+        $appTimezone = config('app.timezone', 'UTC');
+        $timezone ??= $appTimezone;
+        $value = trim($value);
+
+        if (preg_match('/^\d{4}$/', $value)) {
+            [$date, $unit] = [Carbon::create((int) $value, 1, 1, 0, 0, 0, $timezone), 'year'];
+        } elseif (preg_match('/^(\d{4})-(\d{1,2})$/', $value, $match) || preg_match('/^(\d{1,2})[.\/](\d{4})$/', $value, $match)) {
+            [$year, $month] = str_contains($match[0], '-') ? [$match[1], $match[2]] : [$match[2], $match[1]];
+            if ((int) $month < 1 || (int) $month > 12) {
+                throw new Exception("Invalid month in '{$value}'.");
+            }
+            [$date, $unit] = [Carbon::create((int) $year, (int) $month, 1, 0, 0, 0, $timezone), 'month'];
+        } else {
+            $date = Carbon::parse($value, $timezone);
+            $unit = self::relativeDateUnit($value) ?? ($date->format('H:i:s') === '00:00:00' ? 'day' : null);
         }
 
-        return $date;
+        if ($unit === null) {
+            return [$date->copy()->timezone($appTimezone), $date->copy()->timezone($appTimezone)];
+        }
+
+        return [
+            $date->copy()->startOf($unit)->timezone($appTimezone),
+            $date->copy()->endOf($unit)->timezone($appTimezone),
+        ];
+    }
+
+    /**
+     * The unit a relative date names, e.g. 'day' for `3 days ago` or `yesterday`, 'month' for `last month`.
+     */
+    protected static function relativeDateUnit(string $value): ?string
+    {
+        $value = mb_strtolower($value);
+        if (preg_match('/\b(year|month|week|day|hour|minute)s?\b/', $value, $match)) {
+            return $match[1];
+        }
+
+        return preg_match('/\b(today|yesterday|tomorrow)\b/', $value) ? 'day' : null;
     }
 
     /**

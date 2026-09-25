@@ -31,7 +31,7 @@ Livewire lists of Eloquent models as a table or cards, with Gmail-style search, 
   - `column` (auto-applied), or `columns` for an OR group
   - `relation` (dot path, wrapped in `whereHas`)
   - `options` for the `options` type
-- A `number` or `date` filter takes a range: `price:1000..2000`, `price:..1000`, `price:1000..`, or `price:1000` for exactly that value. A single date is the whole day. Both bounds must hold for the same related row. Never define a pair of separate from/to filters.
+- A `number` or `date` filter takes a range: `price:1000..2000`, `price:..1000`, `price:1000..`, or `price:1000` for exactly that value. A date bound spans the period it names: `created:2026` is the year, `created:2026-10` the month, `created:"3 days ago"` that day. Both bounds must hold for the same related row. Never define a pair of separate from/to filters.
 - A filter without `column`/`columns` is not applied automatically. Read it in the model's summary method through the `HasModelBrowserFilters` trait, with `getModelBrowserFilterRange()` for the bounds of a range; the model's `$modelBrowserFilterSessionKey` must equal the component's `filterSessionKey`.
 - The search syntax is `name:john`, `name:"John Doe"`, free text over the string filters, and `name:""` for rows with no value. The active query lives in the `q` URL parameter, so a list can be linked to with a filter applied.
 

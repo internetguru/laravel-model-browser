@@ -5,6 +5,7 @@ namespace Tests\Components;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\ViewException;
@@ -638,11 +639,13 @@ class BaseModelBrowserTest extends TestCase
         }
     }
 
-    public function test_date_filter_takes_a_single_day_as_the_whole_day()
+    public function test_date_filter_bound_spans_the_year_month_or_day_it_names()
     {
+        Carbon::setTestNow('2026-10-15 13:00:00');
         User::query()->delete();
-        User::factory()->create(['name' => 'Created In The Evening', 'created_at' => '2026-03-01 22:15:00']);
-        User::factory()->create(['name' => 'Created The Next Day', 'created_at' => '2026-03-02 08:00:00']);
+        foreach (['2025-12-31 23:59:59', '2026-01-01 00:00:00', '2026-09-30 12:00:00', '2026-10-01 00:00:00', '2026-10-12 08:00:00', '2026-10-31 23:30:00', '2026-11-01 00:00:00'] as $createdAt) {
+            User::factory()->create(['name' => "Created {$createdAt}", 'created_at' => $createdAt]);
+        }
 
         $component = Livewire::test(BaseModelBrowser::class, [
             'model' => User::class,
@@ -650,12 +653,44 @@ class BaseModelBrowserTest extends TestCase
             'filters' => [
                 'created' => ['type' => 'date', 'label' => 'Created', 'column' => 'created_at'],
             ],
-            'filterSessionKey' => 'test-mb-date-day',
+            'filterSessionKey' => 'test-mb-date-period',
         ]);
 
-        $component->set('searchQuery', 'created:2026-03-01')->call('applySearch');
-        $component->call('loadTotalCount')->assertSet('totalCount', 1);
-        $component->assertSee('Created In The Evening');
+        $expectedCounts = [
+            'created:2026' => 6,
+            'created:2026..2026' => 6,
+            'created:..2025' => 1,
+            'created:2026-10' => 3,
+            'created:2026-10..2026-10' => 3,
+            'created:10.2026' => 3,
+            'created:2026-09..2026-10' => 4,
+            'created:2026-10-01' => 1,
+            'created:2026-10-12..' => 3,
+            'created:"3 days ago"' => 1,
+            'created:"last month..yesterday"' => 3,
+            'created:"2026-10-12 08:00:00"' => 1,
+        ];
+        foreach ($expectedCounts as $search => $count) {
+            $component->set('searchQuery', $search)->call('applySearch');
+            $component->call('loadTotalCount')->assertSet('totalCount', $count);
+        }
+    }
+
+    public function test_date_filter_rejects_a_bound_that_is_not_a_date()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'created' => ['type' => 'date', 'label' => 'Created', 'column' => 'created_at'],
+            ],
+            'filterSessionKey' => 'test-mb-date-invalid',
+        ]);
+
+        foreach (['2026-13', '13.2026', 'soon', '2026-10..later'] as $value) {
+            $component->set('filterValues.created', $value)->call('applyFilters')
+                ->assertHasErrors('filter-created');
+        }
     }
 
     public function test_date_range_over_a_relation_needs_both_bounds_on_the_same_row()
