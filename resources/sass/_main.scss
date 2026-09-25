@@ -251,6 +251,12 @@
             }
         }
 
+        &__range {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+            gap: $spacer * 0.5;
+        }
+
         &__actions {
             display: flex;
             flex-wrap: wrap;

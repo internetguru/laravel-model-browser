@@ -26,13 +26,13 @@ Livewire lists of Eloquent models as a table or cards, with Gmail-style search, 
 
 - Filter names (the `filters` keys) are kebab case, such as `created-by`; any other name throws on mount.
 - Each `filters` entry has:
-  - `type`: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options` or `checkbox`
+  - `type`: `string`, `number`, `date`, `options` or `checkbox`
   - `label`, and optionally `rules`, `url`, `timezone`
   - `column` (auto-applied), or `columns` for an OR group
   - `relation` (dot path, wrapped in `whereHas`)
   - `options` for the `options` type
-- A `*_from` and `*_to` filter over the same `column`/`columns` and `relation` form one range: both bounds must hold for the same related row.
-- A filter without `column`/`columns` is not applied automatically. Read it in the model's summary method through the `HasModelBrowserFilters` trait; the model's `$modelBrowserFilterSessionKey` must equal the component's `filterSessionKey`.
+- A `number` or `date` filter takes a range: `price:1000..2000`, `price:..1000`, `price:1000..`, or `price:1000` for exactly that value. A single date is the whole day. Both bounds must hold for the same related row. Never define a pair of separate from/to filters.
+- A filter without `column`/`columns` is not applied automatically. Read it in the model's summary method through the `HasModelBrowserFilters` trait, with `getModelBrowserFilterRange()` for the bounds of a range; the model's `$modelBrowserFilterSessionKey` must equal the component's `filterSessionKey`.
 - The search syntax is `name:john`, `name:"John Doe"`, free text over the string filters, and `name:""` for rows with no value. The active query lives in the `q` URL parameter, so a list can be linked to with a filter applied.
 
 ## Views and assets

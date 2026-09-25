@@ -58,17 +58,17 @@ class BaseModelBrowser extends Component
 
     public const FILTER_DATE = 'date';
 
-    public const FILTER_DATE_FROM = 'date_from';
-
-    public const FILTER_DATE_TO = 'date_to';
-
-    public const FILTER_NUMBER_FROM = 'number_from';
-
-    public const FILTER_NUMBER_TO = 'number_to';
-
     public const FILTER_OPTIONS = 'options';
 
     public const FILTER_CHECKBOX = 'checkbox';
+
+    /**
+     * Filter types whose value is a range: `1000..2000`, `..1000`, `1000..`, or a
+     * single `1000`, which is the range `1000..1000`.
+     */
+    public const RANGE_TYPES = [self::FILTER_NUMBER, self::FILTER_DATE];
+
+    public const RANGE_SEPARATOR = '..';
 
     /**
      * The statistics a column's menu offers, in the order they are listed.
@@ -150,7 +150,7 @@ class BaseModelBrowser extends Component
      * The attribute (filter name) is kebab case, e.g. 'created-by'.
      *
      * Keys:
-     * - type: Filter type (string, number, date, date_from, date_to, number_from, number_to, options, checkbox)
+     * - type: Filter type (string, number, date, options, checkbox); number and date take a range, see RANGE_TYPES
      * - label: Display label
      * - column: Database column name (defaults to the attribute key)
      * - columns: OR group — a list of columns matched with OR instead of a single 'column'.
@@ -428,19 +428,43 @@ class BaseModelBrowser extends Component
 
         $this->declareSanitizeType($attribute, $config);
 
-        $validator = Validator::make(
-            [$attribute => $value],
-            [$attribute => $rules]
-        );
+        // A range is valid when each of its bounds is; one without any bound is checked as a whole and fails
+        $bounds = in_array($config['type'] ?? self::FILTER_STRING, self::RANGE_TYPES, true)
+            ? array_filter(self::splitRange((string) $value), fn (string $bound) => $bound !== '')
+            : [$value];
 
-        if ($validator->fails()) {
-            return [
-                'value' => (string) $value,
-                'error' => $validator->errors()->first($attribute),
-            ];
+        foreach ($bounds ?: [$value] as $bound) {
+            $validator = Validator::make(
+                [$attribute => $bound],
+                [$attribute => $rules]
+            );
+
+            if ($validator->fails()) {
+                return [
+                    'value' => (string) $value,
+                    'error' => $validator->errors()->first($attribute),
+                ];
+            }
         }
 
         return ['value' => (string) $value, 'error' => null];
+    }
+
+    /**
+     * Split a number or date filter value into its lower and upper bound, '' for an open one.
+     * A value without the separator is both bounds at once.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function splitRange(string $value): array
+    {
+        if (! str_contains($value, self::RANGE_SEPARATOR)) {
+            return [trim($value), trim($value)];
+        }
+
+        [$from, $to] = explode(self::RANGE_SEPARATOR, $value, 2);
+
+        return [trim($from), trim($to)];
     }
 
     /**
@@ -461,8 +485,8 @@ class BaseModelBrowser extends Component
         }
 
         $pipeline = match ($config['type'] ?? self::FILTER_STRING) {
-            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'number',
-            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => 'datetime',
+            self::FILTER_NUMBER => 'number',
+            self::FILTER_DATE => 'datetime',
             self::FILTER_CHECKBOX => 'flag',
             default => 'search',
         };
@@ -488,8 +512,8 @@ class BaseModelBrowser extends Component
         $type = $config['type'] ?? self::FILTER_STRING;
 
         return match ($type) {
-            self::FILTER_NUMBER, self::FILTER_NUMBER_FROM, self::FILTER_NUMBER_TO => 'nullable|numeric',
-            self::FILTER_DATE, self::FILTER_DATE_FROM, self::FILTER_DATE_TO => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9 .:\/+\-]+$/iu'],
+            self::FILTER_NUMBER => 'nullable|numeric',
+            self::FILTER_DATE => ['nullable', 'string', 'max:100', 'regex:/^(?!.*\.\.)[a-z0-9 .:\/+\-]+$/iu'],
             self::FILTER_OPTIONS => ! empty($config['restrict'])
                 ? $this->getOptionsRule($config['options'] ?? [])
                 : 'nullable|string|max:255',
@@ -1145,19 +1169,8 @@ class BaseModelBrowser extends Component
             }
         }
 
-        $ranges = $this->pairRangeTerms($terms);
-
         // All terms are AND'd together
-        foreach ($terms as $index => $term) {
-            if (in_array($index, $ranges, true)) {
-                // Applied together with its lower bound
-                continue;
-            }
-            if (isset($ranges[$index])) {
-                $this->applyRangeTerms($query, $term, $terms[$ranges[$index]]);
-
-                continue;
-            }
+        foreach ($terms as $term) {
             if ($term['key'] === null) {
                 // Free text → OR across searchable columns (match any), AND'd with other terms
                 if (empty($searchableColumns)) {
@@ -1198,7 +1211,7 @@ class BaseModelBrowser extends Component
                     if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
                         $type = self::FILTER_STRING;
                     }
-                    $value = $col['preprocessor'] ? ($col['preprocessor'])($term['value']) : $term['value'];
+                    $value = $this->preprocessFilterValue($col, $term['value']);
                     $this->applyCondition($q, $col['column'], $col['relation'], $type, $value, $col['timezone'], $col['ascii_fast']);
                 };
 
@@ -1219,71 +1232,25 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Pair each lower bound term with an upper bound term over the same columns.
+     * Run the column's preprocessor on a filter value, on each bound of a range separately.
      *
-     * Applied one by one, `from` and `to` over a to-many relation or an OR group may each be
-     * met by a different row, so a row before the range and another after it would match.
-     * A pair is applied as one condition per column instead, see applyRangeTerms().
-     *
-     * @param  array<int, array{key: ?string, value: string}>  $terms
-     * @return array<int, int> lower bound term index => upper bound term index
+     * @param  array{preprocessor: ?string, type: string}  $col
      */
-    protected function pairRangeTerms(array $terms): array
+    protected function preprocessFilterValue(array $col, string $value): string
     {
-        $upperBounds = [
-            self::FILTER_DATE_FROM => self::FILTER_DATE_TO,
-            self::FILTER_NUMBER_FROM => self::FILTER_NUMBER_TO,
-        ];
-        $bounds = [];
-        foreach ($terms as $index => $term) {
-            $config = $this->filterConfig[$term['key'] ?? ''] ?? [];
-            $type = $config['type'] ?? null;
-            $target = array_map(fn ($col) => [$col['column'], $col['relation']], $this->getFilterColumns($config));
-            if (! in_array($type, [...array_keys($upperBounds), ...$upperBounds], true)
-                || empty($target)
-                || $term['value'] === self::FILTER_EMPTY
-                || $this->validateFilterValue($term['key'], $term['value'])['error']) {
-                continue;
-            }
-            $bounds[$index] = ['type' => $type, 'target' => $target];
+        $preprocessor = $col['preprocessor'];
+        if (! $preprocessor) {
+            return $value;
         }
 
-        $pairs = [];
-        foreach ($bounds as $fromIndex => $from) {
-            $upperType = $upperBounds[$from['type']] ?? null;
-            foreach ($bounds as $toIndex => $to) {
-                if ($to['type'] === $upperType && $to['target'] === $from['target'] && ! in_array($toIndex, $pairs, true)) {
-                    $pairs[$fromIndex] = $toIndex;
-                    break;
-                }
-            }
+        if (! in_array($col['type'], self::RANGE_TYPES, true) || ! str_contains($value, self::RANGE_SEPARATOR)) {
+            return $preprocessor($value);
         }
 
-        return $pairs;
-    }
-
-    /**
-     * Apply a lower and an upper bound so both must hold for the same row of each column's
-     * relation. The columns are OR'd, as for a single term.
-     *
-     * @param  array{key: string, value: string}  $from
-     * @param  array{key: string, value: string}  $to
-     */
-    protected function applyRangeTerms(Builder $query, array $from, array $to): void
-    {
-        $fromColumns = $this->getFilterColumns($this->filterConfig[$from['key']]);
-        $toColumns = $this->getFilterColumns($this->filterConfig[$to['key']]);
-        $valueFor = fn (array $col, string $value) => $col['preprocessor'] ? ($col['preprocessor'])($value) : $value;
-
-        $query->where(function (Builder $sub) use ($fromColumns, $toColumns, $from, $to, $valueFor) {
-            foreach ($fromColumns as $i => $fromCol) {
-                $toCol = $toColumns[$i];
-                $sub->orWhere(fn (Builder $q) => $this->whereInRelation($q, $fromCol['relation'], function (Builder $row) use ($fromCol, $toCol, $from, $to, $valueFor) {
-                    $this->applyWhere($row, $fromCol['column'], $fromCol['type'], $valueFor($fromCol, $from['value']), $fromCol['timezone']);
-                    $this->applyWhere($row, $toCol['column'], $toCol['type'], $valueFor($toCol, $to['value']), $toCol['timezone']);
-                }));
-            }
-        });
+        return implode(self::RANGE_SEPARATOR, array_map(
+            fn (string $bound) => $bound === '' ? '' : $preprocessor($bound),
+            self::splitRange($value)
+        ));
     }
 
     /**
@@ -1387,37 +1354,59 @@ class BaseModelBrowser extends Component
     protected function applyWhere(Builder $query, string $column, string $type, string $value, ?string $timezone = null, bool $asciiFast = false): void
     {
         try {
-            $parseDate = function (string $v) use ($timezone) {
-                $date = Carbon::parse($v);
-                if ($timezone) {
-                    $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
-                }
-
-                return $date;
-            };
             match ($type) {
                 self::FILTER_STRING => $query->whereLikeUnaccented($column, $value, $asciiFast),
-                self::FILTER_DATE_FROM => $query->where($column, '>=', $parseDate($value)),
-                self::FILTER_DATE_TO => $query->where($column, '<=', (function () use ($value, $timezone) {
-                    $date = Carbon::parse($value);
-                    if ($date->format('H:i:s') === '00:00:00') {
-                        $date = $date->endOfDay();
-                    }
-                    if ($timezone) {
-                        $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
-                    }
-
-                    return $date;
-                })()),
-                self::FILTER_NUMBER_FROM => $query->where($column, '>=', $value),
-                self::FILTER_NUMBER_TO => $query->where($column, '<=', $value),
-                self::FILTER_DATE => $query->where($column, $parseDate($value)),
-                self::FILTER_NUMBER, self::FILTER_OPTIONS, self::FILTER_CHECKBOX => $query->where($column, $value),
+                self::FILTER_NUMBER => $this->applyRange($query, $column, $value, fn (string $bound) => $bound, fn (string $bound) => $bound),
+                self::FILTER_DATE => $this->applyRange(
+                    $query,
+                    $column,
+                    $value,
+                    fn (string $bound) => $this->parseFilterDate($bound, $timezone),
+                    fn (string $bound) => $this->parseFilterDate($bound, $timezone, endOfDay: true),
+                ),
+                self::FILTER_OPTIONS, self::FILTER_CHECKBOX => $query->where($column, $value),
                 default => $query->whereLikeUnaccented($column, $value, $asciiFast),
             };
         } catch (Exception $e) {
             // Invalid value (e.g. unparseable date), skip
         }
+    }
+
+    /**
+     * Apply both bounds of a range value to the same row; an open bound is left out.
+     *
+     * @param  Closure(string): mixed  $lower  turns the lower bound into the value compared with
+     * @param  Closure(string): mixed  $upper  turns the upper bound into the value compared with
+     */
+    protected function applyRange(Builder $query, string $column, string $value, Closure $lower, Closure $upper): void
+    {
+        [$from, $to] = self::splitRange($value);
+        // Both bounds are converted first, so an unparseable one leaves no half of the range applied
+        $from = $from === '' ? null : $lower($from);
+        $to = $to === '' ? null : $upper($to);
+
+        if ($from !== null) {
+            $query->where($column, '>=', $from);
+        }
+        if ($to !== null) {
+            $query->where($column, '<=', $to);
+        }
+    }
+
+    /**
+     * Parse a date bound in the filter's timezone. A date-only upper bound reaches the end of its day.
+     */
+    protected function parseFilterDate(string $value, ?string $timezone, bool $endOfDay = false): Carbon
+    {
+        $date = Carbon::parse($value);
+        if ($endOfDay && $date->format('H:i:s') === '00:00:00') {
+            $date = $date->endOfDay();
+        }
+        if ($timezone) {
+            $date = $date->shiftTimezone($timezone)->timezone(config('app.timezone', 'UTC'));
+        }
+
+        return $date;
     }
 
     /**

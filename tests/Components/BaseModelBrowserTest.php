@@ -7,7 +7,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\View\ViewException;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
+use Internetguru\ModelBrowser\Traits\HasModelBrowserFilters;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -357,7 +359,7 @@ class BaseModelBrowserTest extends TestCase
                     'filterSessionKey' => 'test-mb-filter-name',
                 ]);
                 $this->fail("Filter name '{$name}' was accepted.");
-            } catch (\Illuminate\View\ViewException $e) {
+            } catch (ViewException $e) {
                 $this->assertInstanceOf(\InvalidArgumentException::class, $e->getPrevious());
                 $this->assertStringContainsString("'{$name}'", $e->getMessage());
             }
@@ -570,6 +572,92 @@ class BaseModelBrowserTest extends TestCase
         $component->assertSee('Zenon Other');
     }
 
+    public function test_number_filter_takes_a_range_an_open_range_or_a_single_value()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('credit')->default(0);
+        });
+
+        User::query()->delete();
+        foreach ([500, 1000, 1500, 2500] as $credit) {
+            User::factory()->create(['name' => "Credit {$credit}"])->forceFill(['credit' => $credit])->save();
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'credit' => ['type' => 'number', 'label' => 'Credit', 'column' => 'credit'],
+            ],
+            'filterSessionKey' => 'test-mb-number-range',
+        ]);
+
+        foreach (['credit:1000..2000' => 2, 'credit:..1000' => 2, 'credit:1000..' => 3, 'credit:1000' => 1] as $search => $count) {
+            $component->set('searchQuery', $search)->call('applySearch');
+            $component->call('loadTotalCount')->assertSet('totalCount', $count);
+        }
+
+        // The filter panel edits the two bounds of the one value
+        $component->assertSeeHtml('name="filter-credit-from"')
+            ->assertSeeHtml('name="filter-credit-to"');
+    }
+
+    public function test_manual_filter_reads_the_bounds_of_a_range()
+    {
+        session(['test-mb-manual-range' => ['credit' => '1000..', 'created' => '2026-03-01']]);
+        $model = new class
+        {
+            use HasModelBrowserFilters;
+
+            protected string $modelBrowserFilterSessionKey = 'test-mb-manual-range';
+        };
+
+        $this->assertSame(['from' => '1000', 'to' => null], $model->getModelBrowserFilterRange('credit'));
+        $this->assertSame(['from' => '2026-03-01', 'to' => '2026-03-01'], $model->getModelBrowserFilterRange('created'));
+        $this->assertSame(['from' => null, 'to' => null], $model->getModelBrowserFilterRange('missing'));
+    }
+
+    public function test_range_filter_rejects_a_range_without_a_valid_bound()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'credit' => ['type' => 'number', 'label' => 'Credit', 'column' => 'credit'],
+                'created' => ['type' => 'date', 'label' => 'Created', 'column' => 'created_at'],
+            ],
+            'filterSessionKey' => 'test-mb-invalid-range',
+        ]);
+
+        foreach (['credit' => ['1000..abc', '..'], 'created' => ['2026-03-01..x!', '..']] as $filter => $values) {
+            foreach ($values as $value) {
+                $component->set("filterValues.{$filter}", $value)->call('applyFilters')
+                    ->assertHasErrors("filter-{$filter}");
+            }
+            $component->set("filterValues.{$filter}", '');
+        }
+    }
+
+    public function test_date_filter_takes_a_single_day_as_the_whole_day()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Created In The Evening', 'created_at' => '2026-03-01 22:15:00']);
+        User::factory()->create(['name' => 'Created The Next Day', 'created_at' => '2026-03-02 08:00:00']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'created' => ['type' => 'date', 'label' => 'Created', 'column' => 'created_at'],
+            ],
+            'filterSessionKey' => 'test-mb-date-day',
+        ]);
+
+        $component->set('searchQuery', 'created:2026-03-01')->call('applySearch');
+        $component->call('loadTotalCount')->assertSet('totalCount', 1);
+        $component->assertSee('Created In The Evening');
+    }
+
     public function test_date_range_over_a_relation_needs_both_bounds_on_the_same_row()
     {
         User::query()->delete();
@@ -583,19 +671,18 @@ class BaseModelBrowserTest extends TestCase
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
             'filters' => [
-                'published-from' => ['type' => 'date_from', 'label' => 'From', 'column' => 'published_at', 'relation' => 'posts'],
-                'published-to' => ['type' => 'date_to', 'label' => 'To', 'column' => 'published_at', 'relation' => 'posts'],
+                'published' => ['type' => 'date', 'label' => 'Published', 'column' => 'published_at', 'relation' => 'posts'],
             ],
             'filterSessionKey' => 'test-mb-range-relation',
         ]);
 
-        $component->set('searchQuery', 'published-from:2026-03-01 published-to:2026-03-31')->call('applySearch');
+        $component->set('searchQuery', 'published:2026-03-01..2026-03-31')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 1);
         $component->assertSee('Posted On The Closing Day')
             ->assertDontSee('Posted Around The Range');
 
-        // A lone bound is met by any row
-        $component->set('searchQuery', 'published-from:2026-03-01')->call('applySearch');
+        // An open range is met by any row
+        $component->set('searchQuery', 'published:2026-03-01..')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 2);
     }
 
@@ -605,18 +692,16 @@ class BaseModelBrowserTest extends TestCase
         User::factory()->create(['name' => 'Created Before Updated After', 'created_at' => '2026-01-10', 'updated_at' => '2026-06-10']);
         User::factory()->create(['name' => 'Updated In The Range', 'created_at' => '2026-01-10', 'updated_at' => '2026-03-10']);
 
-        $columns = ['created_at', 'updated_at'];
         $component = Livewire::test(BaseModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
             'filters' => [
-                'changed-from' => ['type' => 'date_from', 'label' => 'From', 'columns' => $columns],
-                'changed-to' => ['type' => 'date_to', 'label' => 'To', 'columns' => $columns],
+                'changed' => ['type' => 'date', 'label' => 'Changed', 'columns' => ['created_at', 'updated_at']],
             ],
             'filterSessionKey' => 'test-mb-range-group',
         ]);
 
-        $component->set('searchQuery', 'changed-from:2026-03-01 changed-to:2026-03-31')->call('applySearch');
+        $component->set('searchQuery', 'changed:2026-03-01..2026-03-31')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 1);
         $component->assertSee('Updated In The Range');
     }

@@ -18,8 +18,8 @@ return [
         'all' => 'All',
         'search' => 'Search...',
         'search-hint' => 'Searching in: :fields',
-        'from' => 'From',
-        'to' => 'To',
+        'range-from' => ':label from',
+        'range-to' => ':label to',
     ],
     'sort' => [
         'by' => 'Sort by',

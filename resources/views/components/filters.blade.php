@@ -89,17 +89,12 @@
                             $label = $config['label'] ?? $attr;
                             $options = $config['options'] ?? [];
                             $inputType = match($type) {
-                                'date', 'date_from', 'date_to' => 'date',
-                                'number', 'number_from', 'number_to' => 'number',
+                                'date' => 'date',
+                                'number' => 'number',
                                 'options' => 'select',
                                 default => 'text',
                             };
-                            $filterPlaceholder = match($type) {
-                                'number_from' => __('model-browser::global.filters.from'),
-                                'number_to' => __('model-browser::global.filters.to'),
-                                'string' => __('model-browser::global.filters.search'),
-                                default => '',
-                            };
+                            $filterPlaceholder = $type === 'string' ? __('model-browser::global.filters.search') : '';
                             $attrName = "filter-$attr";
                             $modelName = "filterValues.$attr";
                             $noAll = !empty($config['noAll']);
@@ -119,6 +114,48 @@
                                     :useoptionkeys="true"
                                     :wire:model="$modelName"
                                 >{{ $label }}</x-ig::input>
+                            @elseif (in_array($type, \Internetguru\ModelBrowser\Components\BaseModelBrowser::RANGE_TYPES, true))
+                                {{-- The two bounds are joined into the filter's one value, e.g. 1000..2000 --}}
+                                <div
+                                    class="mb-filters__range"
+                                    x-data="{
+                                        from: '',
+                                        to: '',
+                                        init() {
+                                            this.split($wire.$get(@js($modelName)));
+                                            $wire.$watch(@js($modelName), value => this.split(value));
+                                        },
+                                        split(value) {
+                                            const [from, ...rest] = String(value ?? '').split('..');
+                                            this.from = from.trim();
+                                            this.to = (rest.length ? rest.join('..') : from).trim();
+                                            // Lets the date inputs' floating labels follow a value set without typing
+                                            this.$nextTick(() => this.$root.querySelectorAll('input').forEach(
+                                                input => input.dispatchEvent(new Event('change', { bubbles: true }))
+                                            ));
+                                        },
+                                        join() {
+                                            const value = this.from === this.to ? this.from : this.from + '..' + this.to;
+                                            $wire.$set(@js($modelName), value, false);
+                                        },
+                                    }"
+                                    wire:ignore
+                                >
+                                    @foreach (['from', 'to'] as $bound)
+                                        <x-ig::input
+                                            :type="$inputType"
+                                            :name="$attrName . '-' . $bound"
+                                            value=""
+                                            :x-model="$bound"
+                                            x-on:input="join()"
+                                            :showError="false"
+                                            :step="$inputType === 'number' ? 'any' : null"
+                                        >{{ __('model-browser::global.filters.range-' . $bound, ['label' => $label]) }}</x-ig::input>
+                                    @endforeach
+                                </div>
+                                @error($attrName)
+                                    <span class="invalid-feedback d-block" role="alert"><strong>{{ $message }}</strong></span>
+                                @enderror
                             @else
                                 <x-ig::input
                                     :type="$inputType"

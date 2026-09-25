@@ -18,8 +18,8 @@ return [
         'all' => 'Vše',
         'search' => 'Hledat...',
         'search-hint' => 'Vyhledává se ve sloupcích: :fields',
-        'from' => 'Od',
-        'to' => 'Do',
+        'range-from' => ':label od',
+        'range-to' => ':label do',
     ],
     'sort' => [
         'by' => 'Řadit podle',

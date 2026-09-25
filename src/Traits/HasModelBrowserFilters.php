@@ -3,6 +3,7 @@
 namespace Internetguru\ModelBrowser\Traits;
 
 use Exception;
+use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 
 /**
  * Trait for models to access ModelBrowser filters from session.
@@ -73,6 +74,18 @@ trait HasModelBrowserFilters
     public function getModelBrowserFilter(string $key, mixed $default = null): mixed
     {
         return $this->getModelBrowserFilters()->get($key, $default);
+    }
+
+    /**
+     * Get the bounds of a number or date filter from session, e.g. `price:1000..` gives ['from' => '1000', 'to' => null].
+     *
+     * @return array{from: ?string, to: ?string}
+     */
+    public function getModelBrowserFilterRange(string $key): array
+    {
+        [$from, $to] = BaseModelBrowser::splitRange((string) $this->getModelBrowserFilter($key, ''));
+
+        return ['from' => $from !== '' ? $from : null, 'to' => $to !== '' ? $to : null];
     }
 
     /**
