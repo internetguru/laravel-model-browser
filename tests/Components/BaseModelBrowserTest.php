@@ -636,6 +636,12 @@ class BaseModelBrowserTest extends TestCase
         // The filter panel edits the two bounds of the one value
         $component->assertSeeHtml('name="filter-credit-from"')
             ->assertSeeHtml('name="filter-credit-to"');
+
+        // The script joining them stays inside its attribute instead of spilling onto the page
+        $this->assertMatchesRegularExpression(
+            '/class="mb-filters__range"\s+x-data="[^"]*fullDate\(bound, isUpper\)[^"]*"\s+wire:ignore/',
+            $component->html()
+        );
     }
 
     public function test_manual_filter_reads_the_bounds_of_a_range()

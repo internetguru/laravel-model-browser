@@ -130,7 +130,7 @@
                                         split(value) {
                                             const [from, ...rest] = String(value ?? '').split('..');
                                             this.written = [from.trim(), (rest.length ? rest.join('..') : from).trim()];
-                                            // No value at all ("") has nothing to show in a number or date input
+                                            // No value at all has nothing to show in a number or date input
                                             this.shown = this.written.map((bound, i) => bound === @js(\Internetguru\ModelBrowser\Components\BaseModelBrowser::FILTER_EMPTY)
                                                 ? ''
                                                 : (@js($type === 'date') ? this.fullDate(bound, i === 1) : bound));
