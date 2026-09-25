@@ -89,17 +89,12 @@
                             $label = $config['label'] ?? $attr;
                             $options = $config['options'] ?? [];
                             $inputType = match($type) {
-                                'date', 'date_from', 'date_to' => 'date',
-                                'number', 'number_from', 'number_to' => 'number',
+                                'date' => 'date',
+                                'number' => 'number',
                                 'options' => 'select',
                                 default => 'text',
                             };
-                            $filterPlaceholder = match($type) {
-                                'number_from' => __('model-browser::global.filters.from'),
-                                'number_to' => __('model-browser::global.filters.to'),
-                                'string' => __('model-browser::global.filters.search'),
-                                default => '',
-                            };
+                            $filterPlaceholder = $type === 'string' ? __('model-browser::global.filters.search') : '';
                             $attrName = "filter-$attr";
                             $modelName = "filterValues.$attr";
                             $noAll = !empty($config['noAll']);
@@ -119,6 +114,80 @@
                                     :useoptionkeys="true"
                                     :wire:model="$modelName"
                                 >{{ $label }}</x-ig::input>
+                            @elseif (in_array($type, \Internetguru\ModelBrowser\Components\BaseModelBrowser::RANGE_TYPES, true))
+                                {{-- The two bounds are joined into the filter's one value, e.g. 1000..2000 --}}
+                                <div
+                                    class="mb-filters__range"
+                                    x-data="{
+                                        from: '',
+                                        to: '',
+                                        written: ['', ''],
+                                        shown: ['', ''],
+                                        init() {
+                                            this.split($wire.$get(@js($modelName)));
+                                            $wire.$watch(@js($modelName), value => this.split(value));
+                                        },
+                                        split(value) {
+                                            const [from, ...rest] = String(value ?? '').split('..');
+                                            this.written = [from.trim(), (rest.length ? rest.join('..') : from).trim()];
+                                            // No value at all has nothing to show in a number or date input
+                                            this.shown = this.written.map((bound, i) => bound === @js(\Internetguru\ModelBrowser\Components\BaseModelBrowser::FILTER_EMPTY)
+                                                ? ''
+                                                : (@js($type === 'date') ? this.fullDate(bound, i === 1) : bound));
+                                            [this.from, this.to] = this.shown;
+                                            // Lets the date inputs' floating labels follow a value set without typing
+                                            this.$nextTick(() => this.$root.querySelectorAll('input').forEach(
+                                                input => input.dispatchEvent(new Event('change', { bubbles: true }))
+                                            ));
+                                        },
+                                        join() {
+                                            // A bound left as shown keeps what was written, e.g. 2026-10 or 3 days ago
+                                            const bound = (input, i) => input === this.shown[i] ? this.written[i] : input;
+                                            const [from, to] = [bound(this.from, 0), bound(this.to, 1)];
+                                            $wire.$set(@js($modelName), from === to ? from : from + '..' + to, false);
+                                        },
+                                        // The day a date input shows for a bound: the first or the last day of its year, month or week
+                                        fullDate(bound, isUpper) {
+                                            const pad = n => String(n).padStart(2, '0');
+                                            const iso = date => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                                            const period = (start, end) => iso(isUpper ? end : start);
+                                            const month = (year, index) => period(new Date(year, index, 1), new Date(year, index + 1, 0));
+                                            const text = bound.toLowerCase();
+                                            const today = new Date();
+                                            let match;
+                                            if ((match = text.match(/^(\d{4})$/))) return period(new Date(+match[1], 0, 1), new Date(+match[1], 11, 31));
+                                            if ((match = text.match(/^(\d{4})-(\d{1,2})$/))) return month(+match[1], match[2] - 1);
+                                            if ((match = text.match(/^(\d{1,2})[.\/](\d{4})$/))) return month(+match[2], match[1] - 1);
+                                            if ((match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return iso(new Date(+match[1], match[2] - 1, +match[3]));
+                                            if ((match = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return iso(new Date(+match[3], match[2] - 1, +match[1]));
+                                            const days = { today: 0, yesterday: -1, tomorrow: 1 }[text];
+                                            if (days !== undefined) return iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() + days));
+                                            if (!(match = text.match(/^(\d+) (day|week|month|year)s? ago$/))) return '';
+                                            const count = +match[1];
+                                            if (match[2] === 'day') return iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() - count));
+                                            if (match[2] === 'month') return month(today.getFullYear(), today.getMonth() - count);
+                                            if (match[2] === 'year') return period(new Date(today.getFullYear() - count, 0, 1), new Date(today.getFullYear() - count, 11, 31));
+                                            const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7 * count - (today.getDay() + 6) % 7);
+                                            return period(monday, new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
+                                        },
+                                    }"
+                                    wire:ignore
+                                >
+                                    @foreach (['from', 'to'] as $bound)
+                                        <x-ig::input
+                                            :type="$inputType"
+                                            :name="$attrName . '-' . $bound"
+                                            value=""
+                                            :x-model="$bound"
+                                            x-on:input="join()"
+                                            :showError="false"
+                                            :step="$inputType === 'number' ? 'any' : null"
+                                        >{{ __('model-browser::global.filters.range-' . $bound, ['label' => $label]) }}</x-ig::input>
+                                    @endforeach
+                                </div>
+                                @error($attrName)
+                                    <span class="invalid-feedback d-block" role="alert"><strong>{{ $message }}</strong></span>
+                                @enderror
                             @else
                                 <x-ig::input
                                     :type="$inputType"

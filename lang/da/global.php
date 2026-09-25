@@ -18,8 +18,9 @@ return [
         'all' => 'Alle',
         'search' => 'Søg...',
         'search-hint' => 'Søger i: :fields',
-        'from' => 'Fra',
-        'to' => 'Til',
+        'range-from' => ':label fra',
+        'range-to' => ':label til',
+        'invalid-date' => 'Angiv en dato som 2026-10-15, 2026-10, 2026 eller 3 days ago.',
     ],
     'sort' => [
         'by' => 'Sorter efter',

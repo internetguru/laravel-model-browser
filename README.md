@@ -215,19 +215,13 @@ The filter system provides a search bar with Gmail-style query syntax and an exp
 
 ### Configuration
 
-Pass an associative array to the `filters` parameter. Each key is a filter attribute name, and each value is a config array:
+Pass an associative array to the `filters` parameter. Each key is a filter name in kebab case (e.g. `created-by`), and each value is a config array:
 
 ```php
 :filters="[
-    'from' => [
-        'type' => 'date_from',
-        'label' => 'From Date',
-        'column' => 'created_at',
-        'timezone' => 'Europe/Prague',
-    ],
-    'to' => [
-        'type' => 'date_to',
-        'label' => 'To Date',
+    'created' => [
+        'type' => 'date',
+        'label' => 'Created',
         'column' => 'created_at',
         'timezone' => 'Europe/Prague',
     ],
@@ -245,13 +239,9 @@ Pass an associative array to the `filters` parameter. Each key is a filter attri
         'rules' => 'nullable|string|max:32',
         'url' => 'voucher',
     ],
-    'priceFrom' => [
-        'type' => 'number_from',
-        'label' => 'Price From',
-    ],
-    'priceTo' => [
-        'type' => 'number_to',
-        'label' => 'Price To',
+    'price' => [
+        'type' => 'number',
+        'label' => 'Price',
     ],
     'name' => [
         'type' => 'string',
@@ -263,13 +253,13 @@ Pass an associative array to the `filters` parameter. Each key is a filter attri
 filterSessionKey="order-browser-filters"
 ```
 
-Note that `priceFrom` and `priceTo` have no `column` key — they are not auto-applied and must be handled manually in the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)).
+Note that `price` has no `column` key — it is not auto-applied and must be handled manually in the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)).
 
 ### Filter Config Keys
 
 | Key | Description |
 |---|---|
-| `type` | Filter type: `string`, `number`, `date`, `date_from`, `date_to`, `number_from`, `number_to`, `options`, `checkbox` (default: `string`). **Note:** `checkbox` renders a single on/off box whose value is `1` when checked and empty when not — with a `column` it matches `column = 1`, without one it is left to the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)). **Note:** `date_to` interprets date-only values (without an explicit time) as end-of-day (23:59:59), so e.g. `to:2026-02-16` includes all records on Feb 16. When a specific time is provided, it is used as-is. |
+| `type` | Filter type: `string`, `number`, `date`, `options`, `checkbox` (default: `string`). `number` and `date` take a range (see [Ranges](#ranges)). **Note:** `checkbox` renders a single on/off box whose value is `1` when checked and empty when not — with a `column` it matches `column = 1`, without one it is left to the model scope (see [HasModelBrowserFilters Trait](#hasmodelbrowserfilters-trait)). |
 | `label` | Display label in the filter panel |
 | `column` | Database column name for auto-apply. **When set**, the filter is automatically applied to the query. **When omitted** (and no `columns`), the filter is NOT auto-applied — use `HasModelBrowserFilters` trait for manual access. |
 | `columns` | OR group — a list of columns matched with `OR` instead of a single `column` (see [OR Column Groups](#or-column-groups)) |
@@ -314,7 +304,33 @@ All columns of an OR group also take part in free-text search, exactly as separa
 
 ### Ranges
 
-A `date_from` and a `date_to` filter (or `number_from` and `number_to`) over the same `column`/`columns` and `relation` are applied as one range: both bounds must hold for the same related row, and for the same column of an OR group. With `from` and `to` over `posts.published_at`, a user with one post before the range and another after it is not listed. A lone bound, or two bounds over different columns, apply each on their own.
+A `number` or `date` filter takes a range, its bounds separated by `..`:
+
+```
+price:1000..2000    # 1000 to 2000, both included
+price:..1000        # up to 1000
+price:1000..        # 1000 and more
+price:1000          # exactly 1000, the range 1000..1000
+created:2026-03-01..2026-03-31
+```
+
+A date bound stands for the whole period it names. The lower bound is the period's first moment and the upper bound its last, so a single value covers the whole period:
+
+```
+created:2026                    # the whole year
+created:2026-10                 # the whole month, also written 10.2026
+created:2026-09..2026-10        # September and October
+created:2026-10-15              # the whole day, also written 15.10.2026
+created:"3 days ago"            # that whole day
+created:"last month..yesterday" # from the first day of last month to the end of yesterday
+created:"2026-10-15 08:00"      # a bound with a time is that moment
+```
+
+Relative bounds are anything `Carbon::parse()` reads (in English), and they span the unit they name: day, week, month, year, hour or minute; `today`, `yesterday` and `tomorrow` are days. Dates are read in the filter's `timezone`. Each bound is validated on its own against the filter's rules, and a date bound that is not a date is an error.
+
+Both bounds must hold for the same related row, and for the same column of an OR group: with `published:2026-03-01..2026-03-31` over `posts.published_at`, a user with one post before the range and another after it is not listed.
+
+In the filter panel, filters are listed one under another, and a range filter shows two inputs side by side, one for each bound, which are joined into the one value. A date input shows the first or the last day of a bound's period; a bound left untouched keeps what was written, such as `2026-10` or `3 days ago`.
 
 ### Search Query Syntax
 
@@ -323,22 +339,25 @@ The search bar supports Gmail-style syntax:
 - **Free text**: `john` — searches across all `string`-type filter columns (with `column` set)
 - **Specific filter**: `name:john` — applies to the `name` filter
 - **Quoted values**: `name:"John Doe"` — for values containing spaces
-- **No value at all**: `name:""` — the rows the filter finds nothing on
-- **Combined**: `name:john from:2025-01-01` — all terms must match (AND)
+- **No value at all**: `name:` — the rows the filter finds nothing on
+- **Range**: `price:1000..2000` — for `number` and `date` filters (see [Ranges](#ranges))
+- **Combined**: `name:john created:2025-01-01..` — all terms must match (AND)
 
 #### Searching for rows with no value
 
-`attribute:""` — an explicitly quoted empty value — matches the rows where the filter has
-nothing to match on, which is otherwise unreachable: a column that is `NULL` or empty, and,
-for a filter over a `relation`, a row whose relation is missing altogether. With an OR group
-of `columns`, a row qualifies only when *none* of them carries a value.
+A bare `attribute:`, followed by a space or the end of the query, matches the rows where the
+filter has nothing to match on: a column that is `NULL` or empty, and, for a filter over a
+`relation`, a row whose relation is missing altogether. With an OR group of `columns`, a row
+qualifies only when *none* of them carries a value. `attribute:""` reads the same, and the
+query built from the filter panel writes the bare form.
 
 ```
-ordered_by:""     # orders nobody is named on
+ordered-by:       # orders nobody is named on
+paid: novak       # unpaid orders, and the free text novak
 ```
 
-A bare `attribute:` with nothing after the colon is not this — it carries no value to search
-for and stays free text, as it always has.
+A bare key that is no configured filter, such as `note:`, stays free text, and so does an
+unfinished `name:"Jo`. In the filter panel, type `""` into a text field to search for no value.
 
 ### Auto-applied vs Manual Filters
 
@@ -349,7 +368,7 @@ Filters with a `column` key are **auto-applied** to the Eloquent query. Filters 
 'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name']
 
 // Manual filter (applied in your model scope via HasModelBrowserFilters):
-'priceFrom' => ['type' => 'number_from', 'label' => 'Price From']
+'price' => ['type' => 'number', 'label' => 'Price']
 ```
 
 Typical reasons to omit `column` and handle filtering manually:
@@ -373,19 +392,19 @@ class Order extends Model
     public static function summary()
     {
         $query = static::with(['customer', 'payment', 'charges']);
-        $filters = (new static)->getModelBrowserFilters();
+        $price = (new static)->getModelBrowserFilterRange('price');
 
         // Manual filter: price is a computed sum of related charges
-        if ($priceFrom = $filters->get('priceFrom')) {
+        if ($price['from'] !== null) {
             $query->whereRaw(
                 '(SELECT SUM(amount) FROM charges WHERE charges.order_id = orders.id) >= ?',
-                [$priceFrom * 100]
+                [$price['from'] * 100]
             );
         }
-        if ($priceTo = $filters->get('priceTo')) {
+        if ($price['to'] !== null) {
             $query->whereRaw(
                 '(SELECT SUM(amount) FROM charges WHERE charges.order_id = orders.id) <= ?',
-                [$priceTo * 100]
+                [$price['to'] * 100]
             );
         }
 
@@ -398,6 +417,7 @@ Available methods:
 
 - `getModelBrowserFilters()` — returns a `Collection` of active filter values
 - `getModelBrowserFilter(string $key, mixed $default = null)` — get a specific filter value
+- `getModelBrowserFilterRange(string $key)` — the bounds of a `number` or `date` filter as `['from' => ?string, 'to' => ?string]`, `null` for an open one; turn a date bound into its first and last moment with `BaseModelBrowser::parseDatePeriod($bound, $timezone)`
 - `hasModelBrowserFilter(string $key)` — check if a filter is set
 - `hasModelBrowserFilters()` — check if any filters are active
 
@@ -458,14 +478,9 @@ Below is a complete example of an order browser with auto-applied and manual fil
         'payment_type' => 'formatTransactionPaymentType',
     ]"
     :filters="[
-        'from' => [
-            'type' => 'date_from',
-            'label' => __('summary.from_date'),
-            'column' => 'created_at',
-        ],
-        'to' => [
-            'type' => 'date_to',
-            'label' => __('summary.to_date'),
+        'created' => [
+            'type' => 'date',
+            'label' => __('summary.created'),
             'column' => 'created_at',
         ],
         'symbol' => [
@@ -482,13 +497,9 @@ Below is a complete example of an order browser with auto-applied and manual fil
             'column' => 'ulid',
             'relation' => 'charges.voucher',
         ],
-        'priceFrom' => [
-            'type' => 'number_from',
-            'label' => __('summary.price_from'),
-        ],
-        'priceTo' => [
-            'type' => 'number_to',
-            'label' => __('summary.price_to'),
+        'price' => [
+            'type' => 'number',
+            'label' => __('summary.price'),
         ],
         'name' => [
             'type' => 'string',
@@ -521,8 +532,8 @@ Below is a complete example of an order browser with auto-applied and manual fil
 ```
 
 In this example:
-- `from`, `to`, `symbol`, `voucher`, `name`, `email` have `column` set → **auto-applied** to the query
-- `priceFrom`, `priceTo` have no `column` → **manual filters** handled in `Order::summary()` via `HasModelBrowserFilters`
+- `created`, `symbol`, `voucher`, `name`, `email` have `column` set → **auto-applied** to the query
+- `price` has no `column` → a **manual filter** handled in `Order::summary()` via `HasModelBrowserFilters`
 - `voucher` uses `relation` with dot-notation (`charges.voucher`) for nested `whereHas()` and `url` for URL initialization
 
 ## Features
