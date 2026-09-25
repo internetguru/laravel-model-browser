@@ -214,22 +214,6 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: $spacer * 0.5;
-
-            @include media-1 {
-                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-            }
-
-            @include media-2 {
-                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-            }
-
-            @include media-3 {
-                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-            }
-
-            @include media-4 {
-                grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-            }
         }
 
         &__checkboxes {
@@ -253,7 +237,7 @@
 
         &__range {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: $spacer * 0.5;
         }
 

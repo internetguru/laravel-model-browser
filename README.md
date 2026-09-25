@@ -330,7 +330,7 @@ Relative bounds are anything `Carbon::parse()` reads (in English), and they span
 
 Both bounds must hold for the same related row, and for the same column of an OR group: with `published:2026-03-01..2026-03-31` over `posts.published_at`, a user with one post before the range and another after it is not listed.
 
-In the filter panel, a range filter shows two inputs, one for each bound, which are joined into the one value. A date input shows the first or the last day of a bound's period; a bound left untouched keeps what was written, such as `2026-10` or `3 days ago`.
+In the filter panel, filters are listed one under another, and a range filter shows two inputs side by side, one for each bound, which are joined into the one value. A date input shows the first or the last day of a bound's period; a bound left untouched keeps what was written, such as `2026-10` or `3 days ago`.
 
 ### Search Query Syntax
 
