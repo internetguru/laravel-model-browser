@@ -635,7 +635,9 @@ class BaseModelBrowserTest extends TestCase
 
         // The filter panel edits the two bounds of the one value
         $component->assertSeeHtml('name="filter-credit-from"')
-            ->assertSeeHtml('name="filter-credit-to"');
+            ->assertSeeHtml('name="filter-credit-to"')
+            ->assertSee('Credit min')
+            ->assertSee('Credit max');
 
         // The script joining them stays inside its attribute instead of spilling onto the page
         $this->assertMatchesRegularExpression(
