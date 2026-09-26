@@ -182,7 +182,7 @@
                                             x-on:input="join()"
                                             :showError="false"
                                             :step="$inputType === 'number' ? 'any' : null"
-                                        >{{ __('model-browser::global.filters.range-' . $bound, ['label' => $label]) }}</x-ig::input>
+                                        >{{ __('model-browser::global.filters.range-' . $type . '-' . $bound, ['label' => $label]) }}</x-ig::input>
                                     @endforeach
                                 </div>
                                 @error($attrName)
