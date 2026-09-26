@@ -18,8 +18,10 @@ return [
         'all' => 'Alle',
         'search' => 'Søg...',
         'search-hint' => 'Søger i: :fields',
-        'range-from' => ':label fra',
-        'range-to' => ':label til',
+        'range-number-from' => ':label min.',
+        'range-number-to' => ':label maks.',
+        'range-date-from' => ':label tidligst',
+        'range-date-to' => ':label senest',
         'invalid-date' => 'Angiv en dato som 2026-10-15, 2026-10, 2026 eller 3 days ago.',
     ],
     'sort' => [
