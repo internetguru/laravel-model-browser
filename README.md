@@ -186,12 +186,20 @@ Maximum number of rows a CSV export may contain. When the current (filtered) res
 
 ### `statsAttributes` / `statsLimit`
 
-Columns that are summarized. Their header offers the statistics menu — an icon opening `SUM`; `AVG`, `MEDIAN`, `MIN`, `MAX` and `COUNT`; `AVGNZ`, `MEDIANNZ`, `MINNZ`, `MAXNZ` and `COUNTNZ`, with a button copying the lot to the clipboard. See [Column Statistics](#column-statistics):
+Columns that are summarized, in the table only: their header offers the statistics menu. Every view attribute by default; name some to summarize only those, or pass `[]` to turn the statistics off. See [Column Statistics](#column-statistics):
 
 ```php
 :statsAttributes="['price', 'credit']"
 :statsLimit="1000"
 ```
+
+A column counts as numeric when every value it has is a number, digits in a string included. `statsTextAttributes` names the columns whose values only look like numbers, such as order numbers; they get no numeric statistics:
+
+```php
+:statsTextAttributes="['symbol']"
+```
+
+`title` names the list as its page does, e.g. `:title="__('order.list')"`; each menu is headed *"Orders / Amount"*, and a copy of it too. Without it, the heading is just the column's name.
 
 `statsLimit` is the largest result count the statistics are computed for. Summarizing walks the whole filtered result set, so above it nothing is computed and the menu asks for narrower filters instead. Defaults to the `model-browser.stats_limit` config value (5000); set to `0` for unlimited.
 
@@ -550,14 +558,23 @@ In this example:
 - **Auto-refresh** — Optional periodic data refresh via `refreshInterval` parameter.
 - **Sorting** — Click column headers to sort ascending/descending or reset. Supports default sort column and direction.
 - **CSV Export** — Download the current filtered and sorted data as a CSV file. Exports are capped at `exportLimit` rows (per-instance parameter, defaults to the `model-browser.export_limit` config value of 1500; `0` disables the cap) — when the current result count exceeds it, the download button is disabled and the export endpoint refuses the request.
-- **Column statistics** — Summarized columns carry a statistics menu in their header, loaded inside its own Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands) so the data query is never re-run for it. See [Column Statistics](#column-statistics).
+- **Column statistics** — Every column carries a statistics menu in its header, loaded inside its own Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands) so the data query is never re-run for it. See [Column Statistics](#column-statistics).
 - **Fullscreen** — Toggle fullscreen mode for the table view.
 - **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as they are shown, `formats` applied and markup left out; the CSV export holds the plain `rawFormats` values.
 - **Deferred count** — The total result count is the `of 176` half of the pagination line and is loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands), passed into the pagination component as its `count` slot. The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 
 ## Column Statistics
 
-The columns named in `statsAttributes` carry an icon in their header opening a menu of statistics. The icon is greyed out and disabled until the statistics arrive. It sits in a box of a fixed size, because FontAwesome replaces its `<i>` with an `<svg>` only after the page has been laid out. The menu is kept within the visible part of the screen:
+Every column in `statsAttributes` (all of them by default) carries an icon in its header opening a menu of statistics. It sits in a box of a fixed size, because FontAwesome replaces its `<i>` with an `<svg>` only after the page has been laid out. The menu is kept within the visible part of the screen, and headed by the list's `title` and the column's name. Its first part applies to every column:
+
+| Statistic | |
+| :--- | :--- |
+| `DISTINCT` | Different values |
+| `EMPTY` | Empty values, and their share of the rows |
+| `NON-EMPTY` | Filled values, and their share of the rows |
+| `EARLIEST` / `LATEST` | First / last moment, when every value is a date |
+
+A numeric column adds:
 
 | Statistic | |
 | :--- | :--- |
@@ -571,17 +588,19 @@ The columns named in `statsAttributes` carry an icon in their header opening a m
 | `MINNZ` / `MAXNZ` | Smallest / largest number that is not zero |
 | `COUNTNZ` | Values that are not zero |
 
-An empty value (null, `''` or `false`) is no value at all: every statistic leaves it out, as SQL's `AVG(column)` and `COUNT(column)` do. A zero is a value. So the list's total count less `COUNT` is the number of empty values, and `COUNT` less `COUNTNZ` the number of zeros. A column whose empty value means zero, and should count as one, has to say so in its summary query (e.g. `COALESCE(credit, 0)`).
+An empty value (null or `''`) is no value at all: every statistic but `EMPTY` leaves it out, as SQL's `AVG(column)` and `COUNT(column)` do. A zero or `false` is a value. So `COUNT` less `COUNTNZ` is the number of zeros. A column whose empty value means zero, and should count as one, has to say so in its summary query (e.g. `COALESCE(credit, 0)`).
 
-A line divides the three groups (`BaseModelBrowser::STATS_GROUPS`): `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a numeric column has no zero, the last group would only repeat the one before it, and the note *"No zero values"* stands in for it. A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, as they are shown.
+The labels are translated (`model-browser::global.stats.labels`): in Czech `RŮZNÉ`, `SOUČET`, `PRŮMĚR ≠0` and so on. A date span and `SUM` take the share's column too.
 
-Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. `COUNT` and `COUNTNZ` are never formatted.
+A line divides the groups (`BaseModelBrowser::STATS_GROUPS`): the ones above, the span of a date column, `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a numeric column has no zero, the last group would only repeat the one before it, and the note *"No zero values"* stands in for it. A column that is not numeric shows none of the numeric groups, `COUNT` and `COUNTNZ` included.
 
-Only columns whose every value is a number get the numeric statistics; the rest have nothing to offer but their two counts, and the menu lists only those.
+Below them come the column's ten most frequent values with their count and share of the rows, the most frequent first and ties in the order of the value, and a last row counting the rest (*"… 77 other"*). A date counts as its day in the display timezone. A value is shown through the column's `formats` callback, called with the first row it came from, so a formatter can link it; without one, a labelled enum shows its label and a boolean *Yes* or *No*. Instead of the list, a note says when there are no values, when all of them are unique, when they are long texts (over 50 characters on average), or too many or of a kind that cannot be counted. A `[copy]` button under the menu puts all of it on the clipboard as tab-separated lines, as it is shown.
 
-Nothing outside `statsAttributes` is summarized: those columns carry no menu, and a browser naming none of them never runs the extra query.
+Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. The counts are never formatted.
 
-Statistics are loaded after the table itself, and refresh whenever the filters change. Relations the query eager loads, through `with` or in the model's summary method, are loaded in chunks rather than row by row. Above `statsLimit` rows none are computed, and the menu reads *"To show stats, reduce results below 5,000 using filters."*
+The statistics load when a menu is first opened, with a spinner in the meantime, and then colour every column's icon blue. A list no longer than the `model-browser.stats_auto_limit` config value (500; `0` turns it off) has them loaded right after its count instead. Every column is summarized in the one pass over the rows. The statistics are kept, also server side, across page changes and sorting, and are discarded when the filters change. Relations the query eager loads, through `with` or in the model's summary method, are loaded in chunks rather than row by row. Above `statsLimit` rows none are computed, the icon turns light grey, and the menu reads *"To show stats, reduce results below 5,000 using filters."*
+
+The statistics are a table feature: the card view (`base-model-browser`) has no header to carry them.
 
 ```php
 <livewire:table-model-browser

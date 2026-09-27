@@ -9,3 +9,8 @@ function formatDateTime($value)
 {
     return \Carbon\Carbon::parse($value)->format('Y-m-d H:i:s');
 }
+
+function formatNameOfRow($value, $item)
+{
+    return $value . ' #' . $item->id;
+}

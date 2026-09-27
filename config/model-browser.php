@@ -32,4 +32,18 @@ return [
 
     'stats_limit' => 5000,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Column Statistics Automatic Loading
+    |--------------------------------------------------------------------------
+    |
+    | Largest result count the column statistics are loaded for right after
+    | the list, without waiting for a statistics menu to be opened. Up to
+    | this many rows, summarizing costs about as much as reading one page.
+    | Set to 0 to always load them on demand.
+    |
+    */
+
+    'stats_auto_limit' => 500,
+
 ];

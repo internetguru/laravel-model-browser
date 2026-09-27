@@ -1083,10 +1083,11 @@ class BaseModelBrowserTest extends TestCase
         $this->assertFalse($component->instance()->columnStatsHasNoZeros('score'));
         $rows = $component->instance()->columnStatsRows('score');
         $this->assertSame(
-            ['sum', 'avg', 'median', 'min', 'max', 'count', 'avgnz', 'mediannz', 'minnz', 'maxnz', 'countnz'],
+            ['distinct', 'empty', 'nonempty', 'sum', 'avg', 'median', 'min', 'max', 'count', 'avgnz', 'mediannz', 'minnz', 'maxnz', 'countnz'],
             array_column($rows, 'key'),
         );
-        $this->assertSame([0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2], array_column($rows, 'group'));
+        $this->assertSame([0, 0, 0, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4], array_column($rows, 'group'));
+        $this->assertSame(['25.0%', '75.0%'], array_values(array_filter(array_column($rows, 'share'))));
     }
 
     public function test_stats_maxnz_leaves_out_the_zeros_of_a_negative_column()
@@ -1134,12 +1135,12 @@ class BaseModelBrowserTest extends TestCase
 
         $this->assertTrue($component->instance()->columnStatsHasNoZeros('score'));
         $this->assertSame(
-            ['sum', 'avg', 'median', 'min', 'max', 'count'],
+            ['distinct', 'empty', 'nonempty', 'sum', 'avg', 'median', 'min', 'max', 'count'],
             array_column($component->instance()->columnStatsRows('score'), 'key'),
         );
     }
 
-    public function test_stats_of_a_text_column_are_only_its_row_counts()
+    public function test_stats_of_a_text_column_leave_out_the_numeric_ones()
     {
         User::query()->delete();
         User::factory()->create(['name' => 'Named Person']);
@@ -1155,15 +1156,16 @@ class BaseModelBrowserTest extends TestCase
         $stats = $component->get('stats')['name'];
 
         $this->assertFalse($stats['numeric']);
+        $this->assertSame(1, $stats['empty']);
         $this->assertSame(1, $stats['count']);
         $this->assertSame(1, $stats['countnz']);
         foreach (['sum', 'avg', 'avgnz', 'median', 'mediannz', 'min', 'minnz', 'max', 'maxnz'] as $key) {
             $this->assertNull($stats[$key], $key);
         }
 
-        // Only COUNT and COUNTNZ are worth listing in the menu
+        // No numeric statistics, not even their counts
         $this->assertSame(
-            ['count', 'countnz'],
+            ['distinct', 'empty', 'nonempty'],
             array_column($component->instance()->columnStatsRows('name'), 'key'),
         );
     }
@@ -1235,7 +1237,15 @@ class BaseModelBrowserTest extends TestCase
         $this->assertCount(1, $dispatched);
     }
 
-    public function test_nothing_is_summarized_without_stats_attributes()
+    public function test_every_view_attribute_is_summarized_by_default()
+    {
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+        ])->assertSet('statsAttributes', ['name', 'email']);
+    }
+
+    public function test_nothing_is_summarized_with_empty_stats_attributes()
     {
         User::query()->delete();
         User::factory()->count(3)->create();
@@ -1243,6 +1253,7 @@ class BaseModelBrowserTest extends TestCase
         Livewire::test(BaseModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
+            'statsAttributes' => [],
         ])->call('loadTotalStats')
             ->assertSet('stats', null)
             ->assertSet('statsOverLimit', false);
@@ -1255,6 +1266,196 @@ class BaseModelBrowserTest extends TestCase
             'viewAttributes' => ['name' => 'Name'],
             'statsAttributes' => ['name', 'email'],
         ])->assertSet('statsAttributes', ['name']);
+    }
+
+    /**
+     * @param  array<int, string>  $names
+     * @return array{0: array<string, mixed>, 1: array{message: ?string, rows: array<int, array<string, string>>}}
+     */
+    protected function nameStats(array $names): array
+    {
+        User::query()->delete();
+        foreach ($names as $name) {
+            User::factory()->create()->forceFill(['name' => $name])->save();
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ]);
+        $component->call('loadTotalStats');
+
+        return [$component->get('stats')['name'], $component->instance()->columnValueRows('name')];
+    }
+
+    public function test_stats_list_the_most_frequent_values_and_count_the_rest()
+    {
+        $others = array_map(fn ($i) => sprintf('N%02d', $i), range(10, 1));
+        [$stats, $values] = $this->nameStats(['Bob', 'Anna', 'Bob', 'Anna', 'Anna', '', ...$others]);
+
+        $this->assertSame(16, $stats['rows']);
+        $this->assertSame(12, $stats['distinct']);
+        $this->assertSame(1, $stats['empty']);
+        $this->assertSame('values', $stats['listing']);
+        // Ties in the order of the value
+        $this->assertSame(
+            ['Anna', 'Bob', 'N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07', 'N08'],
+            array_column($stats['values'], 'display'),
+        );
+        $this->assertSame([3, 2, 1, 1, 1, 1, 1, 1, 1, 1], array_column($stats['values'], 'count'));
+        $this->assertSame(['values' => 2, 'count' => 2], $stats['other']);
+
+        $this->assertNull($values['message']);
+        $this->assertSame(['label' => 'Anna', 'title' => 'Anna', 'count' => '3', 'share' => '18.8%'], $values['rows'][0]);
+        $this->assertSame('… 2 other', $values['rows'][10]['label']);
+    }
+
+    public function test_stats_say_why_the_values_are_not_listed()
+    {
+        $long = str_repeat('x', BaseModelBrowser::STATS_LONG_TEXT + 1);
+
+        $this->assertSame('none', $this->nameStats(['', ''])[0]['listing']);
+        $this->assertSame('unique', $this->nameStats(['Anna', 'Bob', ''])[0]['listing']);
+        // Uniqueness says more than the length
+        $this->assertSame('unique', $this->nameStats([$long, $long . 'y'])[0]['listing']);
+        $this->assertSame('long-text', $this->nameStats([$long, $long])[0]['listing']);
+        // A single value is listed rather than called unique
+        $this->assertSame('values', $this->nameStats(['Anna'])[0]['listing']);
+
+        [$stats, $values] = $this->nameStats(['Anna', 'Bob']);
+        $this->assertSame([], $stats['values']);
+        $this->assertSame(['message' => __('model-browser::global.stats.unique'), 'rows' => []], $values);
+    }
+
+    public function test_stats_treat_the_text_attributes_as_texts_however_numeric()
+    {
+        User::query()->delete();
+        foreach (['20260001', '20260002', '20260001'] as $name) {
+            User::factory()->create()->forceFill(['name' => $name])->save();
+        }
+
+        $stats = fn (array $texts) => Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'statsTextAttributes' => $texts,
+        ])->call('loadTotalStats')->get('stats')['name'];
+
+        $this->assertTrue($stats([])['numeric']);
+
+        $text = $stats(['name']);
+        $this->assertFalse($text['numeric']);
+        $this->assertNull($text['sum']);
+        $this->assertSame(3, $text['countnz']);
+        $this->assertSame(['20260001', '20260002'], array_column($text['values'], 'display'));
+    }
+
+    public function test_stats_format_a_listed_value_with_a_row_it_came_from()
+    {
+        User::query()->delete();
+        $first = User::factory()->create(['name' => 'Anna']);
+        User::factory()->create(['name' => 'Anna']);
+        User::factory()->create(['name' => 'Bob']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'formats' => ['name' => 'formatNameOfRow'],
+        ]);
+        $component->call('loadTotalStats');
+
+        $this->assertSame('Anna #' . $first->id, $component->get('stats')['name']['values'][0]['display']);
+    }
+
+    public function test_stats_labels_are_translated()
+    {
+        app()->setLocale('cs');
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ]);
+        $component->call('loadTotalStats');
+
+        $this->assertSame(
+            ['RŮZNÉ', 'PRÁZDNÉ', 'NEPRÁZDNÉ'],
+            array_column($component->instance()->columnStatsRows('name'), 'label'),
+        );
+    }
+
+    public function test_stats_count_false_as_a_value()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->boolean('active')->nullable();
+        });
+
+        User::query()->delete();
+        foreach ([true, false, false, null] as $active) {
+            User::factory()->create()->forceFill(['active' => $active])->save();
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['active' => 'Active'],
+        ]);
+        $component->call('loadTotalStats');
+        $stats = $component->get('stats')['active'];
+
+        $this->assertSame(1, $stats['empty']);
+        $this->assertSame(3, $stats['nonempty']);
+        $this->assertSame(['No', 'Yes'], array_column($stats['values'], 'display'));
+        $this->assertSame([2, 1], array_column($stats['values'], 'count'));
+    }
+
+    public function test_stats_count_dates_by_the_day_and_span_them()
+    {
+        User::query()->delete();
+        foreach (['2026-01-05 08:00:00', '2026-02-01 10:00:00', '2026-01-05 17:00:00'] as $created) {
+            User::factory()->create()->forceFill(['created_at' => $created])->save();
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['created_at' => 'Created'],
+        ]);
+        $component->call('loadTotalStats');
+        $stats = $component->get('stats')['created_at'];
+
+        $this->assertSame(2, $stats['distinct']);
+        $this->assertSame(['01/05/2026', '02/01/2026'], array_column($stats['values'], 'display'));
+        $this->assertSame([2, 1], array_column($stats['values'], 'count'));
+        $this->assertSame(Carbon::parse('2026-01-05 08:00:00')->getTimestamp(), $stats['earliest']);
+        $this->assertSame(Carbon::parse('2026-02-01 10:00:00')->getTimestamp(), $stats['latest']);
+        $this->assertSame(
+            ['distinct', 'empty', 'nonempty', 'earliest', 'latest'],
+            array_column($component->instance()->columnStatsRows('created_at'), 'key'),
+        );
+    }
+
+    public function test_a_short_list_loads_its_stats_right_after_the_count()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ]);
+
+        $component->call('loadTotalCount')->assertDispatched('mb-load-stats');
+
+        config(['model-browser.stats_auto_limit' => User::count() - 1]);
+        $component->call('loadTotalCount')->assertNotDispatched('mb-load-stats');
+    }
+
+    public function test_loaded_stats_outlive_a_snapshot_that_lost_them()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ]);
+
+        $component->call('loadTotalStats')
+            ->set('stats', null)
+            ->call('nextPage');
+
+        $this->assertSame(User::count(), $component->get('stats')['name']['nonempty']);
     }
 
     public function test_renders_copy_page_button()

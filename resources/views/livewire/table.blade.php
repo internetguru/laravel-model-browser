@@ -55,16 +55,25 @@
                         scoped to it, so the component itself does not render. It is
                         `always` rendered otherwise — the cells carry the sort state
                         too, which has to follow every ordinary re-render.
+
+                        They load when a menu is first opened, or right after the count
+                        of a short list (both dispatch `mb-load-stats`), once per filter:
+                        a load already on its way or done is not repeated.
                     --}}
                     @island(name: 'stats', always: true)
                         @if ($statsAttributes)
                             <span
                                 style="display: none;"
-                                x-data
-                                @if ($stats === null && ! $statsOverLimit)
-                                    x-init="$wire.$island('stats').loadTotalStats()"
-                                @endif
-                                x-on:mb-refresh-stats.window="$wire.$island('stats').loadTotalStats()"
+                                x-data="{ loading: false }"
+                                x-on:mb-load-stats.window="
+                                    if (!loading && $wire.stats === null && !$wire.statsOverLimit) {
+                                        loading = true;
+                                        $wire.$island('stats').loadTotalStats().finally(() => {
+                                            loading = false;
+                                            $dispatch('mb-stats-loaded');
+                                        });
+                                    }
+                                "
                             ></span>
                         @endif
                         @foreach($viewAttributes as $column => $trans)
@@ -96,7 +105,9 @@
                                     @if ($hasStats)
                                         <x-model-browser::column-stats
                                             :label="$trans"
+                                            :list-title="$title"
                                             :rows="$this->columnStatsRows($column)"
+                                            :values="$this->columnValueRows($column)"
                                             :no-zeros="$this->columnStatsHasNoZeros($column)"
                                             :loaded="$columnStats !== null"
                                             :over-limit="$statsOverLimit"

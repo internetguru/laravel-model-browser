@@ -284,8 +284,16 @@
         font-size: 0.875em;
         cursor: pointer;
 
-        // The colour says what opening it gives: blue once the statistics are in, light grey
-        // while they load, dark grey when the list is too long to count them.
+        // The colour says what opening it gives: grey until the statistics are loaded, blue
+        // once they are in, light grey when the list is too long to count them.
+        color: var(--bs-gray-600, #6c757d);
+
+        &.active,
+        &:hover,
+        &:focus-visible {
+            color: var(--bs-gray-900, #212529);
+        }
+
         &--ready {
             color: var(--bs-link-color, #0d6efd);
 
@@ -297,19 +305,13 @@
         }
 
         &--unavailable {
-            color: var(--bs-gray-700, #495057);
+            color: var(--bs-gray-400, #ced4da);
 
             &.active,
             &:hover,
             &:focus-visible {
-                color: var(--bs-gray-900, #212529);
+                color: var(--bs-gray-600, #6c757d);
             }
-        }
-
-        // Until the statistics are in, there is nothing to open.
-        &:disabled {
-            color: var(--bs-gray-400, #ced4da);
-            cursor: default;
         }
 
         // The header's sort arrows are styled down to half an em and greyed; this is
@@ -351,9 +353,22 @@
         }
     }
 
+    &-heading {
+        margin: 0 0 0.25rem;
+        padding-bottom: 0.25rem;
+        border-bottom: thin solid var(--bs-border-color, #dfe1e5);
+    }
+
+    &-loading {
+        display: flex;
+        justify-content: center;
+        padding: 0.5rem 0;
+    }
+
+    // A term, its value and, for the counts, their share of the rows.
     &-list {
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: auto 1fr auto;
         margin: 0;
 
         // Padding instead of a column gap, so a group's dividing line runs unbroken.
@@ -381,6 +396,28 @@
         dd {
             margin: 0;
             text-align: end;
+        }
+
+        dd + dd {
+            padding-inline-start: 1rem;
+        }
+
+        .model-browser__stats-wide {
+            grid-column: span 2;
+        }
+    }
+
+    // A long value is cut short; its title holds the whole of it.
+    &-values {
+        margin-top: 0.25rem;
+        padding-top: 0.25rem;
+        border-top: thin solid var(--bs-border-color, #dfe1e5);
+
+        dt {
+            max-width: 16rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 400;
         }
     }
 
