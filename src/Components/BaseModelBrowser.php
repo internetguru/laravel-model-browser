@@ -84,7 +84,7 @@ class BaseModelBrowser extends Component
      * null or empty — COUNTNZ is the count of the rows that carry a value at
      * all, and is the one also shown in the column header on its own.
      */
-    public const STATS = ['sum', 'avg', 'min', 'max', 'count', 'avgnz', 'minnz', 'countnz'];
+    public const STATS = ['sum', 'avg', 'median', 'min', 'max', 'count', 'avgnz', 'mediannz', 'minnz', 'countnz'];
 
     /**
      * The statistics that are row counts: plain integers, never run through
@@ -217,7 +217,7 @@ class BaseModelBrowser extends Component
      * Per-column statistics, keyed by attribute. null until loaded (or when
      * the result set is too large — see $statsOverLimit).
      *
-     * @var array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}>|null
+     * @var array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float}>|null
      */
     public ?array $stats = null;
 
@@ -821,7 +821,7 @@ class BaseModelBrowser extends Component
      * it does have is a number — otherwise just its two row counts are of any
      * use, and the rest stay null.
      *
-     * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}>
+     * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float}>
      */
     protected function summarize(Builder $query): array
     {
@@ -832,6 +832,7 @@ class BaseModelBrowser extends Component
             'filled' => 0,
             'numbers' => 0,
             'sum' => 0.0,
+            'nonzero' => [],
             'min' => null,
             'minnz' => null,
             'max' => null,
@@ -873,6 +874,7 @@ class BaseModelBrowser extends Component
                 }
 
                 $totals[$attribute]['countnz']++;
+                $totals[$attribute]['nonzero'][] = $number;
                 $totals[$attribute]['minnz'] = min($totals[$attribute]['minnz'] ?? $number, $number);
             }
         }
@@ -887,6 +889,9 @@ class BaseModelBrowser extends Component
                 'sum' => $numeric ? $total['sum'] : null,
                 'avg' => $numeric && $total['count'] ? $total['sum'] / $total['count'] : null,
                 'avgnz' => $numeric && $total['countnz'] ? $total['sum'] / $total['countnz'] : null,
+                // Like AVG, MEDIAN counts the empty rows as zeros
+                'median' => $numeric ? $this->median($total['nonzero'], $total['count'] - $total['countnz']) : null,
+                'mediannz' => $numeric ? $this->median($total['nonzero']) : null,
                 'min' => $numeric ? $total['min'] : null,
                 'minnz' => $numeric ? $total['minnz'] : null,
                 'max' => $numeric ? $total['max'] : null,
@@ -894,6 +899,27 @@ class BaseModelBrowser extends Component
         }
 
         return $stats;
+    }
+
+    /**
+     * The middle value of the numbers and the given count of zeros, or the
+     * mean of the two middle values when there is an even number of them.
+     *
+     * @param  array<int, float>  $numbers
+     */
+    protected function median(array $numbers, int $zeros = 0): ?float
+    {
+        $values = array_merge($numbers, array_fill(0, $zeros, 0.0));
+        $count = count($values);
+
+        if ($count === 0) {
+            return null;
+        }
+
+        sort($values);
+        $middle = intdiv($count, 2);
+
+        return $count % 2 ? $values[$middle] : ($values[$middle - 1] + $values[$middle]) / 2;
     }
 
     /**
@@ -922,7 +948,7 @@ class BaseModelBrowser extends Component
     /**
      * The statistics of one column, or null while none are loaded.
      *
-     * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}|null
+     * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float}|null
      */
     public function columnStats(string $attribute): ?array
     {

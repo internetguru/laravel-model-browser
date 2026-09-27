@@ -178,7 +178,7 @@ Maximum number of rows a CSV export may contain. When the current (filtered) res
 
 ### `statsAttributes` / `statsLimit`
 
-Columns that are summarized. Their header offers the statistics menu — an icon opening `SUM`, `AVG`, `MIN`, `MAX`, `COUNT`, `AVGNZ`, `MINNZ` and `COUNTNZ`, with a button copying the lot to the clipboard. See [Column Statistics](#column-statistics):
+Columns that are summarized. Their header offers the statistics menu — an icon opening `SUM`, `AVG`, `MEDIAN`, `MIN`, `MAX`, `COUNT`, `AVGNZ`, `MEDIANNZ`, `MINNZ` and `COUNTNZ`, with a button copying the lot to the clipboard. See [Column Statistics](#column-statistics):
 
 ```php
 :statsAttributes="['price', 'credit']"
@@ -555,9 +555,11 @@ The columns named in `statsAttributes` carry an icon in their header opening a m
 | :--- | :--- |
 | `SUM` | Total of the column's numbers |
 | `AVG` | `SUM` over `COUNT` |
+| `MEDIAN` | Middle number of `COUNT` rows, empty ones as zeros |
 | `MIN` / `MAX` | Smallest / largest number, zeros included |
 | `COUNT` | Rows in the (filtered) result set |
 | `AVGNZ` | `SUM` over `COUNTNZ` |
+| `MEDIANNZ` | Middle number of `COUNTNZ` rows |
 | `MINNZ` | Smallest number that is not zero |
 | `COUNTNZ` | Rows whose value is neither zero nor empty |
 

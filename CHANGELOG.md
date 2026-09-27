@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Column statistics include `MEDIAN` and `MEDIANNZ`.
+
 ### Changed
 
 - The total count shows an ellipsis while it loads, also right after a filter change instead of the previous total, in room reserved for a five-digit number so the pagination line does not shift. Changing the page keeps the total.

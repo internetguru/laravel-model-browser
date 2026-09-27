@@ -1052,6 +1052,9 @@ class BaseModelBrowserTest extends TestCase
         $this->assertSame(40.0, $stats['sum']);
         $this->assertSame(10.0, $stats['avg']);
         $this->assertSame(20.0, $stats['avgnz']);
+        // 0, 0, 10, 30 with the null as a zero; 10, 30 without the zeros
+        $this->assertSame(5.0, $stats['median']);
+        $this->assertSame(20.0, $stats['mediannz']);
         $this->assertSame(0.0, $stats['min']);
         $this->assertSame(10.0, $stats['minnz']);
         $this->assertSame(30.0, $stats['max']);
@@ -1075,7 +1078,7 @@ class BaseModelBrowserTest extends TestCase
         $this->assertFalse($stats['numeric']);
         $this->assertSame(2, $stats['count']);
         $this->assertSame(1, $stats['countnz']);
-        foreach (['sum', 'avg', 'avgnz', 'min', 'minnz', 'max'] as $key) {
+        foreach (['sum', 'avg', 'avgnz', 'median', 'mediannz', 'min', 'minnz', 'max'] as $key) {
             $this->assertNull($stats[$key], $key);
         }
 
