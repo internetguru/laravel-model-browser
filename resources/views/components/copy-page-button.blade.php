@@ -24,7 +24,9 @@
 
             const grid = root.querySelector('.grid-table');
             if (grid) {
-                const header = [...grid.querySelectorAll('.grid-header-cell')].map((cell) => this.cellValue(cell));
+                {{-- The label alone: the header cell also holds the column's statistics menu. --}}
+                const header = [...grid.querySelectorAll('.grid-header-cell')]
+                    .map((cell) => this.cellValue(cell.querySelector('.grid-header-label') ?? cell));
                 const rows = [...grid.querySelectorAll('.grid-row')]
                     .map((row) => [...row.querySelectorAll('.grid-cell')].map((cell) => this.cellValue(cell)));
 

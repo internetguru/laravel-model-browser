@@ -13,13 +13,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - CSV exports are named after the list and the time of the export, e.g. `vouchers-2026-09-27-1430.csv`, without the sort; the new `exportName` prop sets the list's part.
-- The copy page button and the column statistics copy button copy the values as they are shown, not the plain ones the CSV export holds.
+- The Copy page button and the column statistics copy button copy the values as they are shown, not the plain ones the CSV export holds.
 - The column statistics menu lists `SUM`, then the statistics counting zeros, then the non-zero ones, divided by a line. A numeric column without zeros shows a note instead of the non-zero ones.
 - Column statistics leave out empty values rather than counting them as zeros: `COUNT` is the number of filled values, and `AVG` and `MEDIAN` are taken over those.
 - The total count shows an ellipsis while it loads, also right after a filter change instead of the previous total, in room reserved for a five-digit number so the pagination line does not shift. Changing the page keeps the total.
 
 ### Fixed
 
+- The Copy page button copies the header row without the column statistics.
 - The browser suggests past searches per list: each search input is named after the list's `filterSessionKey`.
 
 ## [8.0.1] - 2026-09-26

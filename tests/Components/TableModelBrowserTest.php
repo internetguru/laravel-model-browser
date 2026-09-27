@@ -303,6 +303,9 @@ class TableModelBrowserTest extends TestCase
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
         ])->assertSee(__('model-browser::global.copy-page.label'))
-            ->assertSeeHtml('copyPage()');
+            ->assertSeeHtml('copyPage()')
+            // The copied header reads the label alone, not the statistics menu beside it
+            ->assertSeeHtml('<span class="grid-header-label">Name</span>')
+            ->assertSeeHtml("querySelector('.grid-header-label')");
     }
 }

@@ -92,7 +92,7 @@
                                             @endif
                                         </span>
                                     @endif
-                                    {{ $trans }}
+                                    <span class="grid-header-label">{{ $trans }}</span>
                                     @if ($hasStats)
                                         <x-model-browser::column-stats
                                             :label="$trans"
