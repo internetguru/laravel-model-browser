@@ -1,9 +1,9 @@
 <div class="model-browser model-browser-base">
-    <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery />
+    <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery :search-name="$this->searchInputName()" />
 
     <x-model-browser::pagination :data="$this->rows" :$skip>
         <x-slot:count>
-            @island(name: 'count')
+            @island(name: 'count', always: true)
                 @include('model-browser::partials.count')
             @endisland
         </x-slot:count>

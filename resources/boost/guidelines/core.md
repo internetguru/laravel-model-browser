@@ -11,14 +11,16 @@ Livewire lists of Eloquent models as a table or cards, with Gmail-style search, 
   - `formats`, `rawFormats`, `alignments`
   - `defaultSortColumn` / `defaultSortDirection`, `enableSort`
   - `filters` + `filterSessionKey`
-  - `statsAttributes` / `statsLimit`, `exportLimit`, `refreshInterval`
+  - `statsAttributes` (every column by default, `[]` for none) / `statsLimit`, `exportLimit`, `refreshInterval`
+  - `title`: the list's translated name, heading each statistics menu
+  - `statsTextAttributes`: columns of numeric-looking texts, such as order numbers, that get no numeric statistics
   - table only: `columnWidths`, `lightDarkStep`
 - Labels are translation calls in the view, such as `__('summary.created_at')`.
 
 ## Formatters
 
 - `formats` and `rawFormats` map an attribute to the **name of a global function**, defined in the application's `app/Support/helpers.php`. Blade components cannot be used there.
-- The function is called as `fn($value, $item)`. `$item` is `null` when formatting a column statistic, so a formatter must cope without the row. It is **not called at all when the value is `null`**, so handle "empty" in the view's default rather than in the formatter.
+- The function is called as `fn($value, $item)`. `$item` is `null` when formatting a column statistic such as `SUM`, so a formatter must cope without the row; a value in the statistics' list of values gets a row it came from. It is **not called at all when the value is `null`**, so handle "empty" in the view's default rather than in the formatter.
 - A `formats` function returns HTML, echoed unescaped, so escape user data (`e()`). For a label, return `toLabelHtml()` or `Label::html()` from laravel-common.
 - A `rawFormats` function returns the plain value used for sorting and the CSV export. Give one to every column whose `formats` output is markup, including cast enums, so sorting and exports stay plain text.
 

@@ -18,7 +18,7 @@
     $itemEndNum = $shown ? $skip + $shown : 0;
 @endphp
 
-<nav role="navigation" aria-label="Pagination Navigation" class="model-browser__pagination d-flex align-items-center justify-content-end gap-3 my-3">
+<nav role="navigation" aria-label="Pagination Navigation" class="model-browser__pagination d-flex align-items-center justify-content-end gap-2 my-3">
     <div class="d-flex align-items-center gap-1 flex-wrap">
         <span class="model-browser__pagination-range">{{ $itemStartNum }}–{{ $itemEndNum }}</span>
         <span>@lang('model-browser::pagination.of')</span>
