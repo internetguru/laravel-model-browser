@@ -1083,11 +1083,17 @@ class BaseModelBrowserTest extends TestCase
         $this->assertFalse($component->instance()->columnStatsHasNoZeros('score'));
         $rows = $component->instance()->columnStatsRows('score');
         $this->assertSame(
-            ['distinct', 'empty', 'nonempty', 'sum', 'avg', 'median', 'min', 'max', 'count', 'avgnz', 'mediannz', 'minnz', 'maxnz', 'countnz'],
+            ['distinct', 'empty', 'nonempty', 'sum', 'header', 'avg', 'median', 'min', 'max', 'count'],
             array_column($rows, 'key'),
         );
-        $this->assertSame([0, 0, 0, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4], array_column($rows, 'group'));
-        $this->assertSame(['25.0%', '75.0%'], array_values(array_filter(array_column($rows, 'share'))));
+        $this->assertSame([0, 0, 0, 2, 3, 3, 3, 3, 3, 3], array_column($rows, 'group'));
+        // Shares beside the counts, the non-zero counterparts beside the rest
+        $this->assertSame(
+            [null, '25.0%', '75.0%', null, 'Non-zero', '20', '20', '10', '30', '2'],
+            array_column($rows, 'second'),
+        );
+        $this->assertSame('Non-empty', $rows[4]['display']);
+        $this->assertTrue($rows[4]['header']);
     }
 
     public function test_stats_maxnz_leaves_out_the_zeros_of_a_negative_column()
@@ -1114,7 +1120,7 @@ class BaseModelBrowserTest extends TestCase
         $this->assertSame(-20.0, $stats['maxnz']);
     }
 
-    public function test_stats_leave_out_the_non_zero_group_of_a_column_without_zeros()
+    public function test_stats_merge_the_columns_of_a_column_without_zeros()
     {
         Schema::table('users', function (Blueprint $table) {
             $table->integer('score')->nullable();
@@ -1134,10 +1140,16 @@ class BaseModelBrowserTest extends TestCase
         $component->call('loadTotalStats');
 
         $this->assertTrue($component->instance()->columnStatsHasNoZeros('score'));
+        $rows = $component->instance()->columnStatsRows('score');
         $this->assertSame(
-            ['distinct', 'empty', 'nonempty', 'sum', 'avg', 'median', 'min', 'max', 'count'],
-            array_column($component->instance()->columnStatsRows('score'), 'key'),
+            ['distinct', 'empty', 'nonempty', 'sum', 'header', 'avg', 'median', 'min', 'max', 'count'],
+            array_column($rows, 'key'),
         );
+        // The header says why across the whole row, and each value spans both columns
+        $this->assertSame(__('model-browser::global.stats.no-zeros'), $rows[4]['label']);
+        $this->assertTrue($rows[4]['full']);
+        $this->assertSame([false, true, true, true, true, true], array_column(array_slice($rows, 4), 'wide'));
+        $this->assertSame([null, null, null, null, null, null], array_column(array_slice($rows, 4), 'second'));
     }
 
     public function test_stats_of_a_text_column_leave_out_the_numeric_ones()
@@ -1324,7 +1336,7 @@ class BaseModelBrowserTest extends TestCase
 
         [$stats, $values] = $this->nameStats(['Anna', 'Bob']);
         $this->assertSame([], $stats['values']);
-        $this->assertSame(['message' => __('model-browser::global.stats.unique'), 'rows' => []], $values);
+        $this->assertSame(['message' => __('model-browser::global.stats.unique'), 'rows' => [], 'align' => 'start'], $values);
     }
 
     public function test_stats_treat_the_text_attributes_as_texts_however_numeric()
@@ -1380,6 +1392,28 @@ class BaseModelBrowserTest extends TestCase
             ['RŮZNÉ', 'PRÁZDNÉ', 'NEPRÁZDNÉ'],
             array_column($component->instance()->columnStatsRows('name'), 'label'),
         );
+    }
+
+    public function test_stats_align_the_listed_values_as_their_column()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('score')->nullable();
+        });
+
+        User::query()->delete();
+        foreach ([10, 10, 20] as $score) {
+            User::factory()->create(['name' => 'Anna'])->forceFill(['score' => $score])->save();
+        }
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'score' => 'Score'],
+            'alignments' => ['name' => 'center'],
+        ]);
+        $component->call('loadTotalStats');
+
+        $this->assertSame('end', $component->instance()->columnValueRows('score')['align']);
+        $this->assertSame('center', $component->instance()->columnValueRows('name')['align']);
     }
 
     public function test_stats_count_false_as_a_value()

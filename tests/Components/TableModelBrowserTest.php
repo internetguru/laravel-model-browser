@@ -247,9 +247,11 @@ class TableModelBrowserTest extends TestCase
             ->assertSeeHtmlInOrder([
                 '">DISTINCT</dt>', '">EMPTY</dt>', '">NON-EMPTY</dt>',
                 'model-browser__stats-group-start">SUM</dt>', 'model-browser__stats-wide',
-                'model-browser__stats-group-start">AVG</dt>', '">MEDIAN</dt>', '">MIN</dt>', '">MAX</dt>', '">COUNT</dt>',
-                'model-browser__stats-group-start">AVGNZ</dt>', '">MEDIANNZ</dt>', '">MINNZ</dt>', '">MAXNZ</dt>', '">COUNTNZ</dt>',
+                'model-browser__stats-header">Non-empty</dd>', 'model-browser__stats-header">Non-zero</dd>',
+                '">AVG</dt>', '<dd', '13.33</dd>', '<dd', '20</dd>',
+                '">MEDIAN</dt>', '">MIN</dt>', '">MAX</dt>', '">COUNT</dt>',
             ])
+            ->assertDontSeeHtml('">AVGNZ</dt>')
             ->assertDontSee(__('model-browser::global.stats.no-zeros'))
             ->assertSee(__('model-browser::global.stats.copy'))
             // Both copy buttons copy what is shown, not the raw values
@@ -257,7 +259,7 @@ class TableModelBrowserTest extends TestCase
             ->assertDontSeeHtml("getAttribute('data-raw')");
     }
 
-    public function test_stats_menu_notes_a_column_without_zeros_instead_of_its_non_zero_group()
+    public function test_stats_menu_merges_the_columns_of_a_column_without_zeros()
     {
         Schema::table('users', function (Blueprint $table) {
             $table->integer('score')->nullable();
@@ -272,9 +274,11 @@ class TableModelBrowserTest extends TestCase
             'viewAttributes' => ['score' => 'Score'],
             'statsAttributes' => ['score'],
         ])->call('loadTotalStats')
-            ->assertSeeHtml('">COUNT</dt>')
-            ->assertDontSeeHtml('">AVGNZ</dt>')
-            ->assertSee(__('model-browser::global.stats.no-zeros'));
+            ->assertSeeHtmlInOrder([
+                '<dt class="model-browser__stats-group-start model-browser__stats-header model-browser__stats-full">' . __('model-browser::global.stats.no-zeros') . '</dt>',
+                '">AVG</dt>', 'model-browser__stats-wide">20</dd>',
+            ])
+            ->assertDontSee(__('model-browser::global.stats.nonzero'));
     }
 
     public function test_stats_menu_lists_the_most_frequent_values()
@@ -290,7 +294,7 @@ class TableModelBrowserTest extends TestCase
         ])->call('loadTotalStats')
             ->assertSeeHtmlInOrder([
                 '">EMPTY</dt>', '<dd', '1</dd>', '25.0%</dd>',
-                'model-browser__stats-values',
+                'model-browser__stats-values text-start',
                 '<dt title="Anna">Anna</dt>', '2</dd>', '50.0%</dd>',
                 '<dt title="Bob">Bob</dt>', '1</dd>', '25.0%</dd>',
             ]);

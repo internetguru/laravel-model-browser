@@ -108,7 +108,6 @@
                                             :list-title="$title"
                                             :rows="$this->columnStatsRows($column)"
                                             :values="$this->columnValueRows($column)"
-                                            :no-zeros="$this->columnStatsHasNoZeros($column)"
                                             :loaded="$columnStats !== null"
                                             :over-limit="$statsOverLimit"
                                             :limit="$statsLimit"

@@ -86,7 +86,8 @@ class BaseModelBrowser extends Component
     /**
      * The statistics a column's menu offers, in the groups and order they are
      * listed: the ones every column has, the dates' span, SUM, which zeros
-     * never change, then those counting the zeros, then the same without them.
+     * never change, then those counting the zeros, each beside its non-zero
+     * counterpart (see STATS_NONZERO).
      *
      * Empty values (null or '') are no values at all and are left out of every
      * statistic but EMPTY; a zero or `false` is a value. The `nz` ("non-zero")
@@ -97,10 +98,21 @@ class BaseModelBrowser extends Component
         ['earliest', 'latest'],
         ['sum'],
         ['avg', 'median', 'min', 'max', 'count'],
-        ['avgnz', 'mediannz', 'minnz', 'maxnz', 'countnz'],
     ];
 
-    public const STATS = [...self::STATS_GROUPS[0], ...self::STATS_GROUPS[1], ...self::STATS_GROUPS[2], ...self::STATS_GROUPS[3], ...self::STATS_GROUPS[4]];
+    /**
+     * The non-zero counterpart of each statistic of the paired group, shown
+     * in a column of its own.
+     */
+    public const STATS_NONZERO = [
+        'avg' => 'avgnz',
+        'median' => 'mediannz',
+        'min' => 'minnz',
+        'max' => 'maxnz',
+        'count' => 'countnz',
+    ];
+
+    public const STATS = [...self::STATS_GROUPS[0], ...self::STATS_GROUPS[1], ...self::STATS_GROUPS[2], ...self::STATS_GROUPS[3], ...self::STATS_NONZERO];
 
     /**
      * The statistics that are row counts: plain integers, never run through
@@ -119,8 +131,8 @@ class BaseModelBrowser extends Component
     public const STATS_DATES = ['earliest', 'latest'];
 
     /**
-     * The statistics whose value spans the share's column too: they have no
-     * share, and a date or a total is the longest value.
+     * The statistics whose value spans the second column too: they have no
+     * share or non-zero counterpart, and a date or a total is the longest value.
      */
     public const STATS_WIDE = ['earliest', 'latest', 'sum'];
 
@@ -128,13 +140,13 @@ class BaseModelBrowser extends Component
      * The indexes in STATS_GROUPS of the numeric statistics, left out of the
      * menu for a column that is not numeric.
      */
-    public const STATS_NUMERIC_GROUPS = [2, 3, 4];
+    public const STATS_NUMERIC_GROUPS = [2, 3];
 
     /**
-     * The index in STATS_GROUPS of the non-zero statistics, left out of the
-     * menu when a numeric column has no zero to leave out.
+     * The index in STATS_GROUPS of the group shown beside its non-zero
+     * counterparts, under a header naming the two columns.
      */
-    public const STATS_NONZERO_GROUP = 4;
+    public const STATS_PAIRED_GROUP = 3;
 
     /**
      * How many of a column's most frequent values its menu lists.
@@ -1292,15 +1304,18 @@ class BaseModelBrowser extends Component
 
     /**
      * The statistics of one column, ready for its menu: each one's name, the
-     * value as it is shown, and the share of all the rows for the counts that
-     * have one. The statistics a column has nothing to say about are left out,
-     * the numeric ones, counts included, for a column that is not numeric, and
-     * the non-zero ones when they would only repeat the rest (see
-     * columnStatsHasNoZeros). `group` is the index in STATS_GROUPS.
+     * value as it is shown, and a second value — the share of all the rows for
+     * the counts that have one, the non-zero counterpart in the paired group.
+     * The statistics a column has nothing to say about are left out, and so
+     * are the numeric ones, counts included, for a column that is not numeric.
+     * `group` is the index in STATS_GROUPS.
      *
-     * The STATS_WIDE ones span the share's column too.
+     * The paired group starts with a header row naming its two columns, or,
+     * when the column has no zeros (see columnStatsHasNoZeros), saying so
+     * across the whole row (`full`) over the values alone. A `wide` value
+     * spans the second column too.
      *
-     * @return array<int, array{key: string, label: string, display: string, share: ?string, wide: bool, group: int}>
+     * @return array<int, array{key: string, label: string, display: string, second: ?string, wide: bool, full: bool, header: bool, group: int}>
      */
     public function columnStatsRows(string $attribute): array
     {
@@ -1310,25 +1325,44 @@ class BaseModelBrowser extends Component
             return [];
         }
 
+        $noZeros = $this->columnStatsHasNoZeros($attribute);
+
         $rows = [];
         foreach (self::STATS_GROUPS as $group => $keys) {
             if (! $stats['numeric'] && in_array($group, self::STATS_NUMERIC_GROUPS, true)) {
                 continue;
             }
-            if ($group === self::STATS_NONZERO_GROUP && $this->columnStatsHasNoZeros($attribute)) {
-                continue;
+            $paired = $group === self::STATS_PAIRED_GROUP;
+            if ($paired) {
+                $rows[] = [
+                    'key' => 'header',
+                    'label' => $noZeros ? __('model-browser::global.stats.no-zeros') : '',
+                    'display' => $noZeros ? '' : __('model-browser::global.stats.all'),
+                    'second' => $noZeros ? null : __('model-browser::global.stats.nonzero'),
+                    'wide' => false,
+                    'full' => $noZeros,
+                    'header' => true,
+                    'group' => $group,
+                ];
             }
             foreach ($keys as $key) {
                 $value = $stats[$key] ?? null;
                 if ($value === null) {
                     continue;
                 }
+                $second = match (true) {
+                    $paired && ! $noZeros => $this->statDisplay($attribute, self::STATS_NONZERO[$key], $stats[self::STATS_NONZERO[$key]]),
+                    in_array($key, self::STATS_SHARES, true) => $this->share($value, $stats['rows']),
+                    default => null,
+                };
                 $rows[] = [
                     'key' => $key,
                     'label' => __('model-browser::global.stats.labels.' . $key),
                     'display' => $this->statDisplay($attribute, $key, $value),
-                    'share' => in_array($key, self::STATS_SHARES, true) ? $this->share($value, $stats['rows']) : null,
-                    'wide' => in_array($key, self::STATS_WIDE, true),
+                    'second' => $second,
+                    'wide' => in_array($key, self::STATS_WIDE, true) || ($paired && $noZeros),
+                    'full' => false,
+                    'header' => false,
                     'group' => $group,
                 ];
             }
@@ -1340,20 +1374,20 @@ class BaseModelBrowser extends Component
     /**
      * The most frequent values of one column, ready for its menu, with a last
      * row counting the rest — or, when the values are not listed, the message
-     * saying why.
+     * saying why. The values are aligned as the column is in the table.
      *
-     * @return array{message: ?string, rows: array<int, array{label: string, title: string, count: string, share: string}>}
+     * @return array{message: ?string, rows: array<int, array{label: string, title: string, count: string, share: string}>, align: string}
      */
     public function columnValueRows(string $attribute): array
     {
         $stats = $this->columnStats($attribute);
 
         if ($stats === null) {
-            return ['message' => null, 'rows' => []];
+            return ['message' => null, 'rows' => [], 'align' => 'start'];
         }
 
         if ($stats['listing'] !== 'values') {
-            return ['message' => __('model-browser::global.stats.' . $stats['listing']), 'rows' => []];
+            return ['message' => __('model-browser::global.stats.' . $stats['listing']), 'rows' => [], 'align' => 'start'];
         }
 
         $rows = [];
@@ -1378,7 +1412,11 @@ class BaseModelBrowser extends Component
             ];
         }
 
-        return ['message' => null, 'rows' => $rows];
+        return [
+            'message' => null,
+            'rows' => $rows,
+            'align' => $this->alignments[$attribute] ?? ($stats['numeric'] ? 'end' : 'start'),
+        ];
     }
 
     /**

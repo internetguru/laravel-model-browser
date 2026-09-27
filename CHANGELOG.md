@@ -9,8 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Column statistics include `MEDIAN`, `MEDIANNZ` and `MAXNZ`.
-- The column statistics menu starts with `DISTINCT`, `EMPTY` and `NON-EMPTY`, adds `EARLIEST` and `LATEST` for a date column, shows `COUNT` and `COUNTNZ` only with the other numeric statistics, and ends with the column's ten most frequent values, their counts and shares, or a note saying why they are not listed. The listed values go through the column's formatter with a row they came from, so they keep their links.
-- The column statistics labels are translated, e.g. `SOUČET` and `PRŮMĚR ≠0` in Czech.
+- Column statistics show `DISTINCT`, `EMPTY` and `NON-EMPTY` for every column, `EARLIEST` and `LATEST` for a date column, and the column's ten most frequent values with their counts and shares, or a note saying why they are not listed. The values go through the column's formatter with a row they came from, so they keep their links, and are aligned as their column.
 - The `statsTextAttributes` prop names the columns whose values only look like numbers, such as order numbers, so they get no numeric statistics.
 - The `title` prop names the list in the heading of each column statistics menu, e.g. "Orders / Amount".
 - The `model-browser.stats_auto_limit` config value (500) loads the column statistics of a list up to that many rows right after its count.
@@ -19,7 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - CSV exports are named after the list and the time of the export, e.g. `vouchers-2026-09-27-1430.csv`, without the sort; the new `exportName` prop sets the list's part.
 - The Copy page button and the column statistics copy button copy the values as they are shown, not the plain ones the CSV export holds.
-- The column statistics menu lists `SUM`, then the statistics counting zeros, then the non-zero ones, divided by a line. A numeric column without zeros shows a note instead of the non-zero ones.
+- The column statistics menu shows its numeric part, `COUNT` and `COUNTNZ` included, only for a numeric column: `SUM`, then each statistic with its non-zero counterpart beside it under a *Non-empty* / *Non-zero* header, or a single value when the column has no zeros. Its labels are translated, e.g. `SOUČET` and `PRŮMĚR` in Czech.
 - Column statistics leave out empty values (null or `''`) rather than counting them as zeros: `COUNT` is the number of filled values, and `AVG` and `MEDIAN` are taken over those. `false` counts as a value.
 - `statsAttributes` defaults to every column; pass `[]` to turn the column statistics off.
 - Column statistics load when a menu is first opened, showing a spinner meanwhile, and stay loaded across pages until the filters change.

@@ -184,7 +184,7 @@ Maximum number of rows a CSV export may contain. When the current (filtered) res
 :exportLimit="2000"
 ```
 
-### `statsAttributes` / `statsLimit`
+### `statsAttributes` / `statsTextAttributes` / `title` / `statsLimit`
 
 Columns that are summarized, in the table only: their header offers the statistics menu. Every view attribute by default; name some to summarize only those, or pass `[]` to turn the statistics off. See [Column Statistics](#column-statistics):
 
@@ -590,11 +590,21 @@ A numeric column adds:
 
 An empty value (null or `''`) is no value at all: every statistic but `EMPTY` leaves it out, as SQL's `AVG(column)` and `COUNT(column)` do. A zero or `false` is a value. So `COUNT` less `COUNTNZ` is the number of zeros. A column whose empty value means zero, and should count as one, has to say so in its summary query (e.g. `COALESCE(credit, 0)`).
 
-The labels are translated (`model-browser::global.stats.labels`): in Czech `RŮZNÉ`, `SOUČET`, `PRŮMĚR ≠0` and so on. A date span and `SUM` take the share's column too.
+The labels are translated (`model-browser::global.stats.labels`): in Czech `RŮZNÉ`, `SOUČET`, `PRŮMĚR` and so on. A date span and `SUM` take the share's column too.
 
-A line divides the groups (`BaseModelBrowser::STATS_GROUPS`): the ones above, the span of a date column, `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a numeric column has no zero, the last group would only repeat the one before it, and the note *"No zero values"* stands in for it. A column that is not numeric shows none of the numeric groups, `COUNT` and `COUNTNZ` included.
+A line divides the groups (`BaseModelBrowser::STATS_GROUPS`): the ones above, the span of a date column, `SUM`, which zeros never change, and the statistics counting the zeros, each with its non-zero counterpart beside it (`AVG` with `AVGNZ` and so on). A header row names those two columns *Non-empty* and *Non-zero*. When a numeric column has no zero, the counterparts would only repeat the rest: the header row reads *"No zero values."* across the whole row instead, and each value takes both value columns. A column that is not numeric shows none of the numeric groups, `COUNT` included.
 
-Below them come the column's ten most frequent values with their count and share of the rows, the most frequent first and ties in the order of the value, and a last row counting the rest (*"… 77 other"*). A date counts as its day in the display timezone. A value is shown through the column's `formats` callback, called with the first row it came from, so a formatter can link it; without one, a labelled enum shows its label and a boolean *Yes* or *No*. Instead of the list, a note says when there are no values, when all of them are unique, when they are long texts (over 50 characters on average), or too many or of a kind that cannot be counted. A `[copy]` button under the menu puts all of it on the clipboard as tab-separated lines, as it is shown.
+```
+SUM                         758,200
+            Non-empty   Non-zero
+AVG               611      1,033
+MEDIAN            500      1,000
+MIN                 0         50
+MAX            10,000     10,000
+COUNT           1,240        734
+```
+
+Below them come the column's ten most frequent values with their count and share of the rows, the most frequent first and ties in the order of the value, and a last row counting the rest (*"… 77 other"*). A date counts as its day in the display timezone. The values are aligned as their column is in the table: right for a numeric one, unless `alignments` says otherwise. A value is shown through the column's `formats` callback, called with the first row it came from, so a formatter can link it; without one, a labelled enum shows its label and a boolean *Yes* or *No*. Instead of the list, a note says when there are no values, when all of them are unique, when they are long texts (over 50 characters on average), or too many or of a kind that cannot be counted. A `[copy]` button under the menu puts all of it on the clipboard as tab-separated lines, as it is shown.
 
 Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. The counts are never formatted.
 

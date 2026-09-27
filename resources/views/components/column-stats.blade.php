@@ -3,7 +3,12 @@
     the statistics in the groups of BaseModelBrowser::STATS_GROUPS, divided by
     a line, then the column's most frequent values (or why they are not
     listed), with a button copying the lot to the clipboard. A heading names
-    the list and the column, so a copy says what it is about. When the column
+    the list and the column, so a copy says what it is about.
+
+    Each row is a term, a value and a second value: a share of the rows, or
+    the value without zeros under the header row of the numeric group. A wide
+    value takes both columns, and a full row (a header saying there are no
+    zeros) all three. When the column
     has no zero, a note stands in for the non-zero group.
 
     The rows are rendered server-side (see BaseModelBrowser::columnStatsRows
@@ -16,7 +21,7 @@
     and the scroller around the table both clip their overflow, and a menu laid
     out inside them would be cut off.
 --}}
-@props(['label' => '', 'listTitle' => '', 'rows' => [], 'values' => ['message' => null, 'rows' => []], 'noZeros' => false, 'loaded' => false, 'overLimit' => false, 'limit' => 0])
+@props(['label' => '', 'listTitle' => '', 'rows' => [], 'values' => ['message' => null, 'rows' => [], 'align' => 'start'], 'loaded' => false, 'overLimit' => false, 'limit' => 0])
 
 <span
     class="model-browser__stats"
@@ -178,23 +183,20 @@
         @elseif ($loaded)
             <dl class="model-browser__stats-list">
                 @foreach ($rows as $row)
-                    @php($groupStart = ! $loop->first && $row['group'] !== $rows[$loop->index - 1]['group'])
-                    <dt @class(['model-browser__stats-group-start' => $groupStart])>{{ $row['label'] }}</dt>
+                    @php($cell = ['model-browser__stats-group-start' => ! $loop->first && $row['group'] !== $rows[$loop->index - 1]['group'], 'model-browser__stats-header' => $row['header']])
+                    <dt @class([...$cell, 'model-browser__stats-full' => $row['full']])>{{ $row['label'] }}</dt>
                     @if ($row['wide'])
-                        <dd @class(['model-browser__stats-group-start' => $groupStart, 'model-browser__stats-wide'])>{!! $row['display'] !!}</dd>
-                    @else
-                        <dd @class(['model-browser__stats-group-start' => $groupStart])>{!! $row['display'] !!}</dd>
-                        <dd @class(['model-browser__stats-group-start' => $groupStart])>{{ $row['share'] }}</dd>
+                        <dd @class([...$cell, 'model-browser__stats-wide' => true])>{!! $row['display'] !!}</dd>
+                    @elseif (! $row['full'])
+                        <dd @class($cell)>{!! $row['display'] !!}</dd>
+                        <dd @class($cell)>{!! $row['second'] !!}</dd>
                     @endif
                 @endforeach
             </dl>
-            @if ($noZeros)
-                <p class="model-browser__stats-note model-browser__stats-note--group">@lang('model-browser::global.stats.no-zeros')</p>
-            @endif
             @if ($values['message'])
                 <p class="model-browser__stats-note model-browser__stats-note--group">{{ $values['message'] }}</p>
             @elseif ($values['rows'])
-                <dl class="model-browser__stats-list model-browser__stats-values">
+                <dl class="model-browser__stats-list model-browser__stats-values text-{{ $values['align'] }}">
                     @foreach ($values['rows'] as $row)
                         <dt title="{{ $row['title'] }}">{!! $row['label'] !!}</dt>
                         <dd>{{ $row['count'] }}</dd>
