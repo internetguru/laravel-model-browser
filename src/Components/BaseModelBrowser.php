@@ -2,7 +2,9 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use BackedEnum;
 use Closure;
+use DateTimeInterface;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -10,9 +12,12 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
+use InternetGuru\LaravelCommon\Contracts\HasLabel;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Computed;
@@ -20,7 +25,9 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Stringable;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use UnitEnum;
 
 class BaseModelBrowser extends Component
 {
@@ -45,6 +52,12 @@ class BaseModelBrowser extends Component
      * orders nobody is named on.
      */
     public const FILTER_EMPTY = '""';
+
+    /**
+     * Seconds a loaded total count and statistics are kept for the page
+     * changes that follow.
+     */
+    public const TOTAL_COUNT_TTL = 3600;
 
     // Search query security limits — override trait constants
     public const SEARCH_MAX_LENGTH = 500;
@@ -71,19 +84,91 @@ class BaseModelBrowser extends Component
     public const RANGE_SEPARATOR = '..';
 
     /**
-     * The statistics a column's menu offers, in the order they are listed.
+     * The statistics a column's menu offers, in the groups and order they are
+     * listed: the ones every column has, the dates' span, SUM, which zeros
+     * never change, then those counting the zeros, each beside its non-zero
+     * counterpart (see STATS_NONZERO).
      *
-     * The `nz` ("non-zero") variants leave out the rows whose value is zero,
-     * null or empty — COUNTNZ is the count of the rows that carry a value at
-     * all, and is the one also shown in the column header on its own.
+     * Empty values (null or '') are no values at all and are left out of every
+     * statistic but EMPTY; a zero or `false` is a value. The `nz` ("non-zero")
+     * variants leave out the zeros as well.
      */
-    public const STATS = ['sum', 'avg', 'min', 'max', 'count', 'avgnz', 'minnz', 'countnz'];
+    public const STATS_GROUPS = [
+        ['distinct', 'empty', 'nonempty'],
+        ['earliest', 'latest'],
+        ['sum'],
+        ['avg', 'median', 'min', 'max', 'count'],
+    ];
+
+    /**
+     * The non-zero counterpart of each statistic of the paired group, shown
+     * in a column of its own.
+     */
+    public const STATS_NONZERO = [
+        'avg' => 'avgnz',
+        'median' => 'mediannz',
+        'min' => 'minnz',
+        'max' => 'maxnz',
+        'count' => 'countnz',
+    ];
+
+    public const STATS = [...self::STATS_GROUPS[0], ...self::STATS_GROUPS[1], ...self::STATS_GROUPS[2], ...self::STATS_GROUPS[3], ...self::STATS_NONZERO];
 
     /**
      * The statistics that are row counts: plain integers, never run through
      * the column's `formats` callback.
      */
-    public const STATS_COUNTS = ['count', 'countnz'];
+    public const STATS_COUNTS = ['distinct', 'empty', 'nonempty', 'count', 'countnz'];
+
+    /**
+     * The row counts shown with their share of all the rows.
+     */
+    public const STATS_SHARES = ['empty', 'nonempty'];
+
+    /**
+     * The statistics that are moments, kept as timestamps.
+     */
+    public const STATS_DATES = ['earliest', 'latest'];
+
+    /**
+     * The statistics whose value spans the second column too: they have no
+     * share or non-zero counterpart, and a date or a total is the longest value.
+     */
+    public const STATS_WIDE = ['earliest', 'latest', 'sum'];
+
+    /**
+     * The indexes in STATS_GROUPS of the numeric statistics, left out of the
+     * menu for a column that is not numeric.
+     */
+    public const STATS_NUMERIC_GROUPS = [2, 3];
+
+    /**
+     * The index in STATS_GROUPS of the group shown beside its non-zero
+     * counterparts, under a header naming the two columns.
+     */
+    public const STATS_PAIRED_GROUP = 3;
+
+    /**
+     * How many of a column's most frequent values its menu lists.
+     */
+    public const STATS_VALUES_LIMIT = 10;
+
+    /**
+     * The distinct values counted per column at most; a column with more is
+     * not listed (only reachable with `statsLimit` off).
+     */
+    public const STATS_VALUES_MAX = 10000;
+
+    /**
+     * The average length of a column's texts above which its values are not
+     * listed: notes and descriptions rather than names.
+     */
+    public const STATS_LONG_TEXT = 50;
+
+    /**
+     * A text this long is counted under its hash, so long values cost no memory.
+     */
+    public const STATS_HASHED_TEXT = 64;
 
     #[Locked]
     public string $model;
@@ -126,6 +211,20 @@ class BaseModelBrowser extends Component
      */
     #[Locked]
     public array $exportAttributes = [];
+
+    /**
+     * The list's name at the start of a CSV export's file name, before the
+     * time of the export. Defaults to the model's plural, e.g. `order-items`.
+     */
+    #[Locked]
+    public string $exportName = '';
+
+    /**
+     * The list's name as its page calls it, heading each statistics menu
+     * before the column's name.
+     */
+    #[Locked]
+    public string $title = '';
 
     #[Locked]
     public bool $enableSort = true;
@@ -187,14 +286,19 @@ class BaseModelBrowser extends Component
     public int $exportLimit;
 
     /**
-     * Attributes that are summarized: their header offers the statistics menu,
-     * and shows a plain COUNTNZ of its own when some of its rows are empty.
-     *
-     * Nothing else is summarized, so a browser naming none of them never runs
-     * the extra query.
+     * Attributes that are summarized: their header offers the statistics menu.
+     * Every view attribute unless the `statsAttributes` prop names some, and
+     * none when it is an empty array.
      */
     #[Locked]
     public array $statsAttributes = [];
+
+    /**
+     * Summarized attributes whose values are texts even when they look like
+     * numbers, such as order numbers: they get no numeric statistics.
+     */
+    #[Locked]
+    public array $statsTextAttributes = [];
 
     /**
      * Largest result count the statistics are computed for. 0 = unlimited.
@@ -207,10 +311,11 @@ class BaseModelBrowser extends Component
     public int $statsLimit;
 
     /**
-     * Per-column statistics, keyed by attribute. null until loaded (or when
-     * the result set is too large — see $statsOverLimit).
+     * Per-column statistics, keyed by attribute (see summarize()). null until
+     * loaded — on the first opening of a menu, or right after the count for a
+     * short list — or when the result set is too large (see $statsOverLimit).
      *
-     * @var array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}>|null
+     * @var array<string, array<string, mixed>>|null
      */
     public ?array $stats = null;
 
@@ -292,8 +397,11 @@ class BaseModelBrowser extends Component
         int $refreshInterval = 0,
         array $with = [],
         ?int $exportLimit = null,
-        array $statsAttributes = [],
+        ?array $statsAttributes = null,
         ?int $statsLimit = null,
+        string $exportName = '',
+        array $statsTextAttributes = [],
+        string $title = '',
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -308,6 +416,8 @@ class BaseModelBrowser extends Component
             $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
         }
         $this->exportAttributes = $exportAttributes;
+        $this->exportName = $exportName;
+        $this->title = $title;
         $this->formats = $formats;
         $this->rawFormats = $rawFormats;
         $this->alignments = $alignments;
@@ -318,7 +428,10 @@ class BaseModelBrowser extends Component
         $this->refreshInterval = $refreshInterval;
         $this->with = $with;
         $this->exportLimit = $exportLimit ?? (int) config('model-browser.export_limit');
-        $this->statsAttributes = array_values(array_intersect($statsAttributes, array_keys($this->viewAttributes)));
+        $this->statsAttributes = $statsAttributes === null
+            ? array_keys($this->viewAttributes)
+            : array_values(array_intersect($statsAttributes, array_keys($this->viewAttributes)));
+        $this->statsTextAttributes = $statsTextAttributes;
         $this->statsLimit = $statsLimit ?? (int) config('model-browser.stats_limit');
         if (! empty($filters) && ! $filterSessionKey) {
             throw new Exception('Provide filterSessionKey when using filters configuration.');
@@ -732,13 +845,79 @@ class BaseModelBrowser extends Component
      *
      * Triggered inside the "count" island (see the count partial), so it only
      * re-renders that island — the data query in the rows() computed is never
-     * touched.
+     * touched. A list short enough to summarize cheaply has its statistics
+     * loaded right after.
      */
     public function loadTotalCount(): void
     {
+        $searchQuery = $this->effectiveSearchQuery();
         $query = $this->getQuery();
-        $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
+        $this->applyFiltersToQuery($query, $searchQuery);
         $this->totalCount = $query->toBase()->getCountForPagination();
+
+        Cache::put($this->totalCountCacheKey(), [
+            'query' => $searchQuery,
+            'count' => $this->totalCount,
+        ], self::TOTAL_COUNT_TTL);
+
+        if ($this->shouldLoadStatsAutomatically()) {
+            $this->dispatch('mb-load-stats');
+        }
+    }
+
+    /**
+     * Whether the statistics are missing for a list no longer than the
+     * `model-browser.stats_auto_limit` config value.
+     */
+    protected function shouldLoadStatsAutomatically(): bool
+    {
+        $limit = (int) config('model-browser.stats_auto_limit');
+
+        return $limit > 0
+            && $this->statsAttributes
+            && $this->stats === null
+            && ! $this->statsOverLimit
+            && $this->totalCount <= $limit;
+    }
+
+    /**
+     * Restore the count and the statistics the snapshot lost.
+     *
+     * The count and stats islands load in separate requests, and Livewire keeps
+     * the snapshot of whichever answers last, so what one loaded can be nulled
+     * by the other. Both are kept server side for the query they were taken
+     * for, and a page change never has to load them again.
+     */
+    public function hydrate(): void
+    {
+        $searchQuery = $this->effectiveSearchQuery();
+
+        if ($this->totalCount === null) {
+            $cached = Cache::get($this->totalCountCacheKey());
+
+            if (is_array($cached) && $cached['query'] === $searchQuery) {
+                $this->totalCount = $cached['count'];
+            }
+        }
+
+        if ($this->stats === null && ! $this->statsOverLimit) {
+            $cached = Cache::get($this->statsCacheKey());
+
+            if (is_array($cached) && $cached['query'] === $searchQuery) {
+                $this->stats = $cached['stats'];
+                $this->statsOverLimit = $cached['overLimit'];
+            }
+        }
+    }
+
+    protected function totalCountCacheKey(): string
+    {
+        return 'model-browser.total-count.' . $this->getId();
+    }
+
+    protected function statsCacheKey(): string
+    {
+        return 'model-browser.stats.' . $this->getId();
     }
 
     /**
@@ -746,6 +925,8 @@ class BaseModelBrowser extends Component
      *
      * Triggered inside the "stats" island (the table header), so it re-renders
      * that island alone — the data query in the rows() computed is untouched.
+     * Every column is summarized in the one pass: reading the rows is what
+     * costs, not counting one more column.
      *
      * Only the `statsAttributes` columns are summarized, and a browser that
      * names none never runs the query at all.
@@ -766,23 +947,30 @@ class BaseModelBrowser extends Component
 
         if ($this->statsLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->statsLimit) {
             $this->statsOverLimit = true;
-
-            return;
+        } else {
+            $this->stats = $this->summarize($query);
         }
 
-        $this->stats = $this->summarize($query);
+        Cache::put($this->statsCacheKey(), [
+            'query' => $this->effectiveSearchQuery(),
+            'stats' => $this->stats,
+            'overLimit' => $this->statsOverLimit,
+        ], self::TOTAL_COUNT_TTL);
     }
 
     /**
      * Walk the whole result set once and summarize every `statsAttributes` column.
      *
-     * Values are read straight off the model (`formats` and `rawFormats` are
-     * display concerns and are not applied), so the numbers are in the
-     * attribute's own unit. A column counts as numeric only when every value
-     * it does have is a number — otherwise just its two row counts are of any
-     * use, and the rest stay null.
+     * Values are read straight off the model, so the numbers are in the
+     * attribute's own unit. Empty values are only counted as such: COUNT is
+     * the count of the filled ones. A column counts as numeric only when every
+     * value it does have is a number, and as a date column when every one is a
+     * date — otherwise its numeric statistics or its span stay null.
      *
-     * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}>
+     * The values themselves are counted too, dates by the day, and the most
+     * frequent ones are rendered for the menu (see valueListing()).
+     *
+     * @return array<string, array<string, mixed>>
      */
     protected function summarize(Builder $query): array
     {
@@ -790,12 +978,24 @@ class BaseModelBrowser extends Component
         $totals = array_fill_keys($attributes, [
             'count' => 0,
             'countnz' => 0,
-            'filled' => 0,
+            'empty' => 0,
             'numbers' => 0,
             'sum' => 0.0,
+            'nonzero' => [],
             'min' => null,
             'minnz' => null,
             'max' => null,
+            'maxnz' => null,
+            'dates' => 0,
+            'earliest' => null,
+            'latest' => null,
+            'texts' => 0,
+            'length' => 0,
+            'values' => [],
+            'samples' => [],
+            'unlisted' => false,
+            'overflow' => false,
+            'rowKeys' => [],
         ]);
 
         // Offset-based chunking (lazy) needs a deterministic order; the query
@@ -804,57 +1004,269 @@ class BaseModelBrowser extends Component
             $query->orderBy((new $this->model)->getKeyName());
         }
 
-        $rows = $this->streamRows($query);
+        $texts = array_fill_keys($attributes, false);
+        foreach ($this->statsTextAttributes as $attribute) {
+            $texts[$attribute] = true;
+        }
 
-        foreach ($rows as $item) {
+        foreach ($this->streamRows($query) as $item) {
+            $rowKey = $item->getKey();
             foreach ($attributes as $attribute) {
-                $value = Arr::get($item, $attribute);
-                $totals[$attribute]['count']++;
-
-                if ($value === null || $value === '' || $value === false) {
-                    continue;
-                }
-
-                $totals[$attribute]['filled']++;
-
-                if (! is_numeric($value)) {
-                    $totals[$attribute]['countnz']++;
-
-                    continue;
-                }
-
-                $number = (float) $value;
-                $totals[$attribute]['numbers']++;
-                $totals[$attribute]['sum'] += $number;
-                $totals[$attribute]['min'] = min($totals[$attribute]['min'] ?? $number, $number);
-                $totals[$attribute]['max'] = max($totals[$attribute]['max'] ?? $number, $number);
-
-                if ($number == 0.0) {
-                    continue;
-                }
-
-                $totals[$attribute]['countnz']++;
-                $totals[$attribute]['minnz'] = min($totals[$attribute]['minnz'] ?? $number, $number);
+                $this->tally($totals[$attribute], Arr::get($item, $attribute), $texts[$attribute], $rowKey);
             }
         }
 
+        foreach ($totals as &$total) {
+            $total['listing'] = $this->listing($total);
+            $total['ranked'] = $total['listing'] === 'values' ? $this->rankedValues($total['values']) : [];
+        }
+        unset($total);
+        $rows = $this->listedRows($totals);
+
         $stats = [];
         foreach ($totals as $attribute => $total) {
-            $numeric = $total['numbers'] > 0 && $total['numbers'] === $total['filled'];
+            $numeric = $total['numbers'] > 0 && $total['numbers'] === $total['count'];
+            $dated = $total['dates'] > 0 && $total['dates'] === $total['count'];
             $stats[$attribute] = [
+                'rows' => $total['count'] + $total['empty'],
+                'distinct' => $total['unlisted'] || $total['overflow'] ? null : count($total['values']),
+                'empty' => $total['empty'],
+                'nonempty' => $total['count'],
+                'earliest' => $dated ? $total['earliest'] : null,
+                'latest' => $dated ? $total['latest'] : null,
                 'count' => $total['count'],
                 'countnz' => $total['countnz'],
                 'numeric' => $numeric,
                 'sum' => $numeric ? $total['sum'] : null,
                 'avg' => $numeric && $total['count'] ? $total['sum'] / $total['count'] : null,
                 'avgnz' => $numeric && $total['countnz'] ? $total['sum'] / $total['countnz'] : null,
+                'median' => $numeric ? $this->median($total['nonzero'], $total['count'] - $total['countnz']) : null,
+                'mediannz' => $numeric ? $this->median($total['nonzero']) : null,
                 'min' => $numeric ? $total['min'] : null,
                 'minnz' => $numeric ? $total['minnz'] : null,
                 'max' => $numeric ? $total['max'] : null,
+                'maxnz' => $numeric ? $total['maxnz'] : null,
+                ...$this->valueListing($attribute, $total, $rows),
             ];
         }
 
         return $stats;
+    }
+
+    /**
+     * Add one value to the running totals of its column. A column of texts
+     * never counts its values as numbers.
+     *
+     * @param  array<string, mixed>  $total
+     */
+    protected function tally(array &$total, mixed $value, bool $text = false, int|string|null $rowKey = null): void
+    {
+        if ($value === null || $value === '') {
+            $total['empty']++;
+
+            return;
+        }
+
+        $total['count']++;
+        $this->tallyValue($total, $value, $rowKey);
+
+        if (is_string($value)) {
+            $total['texts']++;
+            $total['length'] += mb_strlen($value);
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            $timestamp = $value->getTimestamp();
+            $total['dates']++;
+            $total['earliest'] = min($total['earliest'] ?? $timestamp, $timestamp);
+            $total['latest'] = max($total['latest'] ?? $timestamp, $timestamp);
+        }
+
+        if ($text || ! is_numeric($value)) {
+            $total['countnz']++;
+
+            return;
+        }
+
+        $number = (float) $value;
+        $total['numbers']++;
+        $total['sum'] += $number;
+        $total['min'] = min($total['min'] ?? $number, $number);
+        $total['max'] = max($total['max'] ?? $number, $number);
+
+        if ($number == 0.0) {
+            return;
+        }
+
+        $total['countnz']++;
+        $total['nonzero'][] = $number;
+        $total['minnz'] = min($total['minnz'] ?? $number, $number);
+        $total['maxnz'] = max($total['maxnz'] ?? $number, $number);
+    }
+
+    /**
+     * Count one value among the column's distinct values, and remember the
+     * key of the first row it came from. A value that cannot be counted, or
+     * one too many distinct values, ends the counting for the column.
+     *
+     * @param  array<string, mixed>  $total
+     */
+    protected function tallyValue(array &$total, mixed $value, int|string|null $rowKey = null): void
+    {
+        if ($total['unlisted'] || $total['overflow']) {
+            return;
+        }
+
+        $counted = $this->countedValue($value);
+
+        if ($counted === null || (! isset($total['values'][$counted[0]]) && count($total['values']) >= self::STATS_VALUES_MAX)) {
+            $total[$counted === null ? 'unlisted' : 'overflow'] = true;
+            $total['values'] = [];
+            $total['samples'] = [];
+            $total['rowKeys'] = [];
+
+            return;
+        }
+
+        [$key, $sample] = $counted;
+        $total['values'][$key] = ($total['values'][$key] ?? 0) + 1;
+        $total['samples'][$key] ??= $sample;
+        $total['rowKeys'][$key] ??= $rowKey;
+    }
+
+    /**
+     * The key a value is counted under, and the value shown for it: a date
+     * stands for its day in the display timezone, and a long text is counted
+     * under its hash. null for a value that cannot be counted, such as an array.
+     *
+     * @return array{0: string, 1: mixed}|null
+     */
+    protected function countedValue(mixed $value): ?array
+    {
+        if ($value instanceof DateTimeInterface) {
+            $day = Carbon::instance($value)->toDisplayTimezone()->startOfDay();
+
+            return [$day->format('Y-m-d'), $day];
+        }
+
+        if (is_string($value) && mb_strlen($value) > self::STATS_HASHED_TEXT) {
+            return [md5($value), Str::limit($value, 4 * self::STATS_HASHED_TEXT)];
+        }
+
+        $key = match (true) {
+            $value instanceof BackedEnum => (string) $value->value,
+            $value instanceof UnitEnum => $value->name,
+            is_bool($value) => $value ? 'true' : 'false',
+            is_scalar($value), $value instanceof Stringable => (string) $value,
+            default => null,
+        };
+
+        return $key === null ? null : [$key, $value];
+    }
+
+    /**
+     * What a column's menu says about its values: their list, or why there is
+     * none — there are no values, each is unique, they are long texts, too
+     * many, or of a kind that cannot be counted. It names the message.
+     *
+     * @param  array<string, mixed>  $total
+     */
+    protected function listing(array $total): string
+    {
+        return match (true) {
+            $total['count'] === 0 => 'none',
+            $total['unlisted'] => 'not-listed',
+            $total['overflow'] => 'too-many',
+            $total['count'] > 1 && count($total['values']) === $total['count'] => 'unique',
+            $total['texts'] > 0 && $total['length'] / $total['texts'] > self::STATS_LONG_TEXT => 'long-text',
+            default => 'values',
+        };
+    }
+
+    /**
+     * The counts of the values, the most frequent first; ties by the value,
+     * so a reload keeps the order.
+     *
+     * @param  array<int|string, int>  $counts
+     * @return array<int|string, int>
+     */
+    protected function rankedValues(array $counts): array
+    {
+        uksort($counts, fn ($a, $b) => $counts[$b] <=> $counts[$a] ?: $a <=> $b);
+
+        return $counts;
+    }
+
+    /**
+     * The rows the listed values first came from, keyed by their primary key:
+     * a formatter may need its row, e.g. to link the value. Fetched in one
+     * query, as the rows the counting walked through are gone.
+     *
+     * @param  array<string, array<string, mixed>>  $totals
+     * @return Collection<int|string, Model>
+     */
+    protected function listedRows(array $totals): Collection
+    {
+        $keys = [];
+        foreach ($totals as $total) {
+            foreach (array_slice($total['ranked'], 0, self::STATS_VALUES_LIMIT, true) as $key => $count) {
+                $keys[] = $total['rowKeys'][$key] ?? null;
+            }
+        }
+        $keys = array_values(array_unique(array_filter($keys, fn ($key) => $key !== null)));
+
+        if (! $keys) {
+            return collect();
+        }
+
+        return $this->getQuery()->whereKey($keys)->get()->keyBy(fn (Model $row) => $row->getKey());
+    }
+
+    /**
+     * The most frequent values of a column rendered for its menu, with their
+     * counts, and the count of the rest.
+     *
+     * @param  array<string, mixed>  $total
+     * @param  Collection<int|string, Model>  $rows
+     * @return array{listing: string, values: array<int, array{display: string, title: string, count: int}>, other: array{values: int, count: int}|null}
+     */
+    protected function valueListing(string $attribute, array $total, Collection $rows): array
+    {
+        $rest = array_slice($total['ranked'], self::STATS_VALUES_LIMIT, null, true);
+
+        $values = [];
+        foreach (array_slice($total['ranked'], 0, self::STATS_VALUES_LIMIT, true) as $key => $count) {
+            $rowKey = $total['rowKeys'][$key] ?? null;
+            $display = $this->valueDisplay($attribute, $total['samples'][$key], $rowKey === null ? null : $rows->get($rowKey));
+            $values[] = ['display' => $display, 'title' => $this->plainText($display), 'count' => $count];
+        }
+
+        return [
+            'listing' => $total['listing'],
+            'values' => $values,
+            'other' => $rest ? ['values' => count($rest), 'count' => array_sum($rest)] : null,
+        ];
+    }
+
+    /**
+     * The middle value of the numbers and the given count of zeros, or the
+     * mean of the two middle values when there is an even number of them.
+     *
+     * @param  array<int, float>  $numbers
+     */
+    protected function median(array $numbers, int $zeros = 0): ?float
+    {
+        $values = array_merge($numbers, array_fill(0, $zeros, 0.0));
+        $count = count($values);
+
+        if ($count === 0) {
+            return null;
+        }
+
+        sort($values);
+        $middle = intdiv($count, 2);
+
+        return $count % 2 ? $values[$middle] : ($values[$middle - 1] + $values[$middle]) / 2;
     }
 
     /**
@@ -871,9 +1283,19 @@ class BaseModelBrowser extends Component
     }
 
     /**
+     * The search input's name, unique per list: browsers keep their suggestions
+     * per input name, so a shared name would mix the searches of every list.
+     * The search bar comes with filters, and those require the session key.
+     */
+    public function searchInputName(): string
+    {
+        return 'mb-search-' . Str::slug($this->filterSessionKey);
+    }
+
+    /**
      * The statistics of one column, or null while none are loaded.
      *
-     * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, min: ?float, minnz: ?float, max: ?float}|null
+     * @return array<string, mixed>|null
      */
     public function columnStats(string $attribute): ?array
     {
@@ -882,10 +1304,18 @@ class BaseModelBrowser extends Component
 
     /**
      * The statistics of one column, ready for its menu: each one's name, the
-     * value as it is shown, and the plain number behind it for the clipboard.
-     * The statistics a column has nothing to say about are left out.
+     * value as it is shown, and a second value — the share of all the rows for
+     * the counts that have one, the non-zero counterpart in the paired group.
+     * The statistics a column has nothing to say about are left out, and so
+     * are the numeric ones, counts included, for a column that is not numeric.
+     * `group` is the index in STATS_GROUPS.
      *
-     * @return array<int, array{key: string, label: string, display: string, raw: string}>
+     * The paired group starts with a header row naming its two columns, or,
+     * when the column has no zeros (see columnStatsHasNoZeros), saying so
+     * across the whole row (`full`) over the values alone. A `wide` value
+     * spans the second column too.
+     *
+     * @return array<int, array{key: string, label: string, display: string, second: ?string, wide: bool, full: bool, header: bool, group: int}>
      */
     public function columnStatsRows(string $attribute): array
     {
@@ -895,30 +1325,120 @@ class BaseModelBrowser extends Component
             return [];
         }
 
+        $noZeros = $this->columnStatsHasNoZeros($attribute);
+
         $rows = [];
-        foreach (self::STATS as $key) {
-            $value = $stats[$key] ?? null;
-            if ($value === null) {
+        foreach (self::STATS_GROUPS as $group => $keys) {
+            if (! $stats['numeric'] && in_array($group, self::STATS_NUMERIC_GROUPS, true)) {
                 continue;
             }
-            $rows[] = [
-                'key' => $key,
-                'label' => strtoupper($key),
-                'display' => $this->statDisplay($attribute, $key, $value),
-                'raw' => (string) (in_array($key, self::STATS_COUNTS, true) ? $value : round((float) $value, 4)),
-            ];
+            $paired = $group === self::STATS_PAIRED_GROUP;
+            if ($paired) {
+                $rows[] = [
+                    'key' => 'header',
+                    'label' => $noZeros ? __('model-browser::global.stats.no-zeros') : '',
+                    'display' => $noZeros ? '' : __('model-browser::global.stats.all'),
+                    'second' => $noZeros ? null : __('model-browser::global.stats.nonzero'),
+                    'wide' => false,
+                    'full' => $noZeros,
+                    'header' => true,
+                    'group' => $group,
+                ];
+            }
+            foreach ($keys as $key) {
+                $value = $stats[$key] ?? null;
+                if ($value === null) {
+                    continue;
+                }
+                $second = match (true) {
+                    $paired && ! $noZeros => $this->statDisplay($attribute, self::STATS_NONZERO[$key], $stats[self::STATS_NONZERO[$key]]),
+                    in_array($key, self::STATS_SHARES, true) => $this->share($value, $stats['rows']),
+                    default => null,
+                };
+                $rows[] = [
+                    'key' => $key,
+                    'label' => __('model-browser::global.stats.labels.' . $key),
+                    'display' => $this->statDisplay($attribute, $key, $value),
+                    'second' => $second,
+                    'wide' => in_array($key, self::STATS_WIDE, true) || ($paired && $noZeros),
+                    'full' => false,
+                    'header' => false,
+                    'group' => $group,
+                ];
+            }
         }
 
         return $rows;
     }
 
     /**
+     * The most frequent values of one column, ready for its menu, with a last
+     * row counting the rest — or, when the values are not listed, the message
+     * saying why. The values are aligned as the column is in the table.
+     *
+     * @return array{message: ?string, rows: array<int, array{label: string, title: string, count: string, share: string}>, align: string}
+     */
+    public function columnValueRows(string $attribute): array
+    {
+        $stats = $this->columnStats($attribute);
+
+        if ($stats === null) {
+            return ['message' => null, 'rows' => [], 'align' => 'start'];
+        }
+
+        if ($stats['listing'] !== 'values') {
+            return ['message' => __('model-browser::global.stats.' . $stats['listing']), 'rows' => [], 'align' => 'start'];
+        }
+
+        $rows = [];
+        foreach ($stats['values'] as $value) {
+            $rows[] = [
+                'label' => $value['display'],
+                'title' => $value['title'],
+                'count' => Number::format($value['count']),
+                'share' => $this->share($value['count'], $stats['rows']),
+            ];
+        }
+
+        if ($stats['other']) {
+            $label = trans_choice('model-browser::global.stats.other-values', $stats['other']['values'], [
+                'count' => Number::format($stats['other']['values']),
+            ]);
+            $rows[] = [
+                'label' => e($label),
+                'title' => $label,
+                'count' => Number::format($stats['other']['count']),
+                'share' => $this->share($stats['other']['count'], $stats['rows']),
+            ];
+        }
+
+        return [
+            'message' => null,
+            'rows' => $rows,
+            'align' => $this->alignments[$attribute] ?? ($stats['numeric'] ? 'end' : 'start'),
+        ];
+    }
+
+    /**
+     * Whether a numeric column has values and none of them is zero, so each
+     * non-zero statistic equals its counterpart. False while no statistics
+     * are loaded.
+     */
+    public function columnStatsHasNoZeros(string $attribute): bool
+    {
+        $stats = $this->columnStats($attribute);
+
+        return $stats !== null && $stats['numeric'] && $stats['count'] === $stats['countnz'];
+    }
+
+    /**
      * One statistic rendered for display.
      *
-     * Row counts are plain integers. The rest are in the column's own unit, so
-     * they go through its `formats` callback when it has one — a formatter
-     * that needs the row the value came from cannot render an aggregate, and
-     * falls back to a plain number.
+     * Row counts are plain integers, and the span of a date column is shown as
+     * its moments. The rest are in the column's own unit, so they go through
+     * its `formats` callback when it has one — a formatter that needs the row
+     * the value came from cannot render an aggregate, and falls back to a
+     * plain number.
      */
     public function statDisplay(string $attribute, string $stat, int|float|null $value): string
     {
@@ -927,19 +1447,78 @@ class BaseModelBrowser extends Component
         }
 
         if (in_array($stat, self::STATS_COUNTS, true)) {
-            return (string) $value;
+            return Number::format($value);
         }
 
+        if (in_array($stat, self::STATS_DATES, true)) {
+            $moment = Carbon::createFromTimestamp($value, config('app.timezone'));
+
+            return $this->formatted($attribute, $moment) ?? e($moment->toDisplayTimezone()->isoFormat('L LT'));
+        }
+
+        return $this->formatted($attribute, $value) ?? (Number::format($value, maxPrecision: 2) ?: (string) $value);
+    }
+
+    /**
+     * One of a column's values rendered for its menu: through the column's
+     * `formats` callback when it has one, with a row the value came from, and
+     * plainly otherwise — a date as its day, a labelled enum as its label.
+     */
+    protected function valueDisplay(string $attribute, mixed $value, ?Model $row = null): string
+    {
+        $formatted = $this->formatted($attribute, $value, $row);
+
+        if ($formatted !== null) {
+            return $formatted;
+        }
+
+        if ($value instanceof HasLabel && method_exists($value, 'toLabelHtml')) {
+            return (string) $value->toLabelHtml();
+        }
+
+        return e(match (true) {
+            $value instanceof BackedEnum => $value->value,
+            $value instanceof UnitEnum => $value->name,
+            $value instanceof DateTimeInterface => Carbon::instance($value)->isoFormat('L'),
+            is_bool($value) => __('model-browser::global.stats.' . ($value ? 'true' : 'false')),
+            is_int($value), is_float($value) => Number::format($value, maxPrecision: 2) ?: (string) $value,
+            default => (string) $value,
+        });
+    }
+
+    /**
+     * A value through the column's `formats` callback, or null when the column
+     * has none or it fails, e.g. without a row.
+     */
+    protected function formatted(string $attribute, mixed $value, ?Model $row = null): ?string
+    {
         $format = $this->formats[$attribute] ?? null;
-        if ($format) {
-            try {
-                return (string) $format($value, null);
-            } catch (\Throwable) {
-                // Fall through to the plain number below.
-            }
+
+        if (! $format) {
+            return null;
         }
 
-        return Number::format($value, maxPrecision: 2) ?? (string) $value;
+        try {
+            return (string) $format($value, $row);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * The markup of a value as the plain text a tooltip shows.
+     */
+    protected function plainText(string $html): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($html))));
+    }
+
+    /**
+     * A count as a share of all the rows, to one decimal place.
+     */
+    protected function share(int $count, int $rows): string
+    {
+        return Number::percentage($rows ? $count / $rows * 100 : 0, precision: 1) ?: '';
     }
 
     public function paginationView(): string
@@ -1127,21 +1706,16 @@ class BaseModelBrowser extends Component
         );
     }
 
+    /**
+     * The list's name and the time of the export in the display timezone, e.g.
+     * `vouchers-2026-09-27-1430.csv`. The filter is left out: it can be too
+     * complex to read well in a file name.
+     */
     protected function generateExportFilename(): string
     {
-        $modelName = class_basename($this->model);
-        $fileName = $modelName;
+        $name = Str::slug($this->exportName ?: Str::kebab(Str::pluralStudly(class_basename($this->model))));
 
-        $sortColumn = $this->getActiveSortColumn();
-        $sortDirection = $this->getActiveSortDirection();
-        if ($sortColumn) {
-            $fileName .= "-sort-{$sortColumn}-{$sortDirection}";
-        }
-
-        $fileName .= '-' . date('Y-m-d');
-        $fileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $fileName);
-
-        return "{$fileName}.csv";
+        return $name . '-' . now()->toDisplayTimezone()->format('Y-m-d-Hi') . '.csv';
     }
 
     /**

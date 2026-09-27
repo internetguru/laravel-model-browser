@@ -187,21 +187,23 @@ class TableModelBrowserTest extends TestCase
         $this->assertSame(TableModelBrowser::PER_PAGE_MAX, $component->instance()->windowSize());
     }
 
-    public function test_stats_toggle_is_disabled_until_the_stats_are_loaded()
+    public function test_stats_load_when_a_menu_is_first_opened()
     {
         $component = Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
-            'statsAttributes' => ['name'],
         ]);
 
-        $this->assertMatchesRegularExpression('/<button[^>]*model-browser__stats-toggle[^>]*disabled/', $component->html());
-        $component->assertDontSeeHtml('model-browser__stats-toggle--ready');
-
-        $component->call('loadTotalStats');
         $this->assertDoesNotMatchRegularExpression('/<button[^>]*model-browser__stats-toggle[^>]*disabled/', $component->html());
-        $component->assertSeeHtml('model-browser__stats-toggle--ready')
-            ->assertDontSeeHtml('model-browser__stats-toggle--unavailable');
+        $component->assertSeeHtml("\$dispatch('mb-load-stats')")
+            ->assertSeeHtml('x-on:mb-load-stats.window')
+            ->assertSeeHtml('spinner-border')
+            ->assertDontSeeHtml('model-browser__stats-toggle--ready');
+
+        $component->call('loadTotalStats')
+            ->assertSeeHtml('model-browser__stats-toggle--ready')
+            ->assertDontSeeHtml('model-browser__stats-toggle--unavailable')
+            ->assertDontSeeHtml('spinner-border');
     }
 
     public function test_stats_menu_is_offered_only_on_the_configured_columns()
@@ -209,6 +211,12 @@ class TableModelBrowserTest extends TestCase
         Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+        ])->assertSeeHtmlInOrder(['grid-header-cell--stats', 'Name', 'grid-header-cell--stats', 'Email']);
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'email' => 'Email'],
+            'statsAttributes' => [],
         ])->assertDontSeeHtml('model-browser__stats-toggle');
 
         Livewire::test(TableModelBrowser::class, [
@@ -229,14 +237,104 @@ class TableModelBrowserTest extends TestCase
         User::query()->delete();
         User::factory()->create()->forceFill(['score' => 10])->save();
         User::factory()->create()->forceFill(['score' => 30])->save();
+        User::factory()->create()->forceFill(['score' => 0])->save();
 
         Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['score' => 'Score'],
             'statsAttributes' => ['score'],
         ])->call('loadTotalStats')
-            ->assertSeeHtmlInOrder(['SUM', 'AVG', 'MIN', 'MAX', 'COUNT', 'AVGNZ', 'MINNZ', 'COUNTNZ'])
-            ->assertSee(__('model-browser::global.stats.copy'));
+            ->assertSeeHtmlInOrder([
+                '">DISTINCT</dt>', '">EMPTY</dt>', '">NON-EMPTY</dt>',
+                'model-browser__stats-group-start">SUM</dt>', 'model-browser__stats-wide',
+                'model-browser__stats-header">Non-empty</dd>', 'model-browser__stats-header">Non-zero</dd>',
+                '">AVG</dt>', '<dd', '13.33</dd>', '<dd', '20</dd>',
+                '">MEDIAN</dt>', '">MIN</dt>', '">MAX</dt>', '">COUNT</dt>',
+            ])
+            ->assertDontSeeHtml('">AVGNZ</dt>')
+            ->assertDontSee(__('model-browser::global.stats.no-zeros'))
+            ->assertSee(__('model-browser::global.stats.copy'))
+            // Both copy buttons copy what is shown, not the raw values
+            ->assertSeeHtml('copyPage()')
+            ->assertDontSeeHtml("getAttribute('data-raw')");
+    }
+
+    public function test_stats_menu_merges_the_columns_of_a_column_without_zeros()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('score')->nullable();
+        });
+
+        User::query()->delete();
+        User::factory()->create()->forceFill(['score' => 10])->save();
+        User::factory()->create()->forceFill(['score' => 30])->save();
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['score' => 'Score'],
+            'statsAttributes' => ['score'],
+        ])->call('loadTotalStats')
+            ->assertSeeHtmlInOrder([
+                '<dt class="model-browser__stats-group-start model-browser__stats-header model-browser__stats-full">' . __('model-browser::global.stats.no-zeros') . '</dt>',
+                '">AVG</dt>', 'model-browser__stats-wide">20</dd>',
+            ])
+            ->assertDontSee(__('model-browser::global.stats.nonzero'));
+    }
+
+    public function test_stats_menu_lists_the_most_frequent_values()
+    {
+        User::query()->delete();
+        foreach (['Anna', 'Bob', 'Anna', ''] as $name) {
+            User::factory()->create()->forceFill(['name' => $name])->save();
+        }
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->call('loadTotalStats')
+            ->assertSeeHtmlInOrder([
+                '">EMPTY</dt>', '<dd', '1</dd>', '25.0%</dd>',
+                'model-browser__stats-values text-start',
+                '<dt title="Anna">Anna</dt>', '2</dd>', '50.0%</dd>',
+                '<dt title="Bob">Bob</dt>', '1</dd>', '25.0%</dd>',
+            ]);
+    }
+
+    public function test_stats_menu_says_why_the_values_are_not_listed()
+    {
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['email' => 'Email'],
+        ])->call('loadTotalStats')
+            ->assertSee(__('model-browser::global.stats.unique'))
+            ->assertDontSeeHtml('model-browser__stats-values');
+    }
+
+    public function test_stats_menu_is_headed_by_the_list_and_the_column()
+    {
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'title' => 'Users',
+        ])->assertSeeHtmlInOrder(['model-browser__stats-heading', 'Users /', '<strong>Name</strong>']);
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->assertDontSee('/ Name')
+            ->assertSeeHtml('<strong>Name</strong>');
+    }
+
+    public function test_stats_menu_gives_the_dates_the_share_column_too()
+    {
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['created_at' => 'Created'],
+        ])->call('loadTotalStats')
+            ->assertSeeHtmlInOrder([
+                '">EARLIEST</dt>', 'model-browser__stats-wide',
+                '">LATEST</dt>', 'model-browser__stats-wide',
+            ]);
     }
 
     public function test_stats_menu_asks_for_narrower_filters_above_the_limit()
@@ -274,6 +372,9 @@ class TableModelBrowserTest extends TestCase
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
         ])->assertSee(__('model-browser::global.copy-page.label'))
-            ->assertSeeHtml('copyPage()');
+            ->assertSeeHtml('copyPage()')
+            // The copied header reads the label alone, not the statistics menu beside it
+            ->assertSeeHtml('<span class="grid-header-label">Name</span>')
+            ->assertSeeHtml("querySelector('.grid-header-label')");
     }
 }

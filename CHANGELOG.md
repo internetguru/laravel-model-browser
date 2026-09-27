@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [8.1.0] - 2026-09-27
+
+_Stable release based on [8.1.0-rc.1]._
+
+## [8.1.0-rc.1] - 2026-09-27
+
+### Added
+
+- Column statistics include `MEDIAN`, `MEDIANNZ` and `MAXNZ`.
+- Column statistics show `DISTINCT`, `EMPTY` and `NON-EMPTY` for every column, `EARLIEST` and `LATEST` for a date column, and the column's ten most frequent values with their counts and shares, or a note saying why they are not listed. The values go through the column's formatter with a row they came from, so they keep their links, and are aligned as their column.
+- The `statsTextAttributes` prop names the columns whose values only look like numbers, such as order numbers, so they get no numeric statistics.
+- The `title` prop names the list in the heading of each column statistics menu, e.g. "Orders / Amount".
+- The `model-browser.stats_auto_limit` config value (500) loads the column statistics of a list up to that many rows right after its count.
+
+### Changed
+
+- CSV exports are named after the list and the time of the export, e.g. `vouchers-2026-09-27-1430.csv`, without the sort; the new `exportName` prop sets the list's part.
+- The Copy page button and the column statistics copy button copy the values as they are shown, not the plain ones the CSV export holds.
+- The column statistics menu shows its numeric part, `COUNT` and `COUNTNZ` included, only for a numeric column: `SUM`, then each statistic with its non-zero counterpart beside it under a *Non-empty* / *Non-zero* header, or a single value when the column has no zeros. Its labels are translated, e.g. `SOUČET` and `PRŮMĚR` in Czech.
+- Column statistics leave out empty values (null or `''`) rather than counting them as zeros: `COUNT` is the number of filled values, and `AVG` and `MEDIAN` are taken over those. `false` counts as a value.
+- `statsAttributes` defaults to every column; pass `[]` to turn the column statistics off.
+- Column statistics load when a menu is first opened, showing a spinner meanwhile, and stay loaded across pages until the filters change.
+- The total count shows an ellipsis while it loads, also right after a filter change instead of the previous total, in room reserved for a five-digit number so the pagination line does not shift. Changing the page keeps the total.
+
+### Fixed
+
+- The Copy page button copies the header row without the column statistics.
+- The browser suggests past searches per list: each search input is named after the list's `filterSessionKey`.
+
 ## [8.0.1] - 2026-09-26
 
 ### Changed
@@ -1019,6 +1048,8 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[8.1.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.0.1...v8.1.0
+[8.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v8.0.1
 [8.0.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.0.0...v8.0.1
 [8.0.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v7.4.3...v8.0.0
 [8.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v7.4.3

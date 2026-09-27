@@ -3,17 +3,15 @@
     plain-text (TSV) and an HTML table flavor, so it can be pasted straight
     into a spreadsheet.
 
-    Cell values are read from the `data-raw` attribute rendered by the
-    browser views (the same value the CSV export uses); the visible,
-    `formats`-rendered text is only a fallback for cells without it.
+    Cells are copied as they are shown, `formats` applied and markup left
+    out; the CSV export is the place for the plain `rawFormats` values.
 --}}
 <div
     x-data="{
         copied: false,
+        {{-- Non-breaking spaces, e.g. in formatted numbers, become plain ones. --}}
         cellValue(cell) {
-            const raw = cell.getAttribute('data-raw');
-
-            return (raw !== null ? raw : cell.textContent).trim();
+            return cell.textContent.replace(/\s+/g, ' ').trim();
         },
         {{--
             Both browser layouts are supported: the table view renders a CSS
@@ -26,7 +24,9 @@
 
             const grid = root.querySelector('.grid-table');
             if (grid) {
-                const header = [...grid.querySelectorAll('.grid-header-cell')].map((cell) => cell.textContent.trim());
+                {{-- The label alone: the header cell also holds the column's statistics menu. --}}
+                const header = [...grid.querySelectorAll('.grid-header-cell')]
+                    .map((cell) => this.cellValue(cell.querySelector('.grid-header-label') ?? cell));
                 const rows = [...grid.querySelectorAll('.grid-row')]
                     .map((row) => [...row.querySelectorAll('.grid-cell')].map((cell) => this.cellValue(cell)));
 
@@ -36,7 +36,7 @@
             const cards = [...root.querySelectorAll('dl.card')];
             if (! cards.length) return null;
 
-            const header = [...cards[0].querySelectorAll('dt')].map((term) => term.textContent.trim());
+            const header = [...cards[0].querySelectorAll('dt')].map((term) => this.cellValue(term));
             const rows = cards.map((card) => [...card.querySelectorAll('dd')].map((cell) => this.cellValue(cell)));
 
             return { header, rows };

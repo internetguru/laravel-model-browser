@@ -3,19 +3,24 @@
     island so it loads and refreshes independently of the (potentially expensive) data
     query.
 
-    The island only re-renders when targeted, so:
-    - on first render it self-triggers loadTotalCount (scoped to the island);
-    - when filters/search change, the component dispatches `mb-refresh-count`
-      and the listener below reloads just this island — the data query in the
-      rows() computed is never re-run.
+    The island is `always` rendered, so a filter change that discards the count shows
+    the placeholder straight away instead of the stale total. A page change keeps the
+    total: the component restores it on hydrate.
+
+    Whenever the count is missing, the placeholder loads it (scoped to the island, so
+    the data query in the rows() computed is never re-run). Its key changes on every
+    render, so the island morph always puts a fresh element in and its x-init runs
+    again, even when the placeholder was already there.
 --}}
-<span
-    class="model-browser__count"
-    x-on:mb-refresh-count.window="$wire.$island('count').loadTotalCount()"
->
+<span class="model-browser__count">
     @if ($totalCount === null)
-        <span x-data x-init="$wire.$island('count').loadTotalCount()" style="display: none;"></span>
-        <span>@lang('model-browser::pagination.many')</span>
+        <span
+            wire:key="model-browser-count-pending-{{ Str::random(8) }}"
+            x-init="$wire.$island('count').loadTotalCount()"
+        >
+            <span aria-hidden="true">…</span>
+            <span class="visually-hidden">@lang('model-browser::pagination.many')</span>
+        </span>
     @else
         {{ $totalCount }}
     @endif
