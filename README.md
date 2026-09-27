@@ -544,7 +544,7 @@ In this example:
 - **CSV Export** — Download the current filtered and sorted data as a CSV file. Exports are capped at `exportLimit` rows (per-instance parameter, defaults to the `model-browser.export_limit` config value of 1500; `0` disables the cap) — when the current result count exceeds it, the download button is disabled and the export endpoint refuses the request.
 - **Column statistics** — Summarized columns carry a statistics menu in their header, loaded inside its own Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands) so the data query is never re-run for it. See [Column Statistics](#column-statistics).
 - **Fullscreen** — Toggle fullscreen mode for the table view.
-- **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as their raw `data-raw` values (the same values the CSV export uses), not the `formats`-rendered display text.
+- **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as they are shown, `formats` applied and markup left out; the CSV export holds the plain `rawFormats` values.
 - **Deferred count** — The total result count is the `of 176` half of the pagination line and is loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands), passed into the pagination component as its `count` slot. The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 
 ## Column Statistics
@@ -565,7 +565,7 @@ The columns named in `statsAttributes` carry an icon in their header opening a m
 
 An empty value (null, `''` or `false`) is no value at all: every statistic leaves it out, as SQL's `AVG(column)` and `COUNT(column)` do. A zero is a value. So the list's total count less `COUNT` is the number of empty values, and `COUNT` less `COUNTNZ` the number of zeros. A column whose empty value means zero, and should count as one, has to say so in its summary query (e.g. `COALESCE(credit, 0)`).
 
-A line divides the three groups (`BaseModelBrowser::STATS_GROUPS`): `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a numeric column has no zero, the last group would only repeat the one before it, and the note *"No zero values"* stands in for it. A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, using the plain numbers rather than the displayed ones.
+A line divides the three groups (`BaseModelBrowser::STATS_GROUPS`): `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a numeric column has no zero, the last group would only repeat the one before it, and the note *"No zero values"* stands in for it. A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, as they are shown.
 
 Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. `COUNT` and `COUNTNZ` are never formatted.
 

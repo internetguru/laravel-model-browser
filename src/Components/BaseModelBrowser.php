@@ -972,13 +972,13 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * The statistics of one column, ready for its menu: each one's name, the
-     * value as it is shown, and the plain number behind it for the clipboard.
+     * The statistics of one column, ready for its menu: each one's name and
+     * the value as it is shown.
      * The statistics a column has nothing to say about are left out, and so
      * are the non-zero ones when they would only repeat the rest (see
      * columnStatsHasNoZeros). `group` is the index in STATS_GROUPS.
      *
-     * @return array<int, array{key: string, label: string, display: string, raw: string, group: int}>
+     * @return array<int, array{key: string, label: string, display: string, group: int}>
      */
     public function columnStatsRows(string $attribute): array
     {
@@ -1002,7 +1002,6 @@ class BaseModelBrowser extends Component
                     'key' => $key,
                     'label' => strtoupper($key),
                     'display' => $this->statDisplay($attribute, $key, $value),
-                    'raw' => (string) (in_array($key, self::STATS_COUNTS, true) ? $value : round((float) $value, 4)),
                     'group' => $group,
                 ];
             }

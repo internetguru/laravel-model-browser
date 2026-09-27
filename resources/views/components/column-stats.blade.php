@@ -59,14 +59,16 @@
                 });
             }
         },
-        {{-- Tabs and newlines are the row/column structure of the copied text. --}}
+        {{--
+            Copied as shown. Tabs and newlines are the row/column structure of
+            the copied text, and non-breaking spaces become plain ones.
+        --}}
         text() {
-            return [...$refs.menu.querySelectorAll('dt')].map((term) => {
-                const value = term.nextElementSibling;
-                const raw = value.getAttribute('data-raw');
+            const plain = (element) => element.textContent.replace(/\s+/g, ' ').trim();
 
-                return term.textContent.trim() + '\t' + (raw !== null ? raw : value.textContent.trim()).replace(/\s+/g, ' ');
-            }).join('\n');
+            return [...$refs.menu.querySelectorAll('dt')]
+                .map((term) => plain(term) + '\t' + plain(term.nextElementSibling))
+                .join('\n');
         },
         {{--
             execCommand is the fallback for insecure contexts (plain http),
@@ -156,7 +158,7 @@
                 @foreach ($rows as $row)
                     @php($groupStart = ! $loop->first && $row['group'] !== $rows[$loop->index - 1]['group'])
                     <dt @class(['model-browser__stats-group-start' => $groupStart])>{{ $row['label'] }}</dt>
-                    <dd @class(['model-browser__stats-group-start' => $groupStart]) data-raw="{{ $row['raw'] }}">{!! $row['display'] !!}</dd>
+                    <dd @class(['model-browser__stats-group-start' => $groupStart])>{!! $row['display'] !!}</dd>
                 @endforeach
             </dl>
             @if ($noZeros)

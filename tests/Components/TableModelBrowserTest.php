@@ -242,7 +242,10 @@ class TableModelBrowserTest extends TestCase
                 'model-browser__stats-group-start">AVGNZ</dt>', '">MEDIANNZ</dt>', '">MINNZ</dt>', '">MAXNZ</dt>', '">COUNTNZ</dt>',
             ])
             ->assertDontSee(__('model-browser::global.stats.no-zeros'))
-            ->assertSee(__('model-browser::global.stats.copy'));
+            ->assertSee(__('model-browser::global.stats.copy'))
+            // Both copy buttons copy what is shown, not the raw values
+            ->assertSeeHtml('copyPage()')
+            ->assertDontSeeHtml("getAttribute('data-raw')");
     }
 
     public function test_stats_menu_notes_a_column_without_zeros_instead_of_its_non_zero_group()
