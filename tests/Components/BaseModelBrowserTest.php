@@ -828,6 +828,15 @@ class BaseModelBrowserTest extends TestCase
         ])->assertSet('totalCount', null);
     }
 
+    public function test_pending_total_count_shows_an_ellipsis_and_announces_many()
+    {
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->assertSeeHtml('<span aria-hidden="true">…</span>')
+            ->assertSeeHtml('<span class="visually-hidden">' . __('model-browser::pagination.many') . '</span>');
+    }
+
     public function test_changing_filters_dispatches_count_refresh()
     {
         $component = Livewire::test(BaseModelBrowser::class, [

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The pending total count shows an ellipsis in room reserved for a five-digit number, so the pagination line no longer shifts when the count arrives.
+
 ## [8.0.1] - 2026-09-26
 
 ### Changed

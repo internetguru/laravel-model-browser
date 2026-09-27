@@ -387,6 +387,14 @@
     }
 }
 
+// Room for a five-digit total up front, so the right-aligned pagination line does not
+// shift when the count replaces its placeholder; a longer total still widens it.
+.model-browser__count {
+    display: inline-block;
+    min-width: 5ch;
+    font-variant-numeric: tabular-nums;
+}
+
 // Asking for more of the same rows is not an action on a par with the buttons around the
 // table, so it does not look like one: text, in the link colour, with no chrome at all.
 .model-browser__load-more-link {
