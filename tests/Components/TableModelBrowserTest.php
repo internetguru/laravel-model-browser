@@ -229,14 +229,40 @@ class TableModelBrowserTest extends TestCase
         User::query()->delete();
         User::factory()->create()->forceFill(['score' => 10])->save();
         User::factory()->create()->forceFill(['score' => 30])->save();
+        User::factory()->create()->forceFill(['score' => 0])->save();
 
         Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['score' => 'Score'],
             'statsAttributes' => ['score'],
         ])->call('loadTotalStats')
-            ->assertSeeHtmlInOrder(['SUM', 'AVG', 'MIN', 'MAX', 'COUNT', 'AVGNZ', 'MINNZ', 'COUNTNZ'])
+            ->assertSeeHtmlInOrder([
+                '">SUM</dt>',
+                'model-browser__stats-group-start">AVG</dt>', '">MEDIAN</dt>', '">MIN</dt>', '">MAX</dt>', '">COUNT</dt>',
+                'model-browser__stats-group-start">AVGNZ</dt>', '">MEDIANNZ</dt>', '">MINNZ</dt>', '">MAXNZ</dt>', '">COUNTNZ</dt>',
+            ])
+            ->assertDontSee(__('model-browser::global.stats.no-gaps'))
             ->assertSee(__('model-browser::global.stats.copy'));
+    }
+
+    public function test_stats_menu_notes_a_column_without_gaps_instead_of_its_non_zero_group()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('score')->nullable();
+        });
+
+        User::query()->delete();
+        User::factory()->create()->forceFill(['score' => 10])->save();
+        User::factory()->create()->forceFill(['score' => 30])->save();
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['score' => 'Score'],
+            'statsAttributes' => ['score'],
+        ])->call('loadTotalStats')
+            ->assertSeeHtml('">COUNT</dt>')
+            ->assertDontSeeHtml('">AVGNZ</dt>')
+            ->assertSee(__('model-browser::global.stats.no-gaps'));
     }
 
     public function test_stats_menu_asks_for_narrower_filters_above_the_limit()

@@ -1,7 +1,8 @@
 {{--
     The statistics menu of one column: an info icon in the header that opens
-    SUM / AVG / MIN / MAX / COUNT and their non-zero counterparts, with a
-    button copying the lot to the clipboard.
+    the statistics in the groups of BaseModelBrowser::STATS_GROUPS, divided by
+    a line, with a button copying the lot to the clipboard. When the column
+    has no zero or empty value, a note stands in for the non-zero group.
 
     The rows are rendered server-side (see BaseModelBrowser::columnStatsRows)
     inside the header's "stats" island, so they arrive with the statistics and
@@ -10,7 +11,7 @@
     and the scroller around the table both clip their overflow, and a menu laid
     out inside them would be cut off.
 --}}
-@props(['label' => '', 'rows' => [], 'loaded' => false, 'overLimit' => false, 'limit' => 0])
+@props(['label' => '', 'rows' => [], 'noGaps' => false, 'loaded' => false, 'overLimit' => false, 'limit' => 0])
 
 <span
     class="model-browser__stats"
@@ -153,10 +154,14 @@
         @elseif ($loaded)
             <dl class="model-browser__stats-list">
                 @foreach ($rows as $row)
-                    <dt>{{ $row['label'] }}</dt>
-                    <dd data-raw="{{ $row['raw'] }}">{!! $row['display'] !!}</dd>
+                    @php($groupStart = ! $loop->first && $row['group'] !== $rows[$loop->index - 1]['group'])
+                    <dt @class(['model-browser__stats-group-start' => $groupStart])>{{ $row['label'] }}</dt>
+                    <dd @class(['model-browser__stats-group-start' => $groupStart]) data-raw="{{ $row['raw'] }}">{!! $row['display'] !!}</dd>
                 @endforeach
             </dl>
+            @if ($noGaps)
+                <p class="model-browser__stats-note model-browser__stats-note--group">@lang('model-browser::global.stats.no-gaps')</p>
+            @endif
             <button type="button" class="model-browser__stats-copy" x-on:click="copy()">
                 {{--
                     The icons are toggled via x-show on wrapper spans (not by swapping

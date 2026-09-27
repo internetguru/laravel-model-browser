@@ -178,7 +178,7 @@ Maximum number of rows a CSV export may contain. When the current (filtered) res
 
 ### `statsAttributes` / `statsLimit`
 
-Columns that are summarized. Their header offers the statistics menu — an icon opening `SUM`, `AVG`, `MEDIAN`, `MIN`, `MAX`, `COUNT`, `AVGNZ`, `MEDIANNZ`, `MINNZ` and `COUNTNZ`, with a button copying the lot to the clipboard. See [Column Statistics](#column-statistics):
+Columns that are summarized. Their header offers the statistics menu — an icon opening `SUM`; `AVG`, `MEDIAN`, `MIN`, `MAX` and `COUNT`; `AVGNZ`, `MEDIANNZ`, `MINNZ`, `MAXNZ` and `COUNTNZ`, with a button copying the lot to the clipboard. See [Column Statistics](#column-statistics):
 
 ```php
 :statsAttributes="['price', 'credit']"
@@ -560,10 +560,10 @@ The columns named in `statsAttributes` carry an icon in their header opening a m
 | `COUNT` | Rows in the (filtered) result set |
 | `AVGNZ` | `SUM` over `COUNTNZ` |
 | `MEDIANNZ` | Middle number of `COUNTNZ` rows |
-| `MINNZ` | Smallest number that is not zero |
+| `MINNZ` / `MAXNZ` | Smallest / largest number that is not zero |
 | `COUNTNZ` | Rows whose value is neither zero nor empty |
 
-A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, using the plain numbers rather than the displayed ones.
+A line divides the three groups (`BaseModelBrowser::STATS_GROUPS`): `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a column has no zero or empty value, the last group would only repeat the one before it, and the note *"No zero or empty values"* stands in for it. A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, using the plain numbers rather than the displayed ones.
 
 Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. `COUNT` and `COUNTNZ` are never formatted.
 

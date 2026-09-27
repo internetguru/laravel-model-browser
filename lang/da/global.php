@@ -44,6 +44,7 @@ return [
         'limit-exceeded' => 'Reducér antallet af resultater under :limit med filtre for at vise statistik.',
         'copy' => 'Kopiér',
         'copied' => 'Kopieret',
+        'no-gaps' => 'Ingen nul- eller tomme værdier',
     ],
     'download-csv' => [
         'label' => 'Download CSV',

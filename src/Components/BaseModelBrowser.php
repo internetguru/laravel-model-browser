@@ -78,19 +78,33 @@ class BaseModelBrowser extends Component
     public const RANGE_SEPARATOR = '..';
 
     /**
-     * The statistics a column's menu offers, in the order they are listed.
+     * The statistics a column's menu offers, in the groups and order they are
+     * listed: SUM, which zeros never change, then those counting the zeros,
+     * then the same without them.
      *
      * The `nz` ("non-zero") variants leave out the rows whose value is zero,
      * null or empty — COUNTNZ is the count of the rows that carry a value at
      * all, and is the one also shown in the column header on its own.
      */
-    public const STATS = ['sum', 'avg', 'median', 'min', 'max', 'count', 'avgnz', 'mediannz', 'minnz', 'countnz'];
+    public const STATS_GROUPS = [
+        ['sum'],
+        ['avg', 'median', 'min', 'max', 'count'],
+        ['avgnz', 'mediannz', 'minnz', 'maxnz', 'countnz'],
+    ];
+
+    public const STATS = [...self::STATS_GROUPS[0], ...self::STATS_GROUPS[1], ...self::STATS_GROUPS[2]];
 
     /**
      * The statistics that are row counts: plain integers, never run through
      * the column's `formats` callback.
      */
     public const STATS_COUNTS = ['count', 'countnz'];
+
+    /**
+     * The index in STATS_GROUPS of the non-zero statistics, left out of the
+     * menu when a column has no zero or empty value to leave out.
+     */
+    public const STATS_NONZERO_GROUP = 2;
 
     #[Locked]
     public string $model;
@@ -217,7 +231,7 @@ class BaseModelBrowser extends Component
      * Per-column statistics, keyed by attribute. null until loaded (or when
      * the result set is too large — see $statsOverLimit).
      *
-     * @var array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float}>|null
+     * @var array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float, maxnz: ?float}>|null
      */
     public ?array $stats = null;
 
@@ -821,7 +835,7 @@ class BaseModelBrowser extends Component
      * it does have is a number — otherwise just its two row counts are of any
      * use, and the rest stay null.
      *
-     * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float}>
+     * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float, maxnz: ?float}>
      */
     protected function summarize(Builder $query): array
     {
@@ -836,6 +850,7 @@ class BaseModelBrowser extends Component
             'min' => null,
             'minnz' => null,
             'max' => null,
+            'maxnz' => null,
         ]);
 
         // Offset-based chunking (lazy) needs a deterministic order; the query
@@ -876,6 +891,7 @@ class BaseModelBrowser extends Component
                 $totals[$attribute]['countnz']++;
                 $totals[$attribute]['nonzero'][] = $number;
                 $totals[$attribute]['minnz'] = min($totals[$attribute]['minnz'] ?? $number, $number);
+                $totals[$attribute]['maxnz'] = max($totals[$attribute]['maxnz'] ?? $number, $number);
             }
         }
 
@@ -895,6 +911,7 @@ class BaseModelBrowser extends Component
                 'min' => $numeric ? $total['min'] : null,
                 'minnz' => $numeric ? $total['minnz'] : null,
                 'max' => $numeric ? $total['max'] : null,
+                'maxnz' => $numeric ? $total['maxnz'] : null,
             ];
         }
 
@@ -948,7 +965,7 @@ class BaseModelBrowser extends Component
     /**
      * The statistics of one column, or null while none are loaded.
      *
-     * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float}|null
+     * @return array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float, maxnz: ?float}|null
      */
     public function columnStats(string $attribute): ?array
     {
@@ -958,9 +975,11 @@ class BaseModelBrowser extends Component
     /**
      * The statistics of one column, ready for its menu: each one's name, the
      * value as it is shown, and the plain number behind it for the clipboard.
-     * The statistics a column has nothing to say about are left out.
+     * The statistics a column has nothing to say about are left out, and so
+     * are the non-zero ones when they would only repeat the rest (see
+     * columnStatsHasNoGaps). `group` is the index in STATS_GROUPS.
      *
-     * @return array<int, array{key: string, label: string, display: string, raw: string}>
+     * @return array<int, array{key: string, label: string, display: string, raw: string, group: int}>
      */
     public function columnStatsRows(string $attribute): array
     {
@@ -971,20 +990,38 @@ class BaseModelBrowser extends Component
         }
 
         $rows = [];
-        foreach (self::STATS as $key) {
-            $value = $stats[$key] ?? null;
-            if ($value === null) {
+        foreach (self::STATS_GROUPS as $group => $keys) {
+            if ($group === self::STATS_NONZERO_GROUP && $this->columnStatsHasNoGaps($attribute)) {
                 continue;
             }
-            $rows[] = [
-                'key' => $key,
-                'label' => strtoupper($key),
-                'display' => $this->statDisplay($attribute, $key, $value),
-                'raw' => (string) (in_array($key, self::STATS_COUNTS, true) ? $value : round((float) $value, 4)),
-            ];
+            foreach ($keys as $key) {
+                $value = $stats[$key] ?? null;
+                if ($value === null) {
+                    continue;
+                }
+                $rows[] = [
+                    'key' => $key,
+                    'label' => strtoupper($key),
+                    'display' => $this->statDisplay($attribute, $key, $value),
+                    'raw' => (string) (in_array($key, self::STATS_COUNTS, true) ? $value : round((float) $value, 4)),
+                    'group' => $group,
+                ];
+            }
         }
 
         return $rows;
+    }
+
+    /**
+     * Whether every row of the column carries a non-zero value, so each non-zero
+     * statistic equals its counterpart. False while no statistics are loaded
+     * and for an empty result set.
+     */
+    public function columnStatsHasNoGaps(string $attribute): bool
+    {
+        $stats = $this->columnStats($attribute);
+
+        return $stats !== null && $stats['count'] > 0 && $stats['count'] === $stats['countnz'];
     }
 
     /**
