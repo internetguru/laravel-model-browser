@@ -902,6 +902,25 @@ class BaseModelBrowserTest extends TestCase
             ->assertDontSeeHtml('<span aria-hidden="true">…</span>');
     }
 
+    public function test_each_list_names_its_search_input_after_itself()
+    {
+        $filters = ['name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name']];
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => $filters,
+            'filterSessionKey' => 'user_filter',
+        ])->assertSeeHtml('name="mb-search-user-filter"');
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => $filters,
+            'filterSessionKey' => 'admin_filter',
+        ])->assertSeeHtml('name="mb-search-admin-filter"');
+    }
+
     public function test_search_query_is_initialized_from_the_q_url_parameter()
     {
         session()->put('test-mb-filters', ['name' => 'FromSession']);

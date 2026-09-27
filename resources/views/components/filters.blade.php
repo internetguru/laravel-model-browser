@@ -1,4 +1,4 @@
-@props(['filterConfig', 'filterValues', 'searchQuery' => '', 'placeholder' => null, 'submitIcon' => 'fa-magnifying-glass'])
+@props(['filterConfig', 'filterValues', 'searchQuery' => '', 'searchName' => 'mb-search', 'placeholder' => null, 'submitIcon' => 'fa-magnifying-glass'])
 
 @php
     $urlParams = collect($filterConfig)->pluck('url')->filter()->values()->toArray();
@@ -38,7 +38,7 @@
             <form wire:submit.prevent="applySearch" class="mb-search__form editable-skip">
                 <input
                     type="text"
-                    name="mb-search"
+                    name="{{ $searchName }}"
                     class="mb-search__input"
                     wire:model="searchQuery"
                     placeholder="{{ $placeholder }}"

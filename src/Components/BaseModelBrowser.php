@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Computed;
@@ -906,6 +907,16 @@ class BaseModelBrowser extends Component
     protected function streamRows(Builder $query): LazyCollection
     {
         return empty($query->getEagerLoads()) ? $query->cursor() : $query->lazy(500);
+    }
+
+    /**
+     * The search input's name, unique per list: browsers keep their suggestions
+     * per input name, so a shared name would mix the searches of every list.
+     * The search bar comes with filters, and those require the session key.
+     */
+    public function searchInputName(): string
+    {
+        return 'mb-search-' . Str::slug($this->filterSessionKey);
     }
 
     /**
