@@ -168,6 +168,14 @@ Auto-refresh interval in seconds. When set, the component polls the server and r
 :refreshInterval="10"
 ```
 
+### `exportName`
+
+The start of a CSV export's file name, followed by the time of the export in the display timezone: `vouchers-2026-09-27-1430.csv`. Defaults to the model's plural in kebab case (`order-items`); set it when the list is not simply its model, such as a summary over another one. The filter is not part of the name:
+
+```php
+exportName="payments"
+```
+
 ### `exportLimit`
 
 Maximum number of rows a CSV export may contain. When the current (filtered) result count exceeds the limit, the download button is disabled and the export endpoint refuses the request. Defaults to the `model-browser.export_limit` config value (1500). Set to `0` for unlimited:

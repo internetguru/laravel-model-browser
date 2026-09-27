@@ -149,6 +149,13 @@ class BaseModelBrowser extends Component
     #[Locked]
     public array $exportAttributes = [];
 
+    /**
+     * The list's name at the start of a CSV export's file name, before the
+     * time of the export. Defaults to the model's plural, e.g. `order-items`.
+     */
+    #[Locked]
+    public string $exportName = '';
+
     #[Locked]
     public bool $enableSort = true;
 
@@ -316,6 +323,7 @@ class BaseModelBrowser extends Component
         ?int $exportLimit = null,
         array $statsAttributes = [],
         ?int $statsLimit = null,
+        string $exportName = '',
     ) {
         // if model contains @, split it into model and method
         if (str_contains($model, '@')) {
@@ -330,6 +338,7 @@ class BaseModelBrowser extends Component
             $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
         }
         $this->exportAttributes = $exportAttributes;
+        $this->exportName = $exportName;
         $this->formats = $formats;
         $this->rawFormats = $rawFormats;
         $this->alignments = $alignments;
@@ -1237,21 +1246,16 @@ class BaseModelBrowser extends Component
         );
     }
 
+    /**
+     * The list's name and the time of the export in the display timezone, e.g.
+     * `vouchers-2026-09-27-1430.csv`. The filter is left out: it can be too
+     * complex to read well in a file name.
+     */
     protected function generateExportFilename(): string
     {
-        $modelName = class_basename($this->model);
-        $fileName = $modelName;
+        $name = Str::slug($this->exportName ?: Str::kebab(Str::pluralStudly(class_basename($this->model))));
 
-        $sortColumn = $this->getActiveSortColumn();
-        $sortDirection = $this->getActiveSortDirection();
-        if ($sortColumn) {
-            $fileName .= "-sort-{$sortColumn}-{$sortDirection}";
-        }
-
-        $fileName .= '-' . date('Y-m-d');
-        $fileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $fileName);
-
-        return "{$fileName}.csv";
+        return $name . '-' . now()->toDisplayTimezone()->format('Y-m-d-Hi') . '.csv';
     }
 
     /**

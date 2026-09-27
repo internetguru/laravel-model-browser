@@ -71,6 +71,27 @@ class BaseModelBrowserTest extends TestCase
             ->assertFileDownloaded();
     }
 
+    public function test_download_csv_is_named_after_the_list_and_the_time()
+    {
+        Carbon::setTestNow('2026-09-27 12:30:00');
+        config(['app.timezone' => 'UTC']);
+        session(['display_timezone' => 'Europe/Prague']);
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'defaultSortColumn' => 'name',
+        ])->call('downloadCsv')
+            ->assertFileDownloaded('users-2026-09-27-1430.csv');
+
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'exportName' => 'Team Members',
+        ])->call('downloadCsv')
+            ->assertFileDownloaded('team-members-2026-09-27-1430.csv');
+    }
+
     public function test_download_csv_rejected_over_export_limit()
     {
         config(['model-browser.export_limit' => 1]);

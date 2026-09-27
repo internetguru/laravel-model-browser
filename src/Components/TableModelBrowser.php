@@ -29,10 +29,11 @@ class TableModelBrowser extends BaseModelBrowser
         ?int $exportLimit = null,
         array $statsAttributes = [],
         ?int $statsLimit = null,
+        string $exportName = '',
         int $lightDarkStep = 1,
         array $columnWidths = [],
     ) {
-        parent::mount($model, $viewAttributes, $exportAttributes, $formats, $rawFormats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit, $statsAttributes, $statsLimit);
+        parent::mount($model, $viewAttributes, $exportAttributes, $formats, $rawFormats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit, $statsAttributes, $statsLimit, $exportName);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
     }
