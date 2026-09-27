@@ -555,19 +555,21 @@ The columns named in `statsAttributes` carry an icon in their header opening a m
 | :--- | :--- |
 | `SUM` | Total of the column's numbers |
 | `AVG` | `SUM` over `COUNT` |
-| `MEDIAN` | Middle number of `COUNT` rows, empty ones as zeros |
+| `MEDIAN` | Middle number, zeros included |
 | `MIN` / `MAX` | Smallest / largest number, zeros included |
-| `COUNT` | Rows in the (filtered) result set |
+| `COUNT` | Values, zeros included |
 | `AVGNZ` | `SUM` over `COUNTNZ` |
-| `MEDIANNZ` | Middle number of `COUNTNZ` rows |
+| `MEDIANNZ` | Middle number that is not zero |
 | `MINNZ` / `MAXNZ` | Smallest / largest number that is not zero |
-| `COUNTNZ` | Rows whose value is neither zero nor empty |
+| `COUNTNZ` | Values that are not zero |
 
-A line divides the three groups (`BaseModelBrowser::STATS_GROUPS`): `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a column has no zero or empty value, the last group would only repeat the one before it, and the note *"No zero or empty values"* stands in for it. A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, using the plain numbers rather than the displayed ones.
+An empty value (null, `''` or `false`) is no value at all: every statistic leaves it out, as SQL's `AVG(column)` and `COUNT(column)` do. A zero is a value. So the list's total count less `COUNT` is the number of empty values, and `COUNT` less `COUNTNZ` the number of zeros. A column whose empty value means zero, and should count as one, has to say so in its summary query (e.g. `COALESCE(credit, 0)`).
+
+A line divides the three groups (`BaseModelBrowser::STATS_GROUPS`): `SUM`, which zeros never change, the statistics counting the zeros, and the same without them. When a numeric column has no zero, the last group would only repeat the one before it, and the note *"No zero values"* stands in for it. A `[copy]` button under the list puts the statistics on the clipboard as `NAME<tab>value` lines, using the plain numbers rather than the displayed ones.
 
 Values are read straight off the model, so they are in the attribute's own unit — `formats` and `rawFormats` are display concerns and are not applied while summarizing. The numeric statistics are then rendered through the column's `formats` callback, which is therefore called with an aggregate and no row (`$format($value, null)`); one that needs the row it came from falls back to a plain number. `COUNT` and `COUNTNZ` are never formatted.
 
-Only columns whose every value is a number get the numeric statistics; the rest have nothing to offer but their two row counts, and the menu lists only those.
+Only columns whose every value is a number get the numeric statistics; the rest have nothing to offer but their two counts, and the menu lists only those.
 
 Nothing outside `statsAttributes` is summarized: those columns carry no menu, and a browser naming none of them never runs the extra query.
 

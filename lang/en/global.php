@@ -44,7 +44,7 @@ return [
         'limit-exceeded' => 'To show stats, reduce results below :limit using filters.',
         'copy' => 'Copy',
         'copied' => 'Copied',
-        'no-gaps' => 'No zero or empty values',
+        'no-zeros' => 'No zero values',
     ],
     'download-csv' => [
         'label' => 'Download CSV',

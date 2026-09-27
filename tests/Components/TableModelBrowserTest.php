@@ -241,11 +241,11 @@ class TableModelBrowserTest extends TestCase
                 'model-browser__stats-group-start">AVG</dt>', '">MEDIAN</dt>', '">MIN</dt>', '">MAX</dt>', '">COUNT</dt>',
                 'model-browser__stats-group-start">AVGNZ</dt>', '">MEDIANNZ</dt>', '">MINNZ</dt>', '">MAXNZ</dt>', '">COUNTNZ</dt>',
             ])
-            ->assertDontSee(__('model-browser::global.stats.no-gaps'))
+            ->assertDontSee(__('model-browser::global.stats.no-zeros'))
             ->assertSee(__('model-browser::global.stats.copy'));
     }
 
-    public function test_stats_menu_notes_a_column_without_gaps_instead_of_its_non_zero_group()
+    public function test_stats_menu_notes_a_column_without_zeros_instead_of_its_non_zero_group()
     {
         Schema::table('users', function (Blueprint $table) {
             $table->integer('score')->nullable();
@@ -262,7 +262,7 @@ class TableModelBrowserTest extends TestCase
         ])->call('loadTotalStats')
             ->assertSeeHtml('">COUNT</dt>')
             ->assertDontSeeHtml('">AVGNZ</dt>')
-            ->assertSee(__('model-browser::global.stats.no-gaps'));
+            ->assertSee(__('model-browser::global.stats.no-zeros'));
     }
 
     public function test_stats_menu_asks_for_narrower_filters_above_the_limit()

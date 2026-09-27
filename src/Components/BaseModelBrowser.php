@@ -82,9 +82,10 @@ class BaseModelBrowser extends Component
      * listed: SUM, which zeros never change, then those counting the zeros,
      * then the same without them.
      *
-     * The `nz` ("non-zero") variants leave out the rows whose value is zero,
-     * null or empty — COUNTNZ is the count of the rows that carry a value at
-     * all, and is the one also shown in the column header on its own.
+     * Empty values (null, '' or false) are no values at all and are left out
+     * of every statistic; a zero is a value. The `nz` ("non-zero") variants
+     * leave out the zeros as well — COUNTNZ is the one also shown in the
+     * column header on its own.
      */
     public const STATS_GROUPS = [
         ['sum'],
@@ -102,7 +103,7 @@ class BaseModelBrowser extends Component
 
     /**
      * The index in STATS_GROUPS of the non-zero statistics, left out of the
-     * menu when a column has no zero or empty value to leave out.
+     * menu when a numeric column has no zero to leave out.
      */
     public const STATS_NONZERO_GROUP = 2;
 
@@ -831,9 +832,10 @@ class BaseModelBrowser extends Component
      *
      * Values are read straight off the model (`formats` and `rawFormats` are
      * display concerns and are not applied), so the numbers are in the
-     * attribute's own unit. A column counts as numeric only when every value
-     * it does have is a number — otherwise just its two row counts are of any
-     * use, and the rest stay null.
+     * attribute's own unit. Empty values are skipped, so COUNT is the count of
+     * the filled ones. A column counts as numeric only when every value it
+     * does have is a number — otherwise just its two counts are of any use,
+     * and the rest stay null.
      *
      * @return array<string, array{count: int, countnz: int, numeric: bool, sum: ?float, avg: ?float, avgnz: ?float, median: ?float, mediannz: ?float, min: ?float, minnz: ?float, max: ?float, maxnz: ?float}>
      */
@@ -843,7 +845,6 @@ class BaseModelBrowser extends Component
         $totals = array_fill_keys($attributes, [
             'count' => 0,
             'countnz' => 0,
-            'filled' => 0,
             'numbers' => 0,
             'sum' => 0.0,
             'nonzero' => [],
@@ -864,13 +865,12 @@ class BaseModelBrowser extends Component
         foreach ($rows as $item) {
             foreach ($attributes as $attribute) {
                 $value = Arr::get($item, $attribute);
-                $totals[$attribute]['count']++;
 
                 if ($value === null || $value === '' || $value === false) {
                     continue;
                 }
 
-                $totals[$attribute]['filled']++;
+                $totals[$attribute]['count']++;
 
                 if (! is_numeric($value)) {
                     $totals[$attribute]['countnz']++;
@@ -897,7 +897,7 @@ class BaseModelBrowser extends Component
 
         $stats = [];
         foreach ($totals as $attribute => $total) {
-            $numeric = $total['numbers'] > 0 && $total['numbers'] === $total['filled'];
+            $numeric = $total['numbers'] > 0 && $total['numbers'] === $total['count'];
             $stats[$attribute] = [
                 'count' => $total['count'],
                 'countnz' => $total['countnz'],
@@ -905,7 +905,6 @@ class BaseModelBrowser extends Component
                 'sum' => $numeric ? $total['sum'] : null,
                 'avg' => $numeric && $total['count'] ? $total['sum'] / $total['count'] : null,
                 'avgnz' => $numeric && $total['countnz'] ? $total['sum'] / $total['countnz'] : null,
-                // Like AVG, MEDIAN counts the empty rows as zeros
                 'median' => $numeric ? $this->median($total['nonzero'], $total['count'] - $total['countnz']) : null,
                 'mediannz' => $numeric ? $this->median($total['nonzero']) : null,
                 'min' => $numeric ? $total['min'] : null,
@@ -977,7 +976,7 @@ class BaseModelBrowser extends Component
      * value as it is shown, and the plain number behind it for the clipboard.
      * The statistics a column has nothing to say about are left out, and so
      * are the non-zero ones when they would only repeat the rest (see
-     * columnStatsHasNoGaps). `group` is the index in STATS_GROUPS.
+     * columnStatsHasNoZeros). `group` is the index in STATS_GROUPS.
      *
      * @return array<int, array{key: string, label: string, display: string, raw: string, group: int}>
      */
@@ -991,7 +990,7 @@ class BaseModelBrowser extends Component
 
         $rows = [];
         foreach (self::STATS_GROUPS as $group => $keys) {
-            if ($group === self::STATS_NONZERO_GROUP && $this->columnStatsHasNoGaps($attribute)) {
+            if ($group === self::STATS_NONZERO_GROUP && $this->columnStatsHasNoZeros($attribute)) {
                 continue;
             }
             foreach ($keys as $key) {
@@ -1013,15 +1012,15 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Whether every row of the column carries a non-zero value, so each non-zero
-     * statistic equals its counterpart. False while no statistics are loaded
-     * and for an empty result set.
+     * Whether a numeric column has values and none of them is zero, so each
+     * non-zero statistic equals its counterpart. False while no statistics
+     * are loaded.
      */
-    public function columnStatsHasNoGaps(string $attribute): bool
+    public function columnStatsHasNoZeros(string $attribute): bool
     {
         $stats = $this->columnStats($attribute);
 
-        return $stats !== null && $stats['count'] > 0 && $stats['count'] === $stats['countnz'];
+        return $stats !== null && $stats['numeric'] && $stats['count'] === $stats['countnz'];
     }
 
     /**

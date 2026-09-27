@@ -1046,21 +1046,20 @@ class BaseModelBrowserTest extends TestCase
         $stats = $component->get('stats')['score'];
 
         $this->assertTrue($stats['numeric']);
-        $this->assertSame(4, $stats['count']);
-        // The zero and the null both fall out of the non-zero count
+        // The null is no value at all; the zero is one, but not a non-zero one
+        $this->assertSame(3, $stats['count']);
         $this->assertSame(2, $stats['countnz']);
         $this->assertSame(40.0, $stats['sum']);
-        $this->assertSame(10.0, $stats['avg']);
+        $this->assertEqualsWithDelta(40 / 3, $stats['avg'], 0.0001);
         $this->assertSame(20.0, $stats['avgnz']);
-        // 0, 0, 10, 30 with the null as a zero; 10, 30 without the zeros
-        $this->assertSame(5.0, $stats['median']);
+        $this->assertSame(10.0, $stats['median']);
         $this->assertSame(20.0, $stats['mediannz']);
         $this->assertSame(0.0, $stats['min']);
         $this->assertSame(10.0, $stats['minnz']);
         $this->assertSame(30.0, $stats['max']);
         $this->assertSame(30.0, $stats['maxnz']);
 
-        $this->assertFalse($component->instance()->columnStatsHasNoGaps('score'));
+        $this->assertFalse($component->instance()->columnStatsHasNoZeros('score'));
         $rows = $component->instance()->columnStatsRows('score');
         $this->assertSame(
             ['sum', 'avg', 'median', 'min', 'max', 'count', 'avgnz', 'mediannz', 'minnz', 'maxnz', 'countnz'],
@@ -1093,14 +1092,14 @@ class BaseModelBrowserTest extends TestCase
         $this->assertSame(-20.0, $stats['maxnz']);
     }
 
-    public function test_stats_leave_out_the_non_zero_group_of_a_column_without_gaps()
+    public function test_stats_leave_out_the_non_zero_group_of_a_column_without_zeros()
     {
         Schema::table('users', function (Blueprint $table) {
             $table->integer('score')->nullable();
         });
 
         User::query()->delete();
-        foreach ([10, 30] as $score) {
+        foreach ([10, 30, null] as $score) {
             User::factory()->create()->forceFill(['score' => $score])->save();
         }
 
@@ -1112,7 +1111,7 @@ class BaseModelBrowserTest extends TestCase
 
         $component->call('loadTotalStats');
 
-        $this->assertTrue($component->instance()->columnStatsHasNoGaps('score'));
+        $this->assertTrue($component->instance()->columnStatsHasNoZeros('score'));
         $this->assertSame(
             ['sum', 'avg', 'median', 'min', 'max', 'count'],
             array_column($component->instance()->columnStatsRows('score'), 'key'),
@@ -1135,7 +1134,7 @@ class BaseModelBrowserTest extends TestCase
         $stats = $component->get('stats')['name'];
 
         $this->assertFalse($stats['numeric']);
-        $this->assertSame(2, $stats['count']);
+        $this->assertSame(1, $stats['count']);
         $this->assertSame(1, $stats['countnz']);
         foreach (['sum', 'avg', 'avgnz', 'median', 'mediannz', 'min', 'minnz', 'max', 'maxnz'] as $key) {
             $this->assertNull($stats[$key], $key);

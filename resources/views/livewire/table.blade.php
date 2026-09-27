@@ -97,7 +97,7 @@
                                         <x-model-browser::column-stats
                                             :label="$trans"
                                             :rows="$this->columnStatsRows($column)"
-                                            :no-gaps="$this->columnStatsHasNoGaps($column)"
+                                            :no-zeros="$this->columnStatsHasNoZeros($column)"
                                             :loaded="$columnStats !== null"
                                             :over-limit="$statsOverLimit"
                                             :limit="$statsLimit"

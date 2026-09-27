@@ -44,7 +44,7 @@ return [
         'limit-exceeded' => 'Pro zobrazení statistik omezte filtry počet výsledků pod :limit.',
         'copy' => 'Kopírovat',
         'copied' => 'Zkopírováno',
-        'no-gaps' => 'Žádné nulové ani prázdné hodnoty',
+        'no-zeros' => 'Žádné nulové hodnoty',
     ],
     'download-csv' => [
         'label' => 'Stáhnout CSV',
