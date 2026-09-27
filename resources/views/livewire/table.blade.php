@@ -34,7 +34,7 @@
 
         <x-model-browser::pagination :data="$this->rows" :$skip>
             <x-slot:count>
-                @island(name: 'count')
+                @island(name: 'count', always: true)
                     @include('model-browser::partials.count')
                 @endisland
             </x-slot:count>

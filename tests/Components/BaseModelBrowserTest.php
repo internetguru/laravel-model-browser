@@ -860,6 +860,48 @@ class BaseModelBrowserTest extends TestCase
             ->assertDispatched('mb-refresh-count');
     }
 
+    public function test_changing_filters_replaces_the_stale_total_count_with_the_placeholder()
+    {
+        User::query()->delete();
+        User::factory()->count(137)->create();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-filters',
+        ]);
+
+        $component->call('loadTotalCount')->assertSeeHtml('137');
+
+        $component->set('searchQuery', 'Alice')->call('applySearch')
+            ->assertDontSeeHtml('137')
+            ->assertSeeHtml('<span aria-hidden="true">…</span>');
+    }
+
+    public function test_changing_page_keeps_the_total_count_the_snapshot_lost()
+    {
+        User::query()->delete();
+        User::factory()->count(137)->create();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ]);
+
+        $component->call('loadTotalCount');
+
+        // A parallel island response can hand back a snapshot without the count
+        $component->set('totalCount', null);
+
+        $component->call('nextPage')
+            ->assertSet('totalCount', 137)
+            ->assertSeeHtml('137')
+            ->assertDontSeeHtml('<span aria-hidden="true">…</span>');
+    }
+
     public function test_search_query_is_initialized_from_the_q_url_parameter()
     {
         session()->put('test-mb-filters', ['name' => 'FromSession']);

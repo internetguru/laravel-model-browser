@@ -10,6 +10,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Number;
@@ -45,6 +46,11 @@ class BaseModelBrowser extends Component
      * orders nobody is named on.
      */
     public const FILTER_EMPTY = '""';
+
+    /**
+     * Seconds a loaded total count is kept for the page changes that follow.
+     */
+    public const TOTAL_COUNT_TTL = 3600;
 
     // Search query security limits — override trait constants
     public const SEARCH_MAX_LENGTH = 500;
@@ -736,9 +742,41 @@ class BaseModelBrowser extends Component
      */
     public function loadTotalCount(): void
     {
+        $searchQuery = $this->effectiveSearchQuery();
         $query = $this->getQuery();
-        $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
+        $this->applyFiltersToQuery($query, $searchQuery);
         $this->totalCount = $query->toBase()->getCountForPagination();
+
+        Cache::put($this->totalCountCacheKey(), [
+            'query' => $searchQuery,
+            'count' => $this->totalCount,
+        ], self::TOTAL_COUNT_TTL);
+    }
+
+    /**
+     * Restore a count the snapshot lost.
+     *
+     * The count and stats islands load in parallel requests, and Livewire keeps
+     * the snapshot of whichever answers last, so a count loaded by one can be
+     * nulled by the other. The count is kept server side for the query it was
+     * taken for, and a page change never has to show the placeholder again.
+     */
+    public function hydrate(): void
+    {
+        if ($this->totalCount !== null) {
+            return;
+        }
+
+        $cached = Cache::get($this->totalCountCacheKey());
+
+        if (is_array($cached) && $cached['query'] === $this->effectiveSearchQuery()) {
+            $this->totalCount = $cached['count'];
+        }
+    }
+
+    protected function totalCountCacheKey(): string
+    {
+        return 'model-browser.total-count.' . $this->getId();
     }
 
     /**
