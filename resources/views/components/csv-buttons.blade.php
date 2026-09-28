@@ -25,7 +25,7 @@
         },
         download() {
             if (this.downloading) return;
-            if (this.overLimit && !confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => $exportLimit])))) {
+            if (this.overLimit && !confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => Illuminate\Support\Number::format($exportLimit)])))) {
                 return;
             }
             this.downloading = true;
