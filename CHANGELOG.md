@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Supports `internetguru/laravel-common` `^8`, with which the list's numbers follow the application's locale.
+
+### Fixed
+
+- The export limit in the truncation prompt and the over-limit error is formatted as a number, e.g. `1,500`.
+
 ## [8.1.0] - 2026-09-27
 
 _Stable release based on [8.1.0-rc.1]._
