@@ -106,6 +106,17 @@ class BaseModelBrowserTest extends TestCase
             ->assertStatus(413);
     }
 
+    public function test_export_limit_is_formatted_in_the_truncation_prompt()
+    {
+        Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => [
+                'name' => 'Name',
+            ],
+            'exportLimit' => 1500,
+        ])->assertSeeHtml('Limit to 1,500 entries?');
+    }
+
     public function test_export_limit_instance_param_overrides_config()
     {
         config(['model-browser.export_limit' => 1]);

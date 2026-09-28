@@ -1646,7 +1646,7 @@ class BaseModelBrowser extends Component
         // so refuse outright unless the client already confirmed truncation.
         if ($this->exportLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->exportLimit) {
             if (! $truncate) {
-                abort(413, trans('model-browser::global.download-csv.limit-exceeded', ['limit' => $this->exportLimit]));
+                abort(413, trans('model-browser::global.download-csv.limit-exceeded', ['limit' => Number::format($this->exportLimit)]));
             }
         }
 
