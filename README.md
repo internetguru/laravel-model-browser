@@ -565,7 +565,7 @@ In this example:
 
 ## Column Statistics
 
-Every column in `statsAttributes` (all of them by default) carries an icon in its header opening a menu of statistics. It sits in a box of a fixed size, because FontAwesome replaces its `<i>` with an `<svg>` only after the page has been laid out. The menu is kept within the visible part of the screen, and headed by the list's `title` and the column's name. Its first part applies to every column:
+Every column in `statsAttributes` (all of them by default) carries an icon at the right edge of its header opening a menu of statistics. It takes no room from the column's name, so a narrow column does not break the name mid-word, and it sits in a box of a fixed size, because FontAwesome replaces its `<i>` with an `<svg>` only after the page has been laid out. The menu is kept within the visible part of the screen, and headed by the list's `title` and the column's name. Its first part applies to every column:
 
 | Statistic | |
 | :--- | :--- |

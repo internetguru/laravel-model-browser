@@ -26,8 +26,11 @@
 
             // The statistics menu itself is position: fixed, so it escapes this
             // anyway — but its toggle must not be clipped away with the label.
+            // The toggle sits in the right padding, widened to hold it.
             &--stats {
+                position: relative;
                 overflow: visible;
+                padding-right: 1.25rem;
             }
 
             i {
@@ -270,8 +273,14 @@
     line-height: 1;
 }
 
+// Out of the label's flow, at the header cell's right edge: a narrow column does not
+// break its label mid-word to make room for the icon. No transform centres it, as one
+// would make the fixed menu inside position against this box instead of the viewport.
 .model-browser .model-browser__stats {
-    position: relative;
+    position: absolute;
+    top: 0;
+    right: 0.25rem;
+    bottom: 0;
     display: inline-flex;
     align-items: center;
 

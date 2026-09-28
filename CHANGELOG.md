@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [8.2.2] - 2026-09-28
+
+### Fixed
+
+- The column statistics icon sits at the right edge of the column header and no longer makes a narrow column break its heading mid-word.
+
 ## [8.2.1] - 2026-09-28
 
 ### Fixed
@@ -1071,6 +1077,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[8.2.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.2.1...v8.2.2
 [8.2.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.2.0...v8.2.1
 [8.2.0]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.1.0...v8.2.0
 [8.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v8.1.0
