@@ -315,8 +315,12 @@
         }
 
         // The header's sort arrows are styled down to half an em and greyed; this is
-        // a control of its own, and the box above already fixes its size.
+        // a control of its own, and the box above already fixes its size. The <i> is
+        // reset too: the webfont draws it before it becomes an <svg>, and off centre
+        // it would jump when replaced.
+        i,
         svg {
+            width: auto !important;
             padding-right: 0;
             color: inherit;
         }
