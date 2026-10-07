@@ -30,6 +30,20 @@
         placed: false,
         copied: false,
         {{--
+            Placed again whenever the open menu changes size: the statistics and
+            their icons may arrive after it has opened, and a menu placed at the
+            spinner's size would then grow off the screen.
+        --}}
+        init() {
+            this.resizeObserver = new ResizeObserver(() => {
+                if (this.open && this.placed) this.place();
+            });
+            this.resizeObserver.observe($refs.menu);
+        },
+        destroy() {
+            this.resizeObserver.disconnect();
+        },
+        {{--
             Kept within the visual viewport: on a phone, a page wider than the
             screen widens the layout viewport (and innerWidth) beyond what is seen.
             The menu is moved to the visible left edge before it is measured, so
@@ -142,7 +156,6 @@
     x-on:scroll.window.capture="open = false"
     x-on:resize.window="open = false"
     x-on:mb-refresh-stats.window="open = false"
-    x-on:mb-stats-loaded.window="if (open) $nextTick(() => place())"
 >
     <button
         type="button"
