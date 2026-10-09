@@ -181,7 +181,7 @@ class BaseModelBrowserTest extends TestCase
         $response->assertCookie('mb_csv_download', 'testtoken123', encrypted: false);
 
         $content = $response->streamedContent();
-        $this->assertStringContainsString('Name,Email', $content);
+        $this->assertStringStartsWith("\xEF\xBB\xBFName,Email", $content);
         foreach (User::all() as $user) {
             $this->assertStringContainsString($user->email, $content);
         }
@@ -236,7 +236,7 @@ class BaseModelBrowserTest extends TestCase
                 'snapshot' => json_encode($component->snapshot),
             ]);
 
-        $this->assertStringStartsWith('"Created At",Name,Email', $response->streamedContent());
+        $this->assertStringStartsWith("\xEF\xBB\xBF\"Created At\",Name,Email", $response->streamedContent());
     }
 
     public function test_download_csv_stream_endpoint_rejects_tampered_snapshot()

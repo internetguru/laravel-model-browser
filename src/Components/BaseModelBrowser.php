@@ -1668,6 +1668,8 @@ class BaseModelBrowser extends Component
             @set_time_limit(0);
 
             $out = fopen('php://output', 'w');
+            // Excel reads a CSV without a BOM in the system's legacy encoding.
+            fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, $headers);
 
             $rows = $this->streamRows($query);
