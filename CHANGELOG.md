@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [8.2.4] - 2026-10-09
+
+### Fixed
+
+- Excel shows accented characters in a CSV export correctly.
+
 ## [8.2.3] - 2026-10-07
 
 ### Fixed
@@ -1080,6 +1086,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[8.2.4]: https://github.com/internetguru/laravel-model-browser/compare/v8.2.3...v8.2.4
 [8.2.3]: https://github.com/internetguru/laravel-model-browser/compare/v8.2.2...v8.2.3
 [8.2.2]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.2.1...v8.2.2
 [8.2.1]: https://https://github.com/internetguru/laravel-model-browser/compare/v8.2.0...v8.2.1
