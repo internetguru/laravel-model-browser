@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A column can hold a related model, e.g. `'author'`, so one formatter serves every column of users; see the README.
+
 ## [8.2.4] - 2026-10-09
 
 ### Fixed
