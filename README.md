@@ -127,6 +127,30 @@ function formatCurrency($value, $item)
 }
 ```
 
+#### A related model as the value
+
+A column may name a to-one relation itself, such as `'author'` or `'payment.user'`. Its value is then the related model, so one pair of functions serves every column holding the same kind of model, whichever relation it comes through:
+
+```php
+:viewAttributes="['customer' => __('summary.buyer'), 'author' => __('summary.issuer')]"
+:formats="['customer' => 'formatUser', 'author' => 'formatUser']"
+:rawFormats="['customer' => 'rawUser', 'author' => 'rawUser']"
+```
+
+```php
+function formatUser(User $user): string
+{
+    return sprintf('<a href="%s">%s</a>', route('users.show', $user), e($user->name));
+}
+
+function rawUser(User $user): string
+{
+    return sprintf('%s <%s>', $user->name, $user->email);
+}
+```
+
+Give such a column both functions: without them, the table and the export would show the model as JSON. The statistics count each related model as one value and show it through `formats`. Eager-load the relation.
+
 ### `alignments`
 
 Column alignment settings (`start`, `end`, or `center`). Numeric values default to `end`, others to `start`:

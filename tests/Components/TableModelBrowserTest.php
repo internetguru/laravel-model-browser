@@ -2,6 +2,7 @@
 
 namespace Tests\Components;
 
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -298,6 +299,34 @@ class TableModelBrowserTest extends TestCase
                 '<dt title="Anna">Anna</dt>', '2</dd>', '50.0%</dd>',
                 '<dt title="Bob">Bob</dt>', '1</dd>', '25.0%</dd>',
             ]);
+    }
+
+    public function test_a_column_can_hold_a_related_model()
+    {
+        $anna = User::factory()->create(['name' => 'Anna', 'email' => 'anna@example.com']);
+        $bob = User::factory()->create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        foreach ([$anna, $anna, $bob] as $user) {
+            Post::create(['user_id' => $user->id, 'title' => 'Post']);
+        }
+
+        $component = Livewire::test(TableModelBrowser::class, [
+            'model' => Post::class,
+            'with' => ['user'],
+            'viewAttributes' => ['user' => 'Author'],
+            'formats' => ['user' => 'formatUserLink'],
+            'rawFormats' => ['user' => 'rawUserAddress'],
+        ]);
+
+        $component->assertSeeHtml('<a href="/users/' . $anna->id . '">Anna</a>')
+            ->call('loadTotalStats')
+            ->assertSeeHtmlInOrder([
+                'model-browser__stats-values',
+                '<dt title="Anna"><a href="/users/' . $anna->id . '">Anna</a></dt>', '2</dd>',
+                '<dt title="Bob"><a href="/users/' . $bob->id . '">Bob</a></dt>', '1</dd>',
+            ]);
+
+        $csv = base64_decode($component->call('downloadCsv')->effects['download']['content']);
+        $this->assertStringContainsString('"Anna <anna@example.com>"', $csv);
     }
 
     public function test_stats_menu_says_why_the_values_are_not_listed()
