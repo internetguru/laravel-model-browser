@@ -23,6 +23,7 @@ Livewire lists of Eloquent models as a table or cards, with Gmail-style search, 
 - The function is called as `fn($value, $item)`. `$item` is `null` when formatting a column statistic such as `SUM`, so a formatter must cope without the row; a value in the statistics' list of values gets a row it came from. It is **not called at all when the value is `null`**, so handle "empty" in the view's default rather than in the formatter.
 - A `formats` function returns HTML, echoed unescaped, so escape user data (`e()`). For a label, return `toLabelHtml()` or `Label::html()` from laravel-common.
 - A `rawFormats` function returns the plain value used for sorting and the CSV export. Give one to every column whose `formats` output is markup, including cast enums, so sorting and exports stay plain text.
+- A column may name a to-one relation itself (`'author'`, `'payment.user'`); its value is then the related model, so one `formats` and one `rawFormats` function serve every column holding that kind of model. Always give such a column both, or it shows as JSON.
 
 ## Filters
 
