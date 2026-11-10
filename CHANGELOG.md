@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Works with `internetguru/laravel-common` 9.
+
 ## [8.3.0] - 2026-10-30
 
 _Stable release based on [8.3.0-rc.1]._
