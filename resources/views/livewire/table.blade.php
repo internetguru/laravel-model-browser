@@ -40,10 +40,11 @@
             </x-slot:count>
         </x-model-browser::pagination>
 
-        <div
-            @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif
-            class="table-responsive mb-4"
-        >
+        @if ($refreshInterval)
+            <x-ig::watch :interval="$refreshInterval" />
+        @endif
+
+        <div class="table-responsive mb-4">
             <div class="grid-table" style="grid-template-columns: {{ $this->generateGridColumns() }};">
                 <div class="grid-header">
                     {{--
@@ -121,10 +122,14 @@
 
                 @if ($this->rows->isNotEmpty())
                     @foreach($this->rows as $row)
-                        <div @class([
-                            'grid-row',
-                            'grid-row-light' => ($loop->index / $lightDarkStep) % 2 == 1,
-                        ])>
+                        {{-- Keyed, so a row added above moves the others instead of rewriting each one --}}
+                        <div
+                            wire:key="mb-row-{{ $row instanceof \Illuminate\Database\Eloquent\Model ? $row->getKey() : 'i' . $loop->index }}"
+                            @class([
+                                'grid-row',
+                                'grid-row-light' => ($loop->index / $lightDarkStep) % 2 == 1,
+                            ])
+                        >
                             @foreach($viewAttributes as $column => $trans)
                                 @php $rawValue = $this->itemValueRaw($row, $column); @endphp
                                 <div

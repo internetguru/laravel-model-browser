@@ -25,7 +25,4 @@
         {{ $totalCount }}
     @endif
 
-    @if ($refreshInterval)
-        <span wire:poll.{{ $refreshInterval }}s="loadTotalCount" style="display: none;"></span>
-    @endif
 </span>

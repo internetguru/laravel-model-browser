@@ -19,6 +19,7 @@ use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use InternetGuru\LaravelCommon\Contracts\HasLabel;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
+use InternetGuru\LaravelCommon\Traits\WatchesForChanges;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -32,6 +33,9 @@ use UnitEnum;
 class BaseModelBrowser extends Component
 {
     use HasSearchFilters;
+    use WatchesForChanges {
+        watchRefresh as protected refreshWhenRowsChanged;
+    }
 
     public const PER_PAGE_MIN = 3;
 
@@ -850,19 +854,56 @@ class BaseModelBrowser extends Component
      */
     public function loadTotalCount(): void
     {
-        $searchQuery = $this->effectiveSearchQuery();
-        $query = $this->getQuery();
-        $this->applyFiltersToQuery($query, $searchQuery);
-        $this->totalCount = $query->toBase()->getCountForPagination();
-
-        Cache::put($this->totalCountCacheKey(), [
-            'query' => $searchQuery,
-            'count' => $this->totalCount,
-        ], self::TOTAL_COUNT_TTL);
+        $this->storeTotalCount($this->countTotal());
 
         if ($this->shouldLoadStatsAutomatically()) {
             $this->dispatch('mb-load-stats');
         }
+    }
+
+    // The total loads in its own island, which stores no fingerprint, so it is compared on its own
+    public function watchRefresh(): void
+    {
+        if ($this->totalCount !== null) {
+            $count = $this->countTotal();
+            if ($count !== $this->totalCount) {
+                $this->storeTotalCount($count);
+
+                return;
+            }
+        }
+
+        $this->refreshWhenRowsChanged();
+    }
+
+    // Formatted values count, so output that changes with time is noticed
+    protected function watchFingerprint(): string
+    {
+        $rows = $this->rows;
+        $cells = array_map(fn ($row) => [
+            $row instanceof Model ? $row->getKey() : null,
+            array_map(fn ($attribute) => $this->itemValue($row, $attribute), array_keys($this->viewAttributes)),
+        ], $rows->items());
+
+        return md5(json_encode([$cells, $rows->hasMorePages()], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
+    }
+
+    protected function countTotal(): int
+    {
+        $query = $this->getQuery();
+        $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
+
+        return $query->toBase()->getCountForPagination();
+    }
+
+    protected function storeTotalCount(int $count): void
+    {
+        $this->totalCount = $count;
+
+        Cache::put($this->totalCountCacheKey(), [
+            'query' => $this->effectiveSearchQuery(),
+            'count' => $count,
+        ], self::TOTAL_COUNT_TTL);
     }
 
     /**

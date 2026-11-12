@@ -33,7 +33,9 @@
                 padding-right: 1.25rem;
             }
 
-            i {
+            // Only the <i> Font Awesome has not converted yet: in its nest mode the converted
+            // <i> stays as a wrapper and must not narrow the icon it holds
+            i:not([data-fa-i2svg]) {
                 color: $gray-600;
                 width: 0.5em !important;
                 padding-right: 0.25em;

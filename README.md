@@ -186,7 +186,7 @@ See the [Filters](#filters) section below. When using `filters`, `filterSessionK
 
 ### `refreshInterval`
 
-Auto-refresh interval in seconds. When set, the component polls the server and re-renders with fresh data (including total count). Default: `0` (disabled):
+Check interval in seconds. When set, the list checks its rows and total count on laravel-common's shared watch clock and re-renders only when something changed, so an idle list is left untouched. The clock waits longer while the tab is hidden and checks at once when it is shown again. Default: `0` (disabled):
 
 ```php
 :refreshInterval="10"

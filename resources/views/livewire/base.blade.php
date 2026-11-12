@@ -9,12 +9,16 @@
         </x-slot:count>
     </x-model-browser::pagination>
 
-    <div @if ($refreshInterval) wire:poll.{{ $refreshInterval }}s @endif>
+    @if ($refreshInterval)
+        <x-ig::watch :interval="$refreshInterval" />
+    @endif
+
+    <div>
 
         <div class="d-flex flex-wrap gap-3 align-items-stretch justify-items-start justify-content-center mb-4">
             @if (! empty($this->rows->items()))
                 @foreach ($this->rows as $row)
-                    <dl class="card" style="max-width: 25em; margin: 0; padding: 1em;">
+                    <dl wire:key="mb-row-{{ $row instanceof \Illuminate\Database\Eloquent\Model ? $row->getKey() : 'i' . $loop->index }}" class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                         @foreach ($viewAttributes as $column => $trans)
                             @php $rawValue = $this->itemValueRaw($row, $column); @endphp
                             <dt>{{ $trans }}</dt>
