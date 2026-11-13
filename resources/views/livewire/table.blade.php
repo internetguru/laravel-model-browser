@@ -121,10 +121,10 @@
                 </div>
 
                 @if ($this->rows->isNotEmpty())
+                    @php $rowKeys = $this->rowKeys($this->rows); @endphp
                     @foreach($this->rows as $row)
-                        {{-- Keyed, so a row added above moves the others instead of rewriting each one --}}
                         <div
-                            wire:key="mb-row-{{ $row instanceof \Illuminate\Database\Eloquent\Model ? $row->getKey() : 'i' . $loop->index }}"
+                            wire:key="{{ $rowKeys[$loop->index] }}"
                             @class([
                                 'grid-row',
                                 'grid-row-light' => ($loop->index / $lightDarkStep) % 2 == 1,

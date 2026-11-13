@@ -1668,6 +1668,29 @@ class BaseModelBrowser extends Component
         return view('model-browser::livewire.base');
     }
 
+    /**
+     * A row is keyed by its model's key, so a row added above moves the others instead of rewriting
+     * each one; a row without a key of its own on the page (a grouped or joined query) by its position.
+     *
+     * @param  iterable<int, mixed>  $rows
+     * @return array<int, string>
+     */
+    public function rowKeys(iterable $rows): array
+    {
+        $modelKeys = [];
+        foreach ($rows as $index => $row) {
+            $key = $row instanceof Model ? $row->getKey() : null;
+            $modelKeys[$index] = is_int($key) || is_string($key) ? (string) $key : null;
+        }
+        $counts = array_count_values(array_filter($modelKeys, fn (?string $key) => $key !== null));
+
+        return array_map(
+            fn (?string $key, int $index) => $key !== null && $counts[$key] === 1 ? "mb-row-k{$key}" : "mb-row-i{$index}",
+            $modelKeys,
+            array_keys($modelKeys),
+        );
+    }
+
     public function getAlignment(string $attribute, mixed $value): string
     {
         return $this->alignments[$attribute] ?? (is_numeric($value) ? 'end' : 'start');

@@ -17,8 +17,9 @@
 
         <div class="d-flex flex-wrap gap-3 align-items-stretch justify-items-start justify-content-center mb-4">
             @if (! empty($this->rows->items()))
+                @php $rowKeys = $this->rowKeys($this->rows); @endphp
                 @foreach ($this->rows as $row)
-                    <dl wire:key="mb-row-{{ $row instanceof \Illuminate\Database\Eloquent\Model ? $row->getKey() : 'i' . $loop->index }}" class="card" style="max-width: 25em; margin: 0; padding: 1em;">
+                    <dl wire:key="{{ $rowKeys[$loop->index] }}" class="card" style="max-width: 25em; margin: 0; padding: 1em;">
                         @foreach ($viewAttributes as $column => $trans)
                             @php $rawValue = $this->itemValueRaw($row, $column); @endphp
                             <dt>{{ $trans }}</dt>

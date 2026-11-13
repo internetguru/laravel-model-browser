@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- **Breaking:** requires `internetguru/laravel-common` 9.1. Apps overriding the `table`, `base` or `count` views must replace their `wire:poll` with `<x-ig::watch />` and key their rows, as the package views do.
+- **Breaking:** requires `internetguru/laravel-common` 9.1. Apps overriding the `table`, `base` or `count` views must replace their `wire:poll` with `<x-ig::watch />` and key their rows with `rowKeys()`, as the package views do.
 - A list with `refreshInterval` re-renders only when its rows or total count changed, in one request instead of two polls, so an idle list no longer flickers.
 
 ## [8.4.0] - 2026-11-10
