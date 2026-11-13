@@ -21,4 +21,10 @@ class Post extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // Grouped rows carry no key of their own
+    public static function perAuthor()
+    {
+        return self::selectRaw('user_id, count(*) as posts')->groupBy('user_id');
+    }
 }

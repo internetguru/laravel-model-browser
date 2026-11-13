@@ -1511,4 +1511,109 @@ class BaseModelBrowserTest extends TestCase
         ])->assertSee(__('model-browser::global.copy-page.label'))
             ->assertSeeHtml('copyPage()');
     }
+
+    public function test_an_unchanged_list_sends_no_markup_on_a_watch_check()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'refreshInterval' => 15,
+        ]);
+        $component->call('loadTotalCount');
+
+        $component->call('watchRefresh');
+
+        $this->assertArrayNotHasKey('html', $component->effects);
+    }
+
+    public function test_the_first_watch_check_after_the_count_loads_sends_no_markup()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'refreshInterval' => 15,
+        ]);
+
+        $component->call('watchRefresh');
+
+        $this->assertArrayNotHasKey('html', $component->effects);
+    }
+
+    public function test_a_changed_value_on_the_page_renders_the_list()
+    {
+        $user = User::query()->orderBy('id')->first();
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'defaultSortColumn' => 'id',
+            'refreshInterval' => 15,
+        ]);
+
+        $user->update(['name' => 'Renamed Somebody']);
+
+        $component->call('watchRefresh')->assertSee('Renamed Somebody');
+        $this->assertArrayHasKey('html', $component->effects);
+    }
+
+    public function test_a_value_turning_empty_renders_the_list()
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('credit')->nullable();
+        });
+        User::query()->delete();
+        $user = User::factory()->create(['name' => 'Has Credit']);
+        $user->forceFill(['credit' => 500])->save();
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name', 'credit' => 'Credit'],
+            'refreshInterval' => 15,
+        ]);
+
+        $user->forceFill(['credit' => null])->save();
+
+        $component->call('watchRefresh');
+        $this->assertArrayHasKey('html', $component->effects);
+    }
+
+    public function test_a_formatted_value_that_changes_with_time_renders_the_list()
+    {
+        Carbon::setTestNow('2026-01-01 12:00:00');
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'formats' => ['name' => 'formatWithCurrentHour'],
+            'refreshInterval' => 15,
+        ]);
+
+        Carbon::setTestNow('2026-01-01 13:00:00');
+
+        $component->call('watchRefresh');
+        $this->assertArrayHasKey('html', $component->effects);
+    }
+
+    public function test_a_changed_total_renders_the_list_with_the_new_count()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'refreshInterval' => 15,
+        ]);
+        $component->call('loadTotalCount');
+        $total = User::count();
+
+        User::factory()->create(['name' => 'Newcomer']);
+
+        $component->call('watchRefresh')->assertSet('totalCount', $total + 1);
+        $this->assertArrayHasKey('html', $component->effects);
+    }
+
+    public function test_a_list_without_refresh_interval_has_no_watcher()
+    {
+        Livewire::test(BaseModelBrowser::class, ['model' => User::class])
+            ->assertDontSeeHtml('igWatch');
+
+        Livewire::test(BaseModelBrowser::class, ['model' => User::class, 'refreshInterval' => 15])
+            ->assertSeeHtml('igWatch')
+            ->assertDontSeeHtml('wire:poll');
+    }
 }

@@ -27,3 +27,8 @@ function rawUserAddress(User $user)
 {
     return $user->name . ' <' . $user->email . '>';
 }
+
+function formatWithCurrentHour($value)
+{
+    return $value . ' at ' . now()->format('H');
+}
