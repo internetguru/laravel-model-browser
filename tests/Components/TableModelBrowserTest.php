@@ -329,6 +329,36 @@ class TableModelBrowserTest extends TestCase
         $this->assertStringContainsString('"Anna <anna@example.com>"', $csv);
     }
 
+    public function test_rows_are_keyed_by_their_model_key_or_else_by_their_position()
+    {
+        $anna = User::factory()->create(['name' => 'Anna']);
+        $bob = User::factory()->create(['name' => 'Bob']);
+        foreach ([$anna, $anna, $bob] as $user) {
+            Post::create(['user_id' => $user->id, 'title' => 'Post']);
+        }
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->assertSeeHtml('wire:key="mb-row-k' . $anna->id . '"')
+            ->assertSeeHtml('wire:key="mb-row-k' . $bob->id . '"');
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => User::class . '@perPost',
+            'viewAttributes' => ['name' => 'Name'],
+            'defaultSortColumn' => 'name',
+        ])->assertSeeHtml('wire:key="mb-row-i0"')
+            ->assertSeeHtml('wire:key="mb-row-i1"')
+            ->assertSeeHtml('wire:key="mb-row-k' . $bob->id . '"')
+            ->assertDontSeeHtml('wire:key="mb-row-k' . $anna->id . '"');
+
+        Livewire::test(TableModelBrowser::class, [
+            'model' => Post::class . '@perAuthor',
+            'viewAttributes' => ['user_id' => 'Author', 'posts' => 'Posts'],
+        ])->assertSeeHtml('wire:key="mb-row-i0"')
+            ->assertSeeHtml('wire:key="mb-row-i1"');
+    }
+
     public function test_stats_menu_says_why_the_values_are_not_listed()
     {
         Livewire::test(TableModelBrowser::class, [

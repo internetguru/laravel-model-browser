@@ -45,4 +45,10 @@ class User extends Authenticatable
     {
         return self::with('posts');
     }
+
+    // One row per post, so a user with two posts is listed twice
+    public static function perPost()
+    {
+        return self::join('posts', 'posts.user_id', '=', 'users.id')->select('users.*');
+    }
 }
