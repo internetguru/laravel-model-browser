@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The Download CSV and Copy buttons say what they act on in a second line: "(all)", "(first 10 000)" when the export limit applies, and "(this page)". The over-limit button no longer looks disabled, and its confirmation states how many of the rows will be exported.
+
 ### Fixed
 
 - A CSV export or `data-raw` attribute no longer breaks on an array, collection, enum or other non-text value: it is written as JSON or its value. A value that cannot be turned into text, or a failing `rawFormats` callback, throws in debug mode and is logged as a warning otherwise.

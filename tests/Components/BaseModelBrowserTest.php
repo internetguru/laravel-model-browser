@@ -115,7 +115,8 @@ class BaseModelBrowserTest extends TestCase
                 'name' => 'Name',
             ],
             'exportLimit' => 1500,
-        ])->assertSeeHtml('Limit to 1,500 entries?');
+        ])->assertSeeHtml('Only the first 1,500 of :total rows')
+            ->assertSeeHtml('(first 1,500)');
     }
 
     public function test_export_limit_instance_param_overrides_config()
