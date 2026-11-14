@@ -7,6 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\ViewException;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
@@ -237,6 +238,93 @@ class BaseModelBrowserTest extends TestCase
             ]);
 
         $this->assertStringStartsWith("\xEF\xBB\xBF\"Created At\",Name,Email", $response->streamedContent());
+    }
+
+    public function test_raw_values_are_made_plain()
+    {
+        $browser = $this->rawValueBrowser();
+        $user = User::first();
+        $user->setRelation('posts', collect([['title' => 'Á/b']]));
+        $user->forceFill([
+            'active' => false,
+            'tags' => ['a', 'b'],
+            'status' => RawValueStatus::Open,
+            'kind' => RawValueKind::Plain,
+            'opaque' => new \stdClass,
+        ]);
+
+        config(['app.debug' => false]);
+        Log::spy();
+
+        $this->assertSame(0, $browser->itemValueRaw($user, 'active'));
+        $this->assertSame('["a","b"]', $browser->itemValueRaw($user, 'tags'));
+        $this->assertSame('[{"title":"Á/b"}]', $browser->itemValueRaw($user, 'posts'));
+        $this->assertSame('open', $browser->itemValueRaw($user, 'status'));
+        $this->assertSame('Plain', $browser->itemValueRaw($user, 'kind'));
+        $this->assertNull($browser->itemValueRaw($user, 'opaque'));
+        $this->assertNull($browser->itemValueRaw($user, 'opaque'));
+
+        Log::shouldHaveReceived('warning')->once();
+    }
+
+    public function test_raw_value_that_cannot_be_made_plain_fails_in_debug_mode()
+    {
+        $user = User::first()->forceFill(['opaque' => new \stdClass]);
+        config(['app.debug' => true]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->rawValueBrowser()->itemValueRaw($user, 'opaque');
+    }
+
+    public function test_failing_raw_format_falls_back_to_the_value_outside_debug_mode()
+    {
+        $browser = $this->rawValueBrowser();
+        $browser->rawFormats = ['name' => fn () => throw new \LogicException('broken')];
+        $user = User::first();
+
+        config(['app.debug' => false]);
+        Log::spy();
+
+        (fn ($item) => $this->applyRawFormats($item))->call($browser, $user);
+
+        $this->assertSame($user->name, $browser->itemValueRaw($user, 'name'));
+        Log::shouldHaveReceived('warning')->once();
+    }
+
+    public function test_failing_raw_format_throws_in_debug_mode()
+    {
+        $browser = $this->rawValueBrowser();
+        $browser->rawFormats = ['name' => fn () => throw new \LogicException('broken')];
+        config(['app.debug' => true]);
+
+        $this->expectException(\LogicException::class);
+        (fn ($item) => $this->applyRawFormats($item))->call($browser, User::first());
+    }
+
+    public function test_csv_export_escapes_formulas_but_not_numbers()
+    {
+        User::first()->update(['name' => '=HYPERLINK("http://x")']);
+        User::skip(1)->first()->update(['name' => '-12.5']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ]);
+
+        $content = $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), ['snapshot' => json_encode($component->snapshot)])
+            ->streamedContent();
+
+        $this->assertStringContainsString("\"'=HYPERLINK(\"\"http://x\"\")\"\n", $content);
+        $this->assertStringContainsString("\n-12.5\n", $content);
+    }
+
+    private function rawValueBrowser(): BaseModelBrowser
+    {
+        return Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+        ])->instance();
     }
 
     public function test_download_csv_stream_endpoint_rejects_tampered_snapshot()
@@ -1616,4 +1704,14 @@ class BaseModelBrowserTest extends TestCase
             ->assertSeeHtml('igWatch')
             ->assertDontSeeHtml('wire:poll');
     }
+}
+
+enum RawValueStatus: string
+{
+    case Open = 'open';
+}
+
+enum RawValueKind
+{
+    case Plain;
 }

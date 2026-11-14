@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A CSV export or `data-raw` attribute no longer breaks on an array, collection, enum or other non-text value: it is written as JSON or its value. A value that cannot be turned into text, or a failing `rawFormats` callback, throws in debug mode and is logged as a warning otherwise.
+
+### Security
+
+- CSV export cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them as formulas; numbers are left as they are.
+
 ## [9.0.0] - 2026-11-13
 
 _Stable release based on [9.0.0-rc.1]._

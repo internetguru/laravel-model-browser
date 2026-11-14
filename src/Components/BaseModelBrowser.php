@@ -6,13 +6,16 @@ use BackedEnum;
 use Closure;
 use DateTimeInterface;
 use Exception;
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Number;
@@ -21,13 +24,16 @@ use InternetGuru\LaravelCommon\Contracts\HasLabel;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use InternetGuru\LaravelCommon\Traits\WatchesForChanges;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
+use JsonSerializable;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 use Stringable;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 use UnitEnum;
 
 class BaseModelBrowser extends Component
@@ -193,7 +199,8 @@ class BaseModelBrowser extends Component
      * Optional raw-value formatters, keyed by attribute, for attributes
      * whose display value (via `formats`) isn't suitable as-is for the
      * `data-raw` HTML attribute or CSV export. Each function receives
-     * ($value, $item) and returns a plain value.
+     * ($value, $item); its result is made plain like any raw value, see
+     * `plainValue()`.
      *
      * By default (no entry needed here), the `data-raw` attribute and CSV
      * export cell use the underlying attribute value; empty only when that
@@ -201,6 +208,9 @@ class BaseModelBrowser extends Component
      */
     #[Locked]
     public array $rawFormats = [];
+
+    /** @var array<string, true> */
+    protected array $reportedRawValueProblems = [];
 
     /**
      * Attributes included in the CSV export, mapped to their labels, hidden
@@ -1541,7 +1551,7 @@ class BaseModelBrowser extends Component
 
         try {
             return (string) $format($value, $row);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -1743,7 +1753,7 @@ class BaseModelBrowser extends Component
                 $this->applyRawFormats($item);
                 $row = [];
                 foreach ($attributes as $attribute) {
-                    $row[] = $this->itemValueRaw($item, $attribute);
+                    $row[] = $this->csvCell($this->itemValueRaw($item, $attribute));
                 }
                 fputcsv($out, $row);
                 if (++$count % 500 === 0) {
@@ -2186,14 +2196,71 @@ class BaseModelBrowser extends Component
      * underlying attribute value. Also the value used for a CSV export cell.
      * Empty/null only when the underlying value itself is empty/null.
      */
-    public function itemValueRaw($item, $attribute)
+    public function itemValueRaw($item, $attribute): string|int|float|null
     {
         $rawAttribute = "{$attribute}Raw";
-        if (isset($item->{$rawAttribute})) {
-            return $item->{$rawAttribute};
+        $value = isset($item->{$rawAttribute}) ? $item->{$rawAttribute} : Arr::get($item, $attribute);
+
+        return $this->plainValue($attribute, $value);
+    }
+
+    /**
+     * A value fit for a CSV cell or an HTML attribute: an enum as its value,
+     * a date as its string, an array or a collection as JSON.
+     */
+    protected function plainValue(string $attribute, mixed $value): string|int|float|null
+    {
+        $plain = match (true) {
+            $value === null, is_string($value), is_int($value), is_float($value) => $value,
+            is_bool($value) => (int) $value,
+            $value instanceof BackedEnum => $value->value,
+            $value instanceof UnitEnum => $value->name,
+            $value instanceof DateTimeInterface => Carbon::instance($value)->toDateTimeString(),
+            $value instanceof Arrayable => json_encode($value->toArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            is_array($value), $value instanceof JsonSerializable => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $value instanceof Stringable => (string) $value,
+            default => false,
+        };
+
+        if ($plain === false) {
+            $this->rawValueProblem($attribute, "Raw value of '{$attribute}' cannot be turned into text: " . get_debug_type($value));
+
+            return null;
         }
 
-        return Arr::get($item, $attribute);
+        return $plain;
+    }
+
+    /**
+     * Keeps a spreadsheet from running a text cell as a formula, see
+     * https://owasp.org/www-community/attacks/CSV_Injection.
+     */
+    protected function csvCell(string|int|float|null $value): string|int|float|null
+    {
+        if (is_string($value) && ! is_numeric($value) && preg_match('/^[=+\-@\t\r]/', $value)) {
+            return "'" . $value;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Fails loudly in debug mode; in production logs a warning once per
+     * attribute and request, so a broken column cannot flood the log or
+     * break an export.
+     */
+    protected function rawValueProblem(string $attribute, string $message, ?Throwable $previous = null): void
+    {
+        if (App::hasDebugModeEnabled()) {
+            throw $previous ?? new RuntimeException($message);
+        }
+
+        if (isset($this->reportedRawValueProblems[$attribute])) {
+            return;
+        }
+        $this->reportedRawValueProblems[$attribute] = true;
+
+        Log::warning($message, $previous ? ['exception' => $previous] : []);
     }
 
     protected function format(Collection $data): Collection
@@ -2227,7 +2294,11 @@ class BaseModelBrowser extends Component
             if ($value === null) {
                 continue;
             }
-            $item->{$attribute . 'Raw'} = $format($value, $item);
+            try {
+                $item->{$attribute . 'Raw'} = $format($value, $item);
+            } catch (Throwable $e) {
+                $this->rawValueProblem($attribute, "rawFormats callback for '{$attribute}' failed: {$e->getMessage()}", $e);
+            }
         }
     }
 }
