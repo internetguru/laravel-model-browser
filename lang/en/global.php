@@ -36,8 +36,7 @@ return [
     'fullscreen' => 'Fullscreen',
     'fullscreen-exit' => 'Exit fullscreen',
     'copy-page' => [
-        'label' => 'Copy',
-        'scope' => '(this page)',
+        'label' => 'Copy page',
         'title' => 'Copy the rows of the current page to the clipboard',
     ],
     'stats' => [
@@ -72,11 +71,10 @@ return [
         ],
     ],
     'download-csv' => [
-        'label' => 'Download CSV',
+        'label' => 'Download all',
+        'label-limited' => 'Download :limit',
         'confirm-filter' => 'Warning, items are filtered. Do you really want to download only filtered data?',
         'limit-exceeded' => 'Export is limited to :limit rows. Narrow the results using filters.',
         'confirm-limit' => 'Only the first :limit of :total rows will be exported. Continue?',
-        'scope-all' => '(all)',
-        'scope-limited' => '(first :limit)',
     ],
 ];

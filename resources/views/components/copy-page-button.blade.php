@@ -118,7 +118,7 @@
 >
     <button
         type="button"
-        class="btn btn-icon btn-white btn-shadow model-browser__scoped-btn"
+        class="btn btn-icon btn-white btn-shadow"
         x-on:click="copyPage()"
         title="{{ __('model-browser::global.copy-page.title') }}"
     >
@@ -129,9 +129,6 @@
         --}}
         <span class="pe-2" x-show="!copied"><i class="fa-solid fa-fw fa-copy"></i></span>
         <span class="pe-2" x-show="copied" style="display: none"><i class="fa-solid fa-fw fa-check text-success"></i></span>
-        <span class="model-browser__scoped-btn-text">
-            <span>@lang('model-browser::global.copy-page.label')</span>
-            <span class="model-browser__scoped-btn-scope">@lang('model-browser::global.copy-page.scope')</span>
-        </span>
+        @lang('model-browser::global.copy-page.label')
     </button>
 </div>

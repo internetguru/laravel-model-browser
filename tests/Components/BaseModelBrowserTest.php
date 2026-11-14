@@ -116,7 +116,7 @@ class BaseModelBrowserTest extends TestCase
             ],
             'exportLimit' => 1500,
         ])->assertSeeHtml('Only the first 1,500 of __TOTAL__ rows')
-            ->assertSeeHtml('(first 1,500)');
+            ->assertSeeHtml('Download 1,500');
     }
 
     public function test_export_limit_instance_param_overrides_config()

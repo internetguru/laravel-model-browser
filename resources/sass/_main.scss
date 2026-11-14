@@ -492,21 +492,3 @@
         text-decoration: none;
     }
 }
-
-// Buttons with a second line stating what they act on, e.g. "(this page)".
-.model-browser__scoped-btn {
-    display: inline-flex;
-    align-items: center;
-
-    &-text {
-        display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-        line-height: 1.25;
-    }
-
-    &-scope {
-        font-weight: 400;
-        opacity: 0.75;
-    }
-}

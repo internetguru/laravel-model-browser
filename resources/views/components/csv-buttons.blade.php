@@ -69,11 +69,11 @@
     }"
 >
     {{--
-        The second line states what the download holds, so the export limit is
-        visible before the click; the confirm in download() adds the total.
+        Over the export limit the label shows the number of rows the download
+        holds; the confirm in download() adds the total.
     --}}
     <button
-        class="btn btn-icon btn-white btn-shadow model-browser__scoped-btn"
+        class="btn btn-icon btn-white btn-shadow"
         x-on:click="download()"
         x-bind:disabled="downloading"
     >
@@ -88,10 +88,7 @@
         --}}
         <span class="pe-2" x-show="!downloading"><i class="fa-solid fa-fw fa-download"></i></span>
         <span class="pe-2" x-show="downloading" style="display: none"><i class="fa-solid fa-fw fa-spinner fa-spin"></i></span>
-        <span class="model-browser__scoped-btn-text">
-            <span>@lang('model-browser::global.download-csv.label')</span>
-            <span class="model-browser__scoped-btn-scope" x-show="!overLimit">@lang('model-browser::global.download-csv.scope-all')</span>
-            <span class="model-browser__scoped-btn-scope" x-show="overLimit" style="display: none">@lang('model-browser::global.download-csv.scope-limited', ['limit' => Illuminate\Support\Number::format($exportLimit)])</span>
-        </span>
+        <span x-show="!overLimit">@lang('model-browser::global.download-csv.label')</span>
+        <span x-show="overLimit" style="display: none">@lang('model-browser::global.download-csv.label-limited', ['limit' => Illuminate\Support\Number::format($exportLimit)])</span>
     </button>
 </div>

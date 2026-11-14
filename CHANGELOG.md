@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- The Download CSV and Copy buttons say what they act on in a second line: "(all)", "(first 10 000)" when the export limit applies, and "(this page)". The over-limit button no longer looks disabled, and its confirmation states how many of the rows will be exported.
+- The CSV button reads "Download all", or "Download 10,000" when the export limit applies, and no longer looks disabled; its confirmation states how many of the rows will be exported. The copy button reads "Copy page".
 
 ### Fixed
 

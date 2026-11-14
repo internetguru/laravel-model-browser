@@ -36,8 +36,7 @@ return [
     'fullscreen' => 'Fuldskærm',
     'fullscreen-exit' => 'Forlad fuldskærm',
     'copy-page' => [
-        'label' => 'Kopiér',
-        'scope' => '(denne side)',
+        'label' => 'Kopiér side',
         'title' => 'Kopiér rækkerne på den aktuelle side til udklipsholderen',
     ],
     'stats' => [
@@ -72,11 +71,10 @@ return [
         ],
     ],
     'download-csv' => [
-        'label' => 'Download CSV',
+        'label' => 'Download alle',
+        'label-limited' => 'Download :limit',
         'confirm-filter' => 'Advarsel, elementer er filtreret. Vil du virkelig kun downloade filtrerede data?',
         'limit-exceeded' => 'Eksport er begrænset til :limit rækker. Indsnævr resultaterne med filtre.',
         'confirm-limit' => 'Kun de første :limit af :total rækker eksporteres. Fortsæt?',
-        'scope-all' => '(alle)',
-        'scope-limited' => '(første :limit)',
     ],
 ];
