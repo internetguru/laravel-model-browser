@@ -71,9 +71,10 @@ return [
         ],
     ],
     'download-csv' => [
-        'label' => 'Download CSV',
+        'label' => 'Download all',
+        'label-limited' => 'Download :limit',
         'confirm-filter' => 'Warning, items are filtered. Do you really want to download only filtered data?',
         'limit-exceeded' => 'Export is limited to :limit rows. Narrow the results using filters.',
-        'confirm-limit' => 'Limit to :limit entries?',
+        'confirm-limit' => 'Only the first :limit of :total rows will be exported. Continue?',
     ],
 ];

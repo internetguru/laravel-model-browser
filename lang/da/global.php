@@ -71,9 +71,10 @@ return [
         ],
     ],
     'download-csv' => [
-        'label' => 'Download CSV',
+        'label' => 'Download alle',
+        'label-limited' => 'Download :limit',
         'confirm-filter' => 'Advarsel, elementer er filtreret. Vil du virkelig kun downloade filtrerede data?',
         'limit-exceeded' => 'Eksport er begrænset til :limit rækker. Indsnævr resultaterne med filtre.',
-        'confirm-limit' => 'Begræns til :limit poster?',
+        'confirm-limit' => 'Kun de første :limit af :total rækker eksporteres. Fortsæt?',
     ],
 ];

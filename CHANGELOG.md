@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The CSV button reads "Download all", or "Download 10,000" when the export limit applies, and no longer looks disabled; its confirmation states how many of the rows will be exported. The copy button reads "Copy page".
+
+### Fixed
+
+- A CSV export or `data-raw` attribute no longer breaks on an array, collection, enum or other non-text value: it is written as JSON or its value. A value that cannot be turned into text, or a failing `rawFormats` callback, throws in debug mode and is logged as a warning otherwise.
+
+### Security
+
+- CSV export cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them as formulas; numbers are left as they are.
+
 ## [9.0.0] - 2026-11-13
 
 _Stable release based on [9.0.0-rc.1]._
@@ -1117,6 +1131,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [9.0.0]: https://github.com/internetguru/laravel-model-browser/compare/v8.4.0...v9.0.0
 [9.0.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v8.4.0
 [8.4.0]: https://github.com/internetguru/laravel-model-browser/compare/v8.3.0...v8.4.0

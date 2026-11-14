@@ -36,7 +36,7 @@ return [
     'fullscreen' => 'Celá obrazovka',
     'fullscreen-exit' => 'Ukončit celou obrazovku',
     'copy-page' => [
-        'label' => 'Kopírovat stránku',
+        'label' => 'Zkopírovat stránku',
         'title' => 'Zkopírovat řádky aktuální stránky do schránky',
     ],
     'stats' => [
@@ -71,9 +71,10 @@ return [
         ],
     ],
     'download-csv' => [
-        'label' => 'Stáhnout CSV',
+        'label' => 'Stáhnout vše',
+        'label-limited' => 'Stáhnout :limit',
         'confirm-filter' => 'Pozor, data jsou filtrována. Opravdu chcete stáhnout pouze filtrovaná data?',
         'limit-exceeded' => 'Export je omezen na :limit řádků. Omezte výsledky pomocí filtrů.',
-        'confirm-limit' => 'Omezit na :limit záznamů?',
+        'confirm-limit' => 'Exportuje se pouze prvních :limit z :total řádků. Pokračovat?',
     ],
 ];
