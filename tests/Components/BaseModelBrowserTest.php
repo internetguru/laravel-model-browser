@@ -115,7 +115,7 @@ class BaseModelBrowserTest extends TestCase
                 'name' => 'Name',
             ],
             'exportLimit' => 1500,
-        ])->assertSeeHtml('Only the first 1,500 of :total rows')
+        ])->assertSeeHtml('Only the first 1,500 of __TOTAL__ rows')
             ->assertSeeHtml('(first 1,500)');
     }
 

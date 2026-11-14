@@ -26,8 +26,9 @@
         download() {
             if (this.downloading) return;
             if (this.overLimit) {
+                {{-- The total is only known here, so the server fills in a token for it. --}}
                 const total = new Intl.NumberFormat(document.documentElement.lang || undefined).format($wire.totalCount);
-                if (!confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => Illuminate\Support\Number::format($exportLimit)])).replace(':total', total))) {
+                if (!confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => Illuminate\Support\Number::format($exportLimit), 'total' => '__TOTAL__'])).replace('__TOTAL__', total))) {
                     return;
                 }
             }
