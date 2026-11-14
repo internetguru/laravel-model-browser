@@ -25,8 +25,12 @@
         },
         download() {
             if (this.downloading) return;
-            if (this.overLimit && !confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => Illuminate\Support\Number::format($exportLimit)])))) {
-                return;
+            if (this.overLimit) {
+                {{-- The total is only known here, so the server fills in a token for it. --}}
+                const total = new Intl.NumberFormat(document.documentElement.lang || undefined).format($wire.totalCount);
+                if (!confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => Illuminate\Support\Number::format($exportLimit), 'total' => '__TOTAL__'])).replace('__TOTAL__', total))) {
+                    return;
+                }
             }
             this.downloading = true;
             const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -65,15 +69,13 @@
     }"
 >
     {{--
-        When over the export limit the button only looks disabled — a real
-        disabled attribute would swallow the click that triggers the
-        explanatory alert in download().
+        Over the export limit the label shows the number of rows the download
+        holds; the confirm in download() adds the total.
     --}}
     <button
         class="btn btn-icon btn-white btn-shadow"
         x-on:click="download()"
         x-bind:disabled="downloading"
-        x-bind:style="overLimit ? 'opacity: .65; cursor: not-allowed;' : ''"
     >
         {{--
             The icons are toggled via x-show on wrapper spans (not by swapping
@@ -86,6 +88,7 @@
         --}}
         <span class="pe-2" x-show="!downloading"><i class="fa-solid fa-fw fa-download"></i></span>
         <span class="pe-2" x-show="downloading" style="display: none"><i class="fa-solid fa-fw fa-spinner fa-spin"></i></span>
-        @lang('model-browser::global.download-csv.label')
+        <span x-show="!overLimit">@lang('model-browser::global.download-csv.label')</span>
+        <span x-show="overLimit" style="display: none">@lang('model-browser::global.download-csv.label-limited', ['limit' => Illuminate\Support\Number::format($exportLimit)])</span>
     </button>
 </div>
