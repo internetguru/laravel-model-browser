@@ -14,10 +14,7 @@
 --}}
 <span class="model-browser__count">
     @if ($countTimedOut)
-        <span title="@lang('model-browser::global.query-timeout')">
-            <span aria-hidden="true">?</span>
-            <span class="visually-hidden">@lang('model-browser::global.query-timeout')</span>
-        </span>
+        ?
     @elseif ($totalCount === null)
         <span
             wire:key="model-browser-count-pending-{{ Str::random(8) }}"

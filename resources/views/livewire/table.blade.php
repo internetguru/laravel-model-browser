@@ -152,7 +152,7 @@
                                 || collect($filterValues)->filter(fn($value) => filled($value))->isNotEmpty();
                         @endphp
                         @if ($this->rowsTimedOut())
-                            <div>
+                            <div class="model-browser__timeout">
                                 @lang('model-browser::global.query-timeout')
                                 @if ($hasActiveFilters)
                                     <button

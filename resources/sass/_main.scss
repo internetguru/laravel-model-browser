@@ -1,5 +1,8 @@
 @use 'sass:color';
 
+// laravel-common's width for a page heading's description, when the app has not imported it yet
+$notice-max-width: 28em !default;
+
 .model-browser {
     &-table {
         .grid-table {
@@ -491,4 +494,10 @@
         opacity: 0.5;
         text-decoration: none;
     }
+}
+
+// As wide as a page heading's description, so the message does not stretch across a wide table
+.model-browser__timeout {
+    max-width: $notice-max-width;
+    margin-inline: auto;
 }
