@@ -2,6 +2,7 @@
 
 namespace Tests\Components;
 
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -794,6 +795,70 @@ class BaseModelBrowserTest extends TestCase
         // An open range is met by any row
         $component->set('searchQuery', 'published:2026-03-01..')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 2);
+    }
+
+    public function test_search_over_relations_finds_the_rows_whose_related_rows_match()
+    {
+        User::query()->delete();
+        $jiri = User::factory()->create(['name' => 'Jiří Nováček', 'email' => 'jiri@example.com']);
+        $alice = User::factory()->create(['name' => 'Alice Smith', 'email' => 'alice@example.com']);
+        $jiri->posts()->create(['title' => 'O kočkách']);
+        $jiri->posts()->create(['title' => 'Garden Notes']);
+        $alice->posts()->create(['title' => 'Cooking Basics']);
+        $alice->posts()->create(['title' => null]);
+
+        $posts = Livewire::test(BaseModelBrowser::class, [
+            'model' => Post::class,
+            'viewAttributes' => ['title' => 'Title'],
+            'filters' => [
+                'title' => ['type' => 'string', 'label' => 'Title', 'column' => 'title'],
+                'author' => ['type' => 'string', 'label' => 'Author', 'relation' => 'user', 'columns' => ['name', ['column' => 'email', 'ascii_fast' => true]]],
+                'sibling' => ['type' => 'string', 'label' => 'Sibling post', 'column' => 'title', 'relation' => 'user.posts'],
+            ],
+            'filterSessionKey' => 'test-mb-search-relations',
+        ]);
+
+        // Belongs-to, matched without accents and case
+        $posts->set('searchQuery', 'author:novacek')->call('applySearch');
+        $posts->call('loadTotalCount')->assertSet('totalCount', 2);
+        $posts->assertSee('O kočkách')->assertSee('Garden Notes')->assertDontSee('Cooking Basics');
+
+        // Free text across the post's own column and both relations
+        $posts->set('searchQuery', 'alice@')->call('applySearch');
+        $posts->call('loadTotalCount')->assertSet('totalCount', 2);
+
+        // Nested belongs-to then has-many: every post of the author who wrote about cats
+        $posts->set('searchQuery', 'sibling:kockach')->call('applySearch');
+        $posts->call('loadTotalCount')->assertSet('totalCount', 2);
+        $posts->assertSee('Garden Notes')->assertDontSee('Cooking Basics');
+
+        $users = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'post' => ['type' => 'string', 'label' => 'Post', 'column' => 'title', 'relation' => 'posts'],
+                'recent' => ['type' => 'string', 'label' => 'Recent post', 'column' => 'title', 'relation' => 'recentPosts'],
+            ],
+            'filterSessionKey' => 'test-mb-search-has-many',
+        ]);
+
+        // Has-many: a user with two matching posts is listed once
+        $users->set('searchQuery', 'o')->call('applySearch');
+        $users->call('loadTotalCount')->assertSet('totalCount', 2);
+        $users->set('searchQuery', 'KOCKACH')->call('applySearch');
+        DB::enableQueryLog();
+        $users->call('loadTotalCount')->assertSet('totalCount', 1);
+        $users->assertSee('Jiří Nováček')->assertDontSee('Alice Smith');
+
+        // The related table is filtered once, not once per user
+        $sql = implode("\n", array_column(DB::getQueryLog(), 'query'));
+        DB::disableQueryLog();
+        $this->assertStringContainsString('"users"."id" in (select "posts"."user_id" from "posts"', $sql);
+        $this->assertStringNotContainsString('exists', $sql);
+
+        // Like `whereHas`, a relation's limit does not narrow the match
+        $users->set('searchQuery', 'recent:garden')->call('applySearch');
+        $users->call('loadTotalCount')->assertSet('totalCount', 1);
     }
 
     public function test_date_range_over_an_or_group_needs_both_bounds_on_the_same_column()
