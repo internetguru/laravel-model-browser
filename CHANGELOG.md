@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- On SQLite, a list query running past the `model-browser.query_timeout` config value (10 seconds) stops and the list asks for a narrower search, instead of the request ending in PHP's fatal time limit.
+
 ### Fixed
 
 - Searching a long list on SQLite no longer runs out of time: accent-insensitive matching reuses one transliterator, and a filter over a belongs-to, has-one or has-many `relation` filters the related table once instead of once per row.

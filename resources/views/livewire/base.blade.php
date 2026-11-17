@@ -27,6 +27,8 @@
                         @endforeach
                     </dl>
                 @endforeach
+            @elseif ($this->rowsTimedOut())
+                <p>@lang('model-browser::global.query-timeout')</p>
             @else
                 <p>@lang('model-browser::global.no-results')</p>
             @endif

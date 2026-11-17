@@ -950,6 +950,77 @@ class BaseModelBrowserTest extends TestCase
         $users->call('loadTotalCount')->assertSet('totalCount', 1);
     }
 
+    public function test_a_query_running_out_of_time_asks_for_a_narrower_search()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Alice Smith']);
+        // The deadline is checked on about one row in 64, so enough rows that a check surely runs
+        foreach (array_chunk(range(1, 3000), 500) as $chunk) {
+            DB::table('users')->insert(array_map(fn (int $i) => ['name' => "Other {$i}", 'email' => "other{$i}@example.com", 'password' => 'secret'], $chunk));
+        }
+        // Every check is past a deadline this short
+        config(['model-browser.query_timeout' => 1e-9]);
+        Log::spy();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-query-timeout',
+        ]);
+
+        // Without a search, the sampled per-row condition alone checks the deadline while counting every row
+        $component->call('loadTotalCount')
+            ->assertSet('totalCount', null)
+            ->assertSet('countTimedOut', true);
+        $component->call('loadTotalStats')
+            ->assertSet('stats', null)
+            ->assertSet('statsOverLimit', false)
+            ->assertSet('statsTimedOut', true);
+
+        // A search checks it on every row it matches against
+        $component->set('searchQuery', 'name:alice')->call('applySearch')
+            ->assertSee(__('model-browser::global.query-timeout'))
+            ->assertDontSee('Alice Smith')
+            ->assertSet('countTimedOut', false);
+        $component->call('loadTotalCount')->assertSet('countTimedOut', true);
+        Log::shouldHaveReceived('warning')->with('Model browser query ran out of time.', \Mockery::type('array'));
+
+        config(['model-browser.query_timeout' => 0]);
+        $component->set('searchQuery', 'name:alice')->call('applySearch')
+            ->assertSee('Alice Smith')
+            ->assertDontSee(__('model-browser::global.query-timeout'));
+        $component->call('loadTotalCount')
+            ->assertSet('totalCount', 1)
+            ->assertSet('countTimedOut', false);
+        $component->call('loadTotalStats')
+            ->assertSet('statsTimedOut', false)
+            ->assertNotSet('stats', null);
+    }
+
+    public function test_a_refresh_counts_again_after_the_count_ran_out_of_time()
+    {
+        User::query()->delete();
+        foreach (array_chunk(range(1, 3000), 500) as $chunk) {
+            DB::table('users')->insert(array_map(fn (int $i) => ['name' => "Other {$i}", 'email' => "other{$i}@example.com", 'password' => 'secret'], $chunk));
+        }
+        config(['model-browser.query_timeout' => 1e-9]);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'refreshInterval' => 5,
+        ]);
+        $component->call('loadTotalCount')->assertSet('countTimedOut', true);
+
+        config(['model-browser.query_timeout' => 0]);
+        $component->call('watchRefresh')
+            ->assertSet('countTimedOut', false)
+            ->assertSet('totalCount', 3000);
+    }
+
     public function test_search_with_accents_matches_them_exactly_in_any_case()
     {
         User::query()->delete();

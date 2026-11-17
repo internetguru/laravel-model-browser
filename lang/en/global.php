@@ -32,6 +32,7 @@ return [
     ],
     'no-results' => 'No results',
     'no-results-filtered' => 'No results match your filters.',
+    'query-timeout' => 'The search took too long. Narrow it down with more specific words or filters.',
     'reset-filters' => 'Reset filters',
     'fullscreen' => 'Fullscreen',
     'fullscreen-exit' => 'Exit fullscreen',

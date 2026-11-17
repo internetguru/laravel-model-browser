@@ -32,6 +32,7 @@ return [
     ],
     'no-results' => 'Žádné výsledky',
     'no-results-filtered' => 'Žádné výsledky neodpovídají filtrům.',
+    'query-timeout' => 'Hledání trvalo příliš dlouho. Zužte ho přesnějšími slovy nebo filtry.',
     'reset-filters' => 'Zrušit filtry',
     'fullscreen' => 'Celá obrazovka',
     'fullscreen-exit' => 'Ukončit celou obrazovku',

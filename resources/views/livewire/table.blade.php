@@ -111,6 +111,7 @@
                                             :values="$this->columnValueRows($column)"
                                             :loaded="$columnStats !== null"
                                             :over-limit="$statsOverLimit"
+                                            :timed-out="$statsTimedOut"
                                             :limit="$statsLimit"
                                         />
                                     @endif
@@ -150,7 +151,18 @@
                             $hasActiveFilters = filled($searchQuery)
                                 || collect($filterValues)->filter(fn($value) => filled($value))->isNotEmpty();
                         @endphp
-                        @if ($hasActiveFilters)
+                        @if ($this->rowsTimedOut())
+                            <div>
+                                @lang('model-browser::global.query-timeout')
+                                @if ($hasActiveFilters)
+                                    <button
+                                        type="button"
+                                        class="btn btn-link p-0 align-baseline"
+                                        x-on:click="$dispatch('mb-clear-url-params'); $wire.clearFilters()"
+                                    >@lang('model-browser::global.reset-filters')</button>
+                                @endif
+                            </div>
+                        @elseif ($hasActiveFilters)
                             <div>
                                 @lang('model-browser::global.no-results-filtered')
                                 <button

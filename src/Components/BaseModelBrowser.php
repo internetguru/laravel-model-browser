@@ -28,6 +28,8 @@ use Illuminate\Support\Str;
 use InternetGuru\LaravelCommon\Contracts\HasLabel;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use InternetGuru\LaravelCommon\Traits\WatchesForChanges;
+use Internetguru\ModelBrowser\Exceptions\QueryTimeoutException;
+use Internetguru\ModelBrowser\Support\QueryDeadline;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use JsonSerializable;
 use Livewire\Attributes\Computed;
@@ -345,6 +347,12 @@ class BaseModelBrowser extends Component
     public bool $statsOverLimit = false;
 
     /**
+     * Whether summarizing ran past the `model-browser.query_timeout` deadline;
+     * not kept across requests' caches, so opening a menu again retries it.
+     */
+    public bool $statsTimedOut = false;
+
+    /**
      * Rows per page — also the step the previous/next buttons move by.
      */
     public int $perPage = self::PER_PAGE_DEFAULT;
@@ -382,6 +390,16 @@ class BaseModelBrowser extends Component
      * null = not yet loaded (shows placeholder).
      */
     public ?int $totalCount = null;
+
+    /**
+     * Whether counting ran past the `model-browser.query_timeout` deadline.
+     */
+    public bool $countTimedOut = false;
+
+    /**
+     * Whether reading the rows ran past the `model-browser.query_timeout` deadline.
+     */
+    protected bool $rowsTimedOut = false;
 
     /**
      * Current filter values.
@@ -766,8 +784,10 @@ class BaseModelBrowser extends Component
     protected function requestSummaryRefresh(): void
     {
         $this->totalCount = null;
+        $this->countTimedOut = false;
         $this->stats = null;
         $this->statsOverLimit = false;
+        $this->statsTimedOut = false;
 
         if ($this->summaryRefreshRequested) {
             return;
@@ -879,7 +899,8 @@ class BaseModelBrowser extends Component
     // The total loads in its own island, which stores no fingerprint, so it is compared on its own
     public function watchRefresh(): void
     {
-        if ($this->totalCount !== null) {
+        // A count that ran out of time is tried again, so a list that got faster shows its total
+        if ($this->totalCount !== null || $this->countTimedOut) {
             $count = $this->countTotal();
             if ($count !== $this->totalCount) {
                 $this->storeTotalCount($count);
@@ -903,22 +924,83 @@ class BaseModelBrowser extends Component
         return md5(json_encode([$cells, $rows->hasMorePages()], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
     }
 
-    protected function countTotal(): int
+    /**
+     * The number of rows the search finds, null when counting them ran out of time.
+     */
+    protected function countTotal(): ?int
     {
         $query = $this->getQuery();
         $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
 
-        return $query->toBase()->getCountForPagination();
+        try {
+            return $this->runWithinTimeout($query, fn (Builder $query) => $query->toBase()->getCountForPagination());
+        } catch (QueryTimeoutException) {
+            return null;
+        }
     }
 
-    protected function storeTotalCount(int $count): void
+    protected function storeTotalCount(?int $count): void
     {
         $this->totalCount = $count;
+        $this->countTimedOut = $count === null;
 
         Cache::put($this->totalCountCacheKey(), [
             'query' => $this->effectiveSearchQuery(),
             'count' => $count,
+            'timedOut' => $this->countTimedOut,
         ], self::TOTAL_COUNT_TTL);
+    }
+
+    public function rowsTimedOut(): bool
+    {
+        return $this->rowsTimedOut;
+    }
+
+    /**
+     * Run the list's query, stopped once it runs `model-browser.query_timeout` seconds.
+     *
+     * The deadline is checked from inside SQLite for every row it scans, so a slow
+     * search ends in an exception the component handles instead of in PHP's fatal
+     * time limit. On other databases the query runs without it.
+     *
+     * @template T
+     *
+     * @param  Closure(Builder): T  $run
+     * @return T
+     *
+     * @throws QueryTimeoutException
+     */
+    protected function runWithinTimeout(Builder $query, Closure $run): mixed
+    {
+        $seconds = (float) config('model-browser.query_timeout');
+
+        if ($seconds <= 0 || $query->getConnection()->getDriverName() !== 'sqlite') {
+            return $run($query);
+        }
+
+        // First, so it runs for every row before a cheaper condition can rule the row out. Calling
+        // PHP costs about as much as reading a row, so about one row in 64 checks the deadline.
+        array_unshift($query->getQuery()->wheres, [
+            'type' => 'raw',
+            'sql' => '((random() & 63) <> 0 OR query_deadline(random()))',
+            'boolean' => 'and',
+        ]);
+
+        try {
+            return QueryDeadline::within($seconds, fn () => $run($query));
+        } catch (Throwable $e) {
+            if (! QueryDeadline::caused($e)) {
+                throw $e;
+            }
+
+            Log::warning('Model browser query ran out of time.', [
+                'model' => $this->model,
+                'query' => $this->effectiveSearchQuery(),
+                'timeout' => $seconds,
+            ]);
+
+            throw new QueryTimeoutException($e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -930,6 +1012,7 @@ class BaseModelBrowser extends Component
         $limit = (int) config('model-browser.stats_auto_limit');
 
         return $limit > 0
+            && $this->totalCount !== null
             && $this->statsAttributes
             && $this->stats === null
             && ! $this->statsOverLimit
@@ -953,6 +1036,7 @@ class BaseModelBrowser extends Component
 
             if (is_array($cached) && $cached['query'] === $searchQuery) {
                 $this->totalCount = $cached['count'];
+                $this->countTimedOut = $cached['timedOut'] ?? false;
             }
         }
 
@@ -991,6 +1075,7 @@ class BaseModelBrowser extends Component
     {
         $this->stats = null;
         $this->statsOverLimit = false;
+        $this->statsTimedOut = false;
 
         if (empty($this->statsAttributes)) {
             return;
@@ -1001,10 +1086,19 @@ class BaseModelBrowser extends Component
         // column it actually selects.
         $query = $this->buildFilteredSortedQuery();
 
-        if ($this->statsLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->statsLimit) {
-            $this->statsOverLimit = true;
-        } else {
-            $this->stats = $this->summarize($query);
+        try {
+            $this->runWithinTimeout($query, function (Builder $query) {
+                if ($this->statsLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->statsLimit) {
+                    $this->statsOverLimit = true;
+                } else {
+                    $this->stats = $this->summarize($query);
+                }
+            });
+        } catch (QueryTimeoutException) {
+            $this->stats = null;
+            $this->statsTimedOut = true;
+
+            return;
         }
 
         Cache::put($this->statsCacheKey(), [
@@ -2213,8 +2307,15 @@ class BaseModelBrowser extends Component
 
         Paginator::defaultSimpleView($this->paginationSimpleView());
 
+        try {
+            $rows = $this->runWithinTimeout($query->skip($this->skip)->take($window + 1), fn (Builder $query) => $query->get());
+        } catch (QueryTimeoutException) {
+            $this->rowsTimedOut = true;
+            $rows = new Collection;
+        }
+
         $data = new Paginator(
-            $query->skip($this->skip)->take($window + 1)->get(),
+            $rows,
             $window,
             $page,
             ['path' => Paginator::resolveCurrentPath()],

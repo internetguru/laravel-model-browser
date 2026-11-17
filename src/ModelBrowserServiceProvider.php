@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 use Internetguru\ModelBrowser\Components\TableModelBrowser;
 use Internetguru\ModelBrowser\Http\Controllers\CsvDownloadController;
+use Internetguru\ModelBrowser\Support\QueryDeadline;
 use Livewire\Livewire;
 
 class ModelBrowserServiceProvider extends ServiceProvider
@@ -144,17 +145,11 @@ class ModelBrowserServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register custom `unaccent` and `unicode_lower` functions for SQLite connections.
+     * Register custom `unaccent`, `unicode_lower` and `query_deadline` functions for SQLite connections.
      * Deferred until the connection is actually used.
      */
     protected function registerSqliteUnaccent(): void
     {
-        $driver = config('database.connections.' . config('database.default') . '.driver');
-
-        if ($driver !== 'sqlite') {
-            return;
-        }
-
         $this->app['events']->listen('Illuminate\Database\Events\ConnectionEstablished', function ($event) {
             if ($event->connection->getDriverName() !== 'sqlite') {
                 return;
@@ -166,6 +161,8 @@ class ModelBrowserServiceProvider extends ServiceProvider
                 ? \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower')
                 : null;
             $pdo->sqliteCreateFunction('unaccent', function (?string $string) use ($transliterator): string {
+                QueryDeadline::check();
+
                 if ($string === null) {
                     return '';
                 }
@@ -187,7 +184,15 @@ class ModelBrowserServiceProvider extends ServiceProvider
                 ]);
             }, 1);
             $pdo->sqliteCreateFunction('unicode_lower', function (?string $string): string {
+                QueryDeadline::check();
+
                 return $string === null ? '' : (string) \Normalizer::normalize(mb_strtolower($string), \Normalizer::FORM_C);
+            }, 1);
+            // Takes a value that changes per row, so SQLite calls it for every row instead of once as a constant
+            $pdo->sqliteCreateFunction('query_deadline', function (mixed $value): int {
+                QueryDeadline::check();
+
+                return 1;
             }, 1);
         });
     }
