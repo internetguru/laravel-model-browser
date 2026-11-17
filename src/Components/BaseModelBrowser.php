@@ -9,6 +9,11 @@ use Exception;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+use Illuminate\Database\Eloquent\Relations\MorphOneOrMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -1997,7 +2002,11 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Apply the callback to the query, nested in `whereHas` along the relation's dot path.
+     * Apply the callback to the query, along the relation's dot path.
+     *
+     * A belongs-to, has-one or has-many step becomes `key IN (subquery)`: the
+     * related table is filtered once, where `whereHas` would filter it again for
+     * every row of the outer table. Any other relation keeps `whereHas`.
      */
     protected function whereInRelation(Builder $query, ?string $relation, Closure $apply): void
     {
@@ -2007,12 +2016,47 @@ class BaseModelBrowser extends Component
             return;
         }
 
-        $nested = $apply;
-        foreach (array_reverse(explode('.', $relation)) as $part) {
-            $inner = $nested;
-            $nested = fn (Builder $q) => $q->whereHas($part, $inner);
+        [$name, $rest] = array_pad(explode('.', $relation, 2), 2, null);
+        $model = $query->getModel();
+        $related = Relation::noConstraints(fn () => $model->{$name}());
+
+        if (! $this->filtersRelationByKey($related)) {
+            $query->whereHas($name, fn (Builder $q) => $this->whereInRelation($q, $rest, $apply));
+
+            return;
         }
-        $nested($query);
+
+        // Like `whereHas`, only the relation's wheres apply, not its limit, order or grouping
+        $subquery = $related->getRelated()->newQueryWithoutRelationships()->mergeConstraintsFrom($related->getQuery());
+        $this->whereInRelation($subquery, $rest, $apply);
+
+        if ($related instanceof BelongsTo) {
+            $query->whereIn($related->getQualifiedForeignKeyName(), $subquery->toBase()->select($related->getQualifiedOwnerKeyName()));
+
+            return;
+        }
+
+        /** @var HasOneOrMany<Model, Model, mixed> $related */
+        $query->whereIn($related->getQualifiedParentKeyName(), $subquery->toBase()->select($related->getQualifiedForeignKeyName()));
+    }
+
+    /**
+     * Whether the relation is matched by its keys alone: the morph type and the
+     * one-of-many join are constraints a subquery on the keys would lose.
+     *
+     * @param  Relation<Model, Model, mixed>  $relation
+     */
+    protected function filtersRelationByKey(Relation $relation): bool
+    {
+        if ($relation instanceof BelongsTo) {
+            return ! $relation instanceof MorphTo;
+        }
+
+        if (! $relation instanceof HasOneOrMany || $relation instanceof MorphOneOrMany) {
+            return false;
+        }
+
+        return ! method_exists($relation, 'isOneOfMany') || ! $relation->isOneOfMany();
     }
 
     /**

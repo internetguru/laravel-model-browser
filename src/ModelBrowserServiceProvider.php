@@ -153,15 +153,17 @@ class ModelBrowserServiceProvider extends ServiceProvider
             }
 
             $pdo = $event->connection->getPdo();
-            $pdo->sqliteCreateFunction('unaccent', function (?string $string): string {
+            // Created once: the function runs for every row scanned, and creating it costs far more than using it
+            $transliterator = class_exists(\Transliterator::class)
+                ? \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower')
+                : null;
+            $pdo->sqliteCreateFunction('unaccent', function (?string $string) use ($transliterator): string {
                 if ($string === null) {
                     return '';
                 }
 
-                if (class_exists(\Transliterator::class)) {
-                    $transliterator = \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower');
-
-                    return $transliterator ? $transliterator->transliterate($string) : mb_strtolower($string);
+                if ($transliterator) {
+                    return $transliterator->transliterate($string);
                 }
 
                 // Fallback: manual Czech/Central European diacritics mapping
