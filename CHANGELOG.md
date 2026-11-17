@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Searching a long list on SQLite no longer runs out of time: accent-insensitive matching reuses one transliterator, and a filter over a belongs-to, has-one or has-many `relation` filters the related table once instead of once per row.
+
 ## [8.4.0] - 2026-11-10
 
 _Stable release based on [8.4.0-rc.1]._
