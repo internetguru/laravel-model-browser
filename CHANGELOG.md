@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Searching a long list on SQLite no longer runs out of time: accent-insensitive matching reuses one transliterator, and a filter over a belongs-to, has-one or has-many `relation` filters the related table once instead of once per row.
+- A search typed with accents ignores letter case on SQLite too: `šťast` finds "Šťastná".
 
 ## [9.1.0] - 2026-11-14
 

@@ -104,11 +104,19 @@ class ModelBrowserServiceProvider extends ServiceProvider
             $hasAccents = $value !== \Normalizer::normalize($value, \Normalizer::FORM_D)
                 || (bool) preg_match('/[^\x00-\x7F]/', $value);
 
+            $driver = $this->getConnection()->getDriverName();
+
             if ($hasAccents) {
+                // SQLite's LIKE ignores the case of ASCII letters only, so `Š` would not match `š`
+                if ($driver === 'sqlite' && ! $asciiFast) {
+                    return $this->whereRaw(
+                        "unicode_lower({$column}) LIKE ?",
+                        ['%' . \Normalizer::normalize(mb_strtolower($value), \Normalizer::FORM_C) . '%']
+                    );
+                }
+
                 return $this->where($column, 'LIKE', '%' . $value . '%');
             }
-
-            $driver = $this->getConnection()->getDriverName();
 
             if ($driver === 'sqlite') {
                 if ($asciiFast) {
@@ -136,7 +144,7 @@ class ModelBrowserServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register a custom `unaccent` function for SQLite connections.
+     * Register custom `unaccent` and `unicode_lower` functions for SQLite connections.
      * Deferred until the connection is actually used.
      */
     protected function registerSqliteUnaccent(): void
@@ -177,6 +185,9 @@ class ModelBrowserServiceProvider extends ServiceProvider
                     'ñ' => 'n', 'ç' => 'c', 'ł' => 'l', 'ő' => 'o', 'ű' => 'u',
                     'ø' => 'o', 'å' => 'a', 'æ' => 'ae',
                 ]);
+            }, 1);
+            $pdo->sqliteCreateFunction('unicode_lower', function (?string $string): string {
+                return $string === null ? '' : (string) \Normalizer::normalize(mb_strtolower($string), \Normalizer::FORM_C);
             }, 1);
         });
     }

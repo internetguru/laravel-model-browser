@@ -950,6 +950,27 @@ class BaseModelBrowserTest extends TestCase
         $users->call('loadTotalCount')->assertSet('totalCount', 1);
     }
 
+    public function test_search_with_accents_matches_them_exactly_in_any_case()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Žofie Šťastná']);
+        User::factory()->create(['name' => 'Zofie Stastna']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-accent-case',
+        ]);
+
+        foreach (['šťast' => 1, 'ŠŤASTNÁ' => 1, 'žofie š' => 1, 'stastna' => 2, 'STASTNA' => 2] as $search => $count) {
+            $component->set('searchQuery', "name:\"{$search}\"")->call('applySearch');
+            $component->call('loadTotalCount')->assertSet('totalCount', $count);
+        }
+    }
+
     public function test_date_range_over_an_or_group_needs_both_bounds_on_the_same_column()
     {
         User::query()->delete();
