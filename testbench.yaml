@@ -1,0 +1,3 @@
+# laravel-common refuses the sync queue outside tests; PHPStan boots the app with testbench
+env:
+  - APP_ENV=testing
