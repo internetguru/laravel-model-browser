@@ -19,6 +19,9 @@ class ModelBrowserServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../config/model-browser.php', 'model-browser');
     }
 
+    /**
+     * @return void
+     */
     public function boot()
     {
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'model-browser');
@@ -69,14 +72,13 @@ class ModelBrowserServiceProvider extends ServiceProvider
      */
     protected function registerSanitizeTypes(): void
     {
-        $config = $this->app['config'];
-        $types = $config->get('ig-common.sanitize.types');
+        $types = config('ig-common.sanitize.types');
 
         if (! is_array($types)) {
             return;
         }
 
-        $config->set('ig-common.sanitize.types', [
+        config()->set('ig-common.sanitize.types', [
             'filter_values' => 'search',
             'sort_column' => 'code',
             'sort_direction' => 'code',
@@ -105,12 +107,14 @@ class ModelBrowserServiceProvider extends ServiceProvider
             $hasAccents = $value !== \Normalizer::normalize($value, \Normalizer::FORM_D)
                 || (bool) preg_match('/[^\x00-\x7F]/', $value);
 
+            // @phpstan-ignore method.notFound (an Eloquent connection is always an Illuminate\Database\Connection)
             $driver = $this->getConnection()->getDriverName();
 
             if ($hasAccents) {
                 // SQLite's LIKE ignores the case of ASCII letters only, so `Š` would not match `š`
                 if ($driver === 'sqlite' && ! $asciiFast) {
                     return $this->whereRaw(
+                        // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
                         "unicode_lower({$column}) LIKE ?",
                         ['%' . \Normalizer::normalize(mb_strtolower($value), \Normalizer::FORM_C) . '%']
                     );
@@ -122,12 +126,14 @@ class ModelBrowserServiceProvider extends ServiceProvider
             if ($driver === 'sqlite') {
                 if ($asciiFast) {
                     return $this->whereRaw(
+                        // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
                         "LOWER({$column}) LIKE LOWER(?)",
                         ['%' . $value . '%']
                     );
                 }
 
                 return $this->whereRaw(
+                    // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
                     "unaccent({$column}) LIKE ?",
                     ['%' . $value . '%']
                 );
@@ -138,6 +144,7 @@ class ModelBrowserServiceProvider extends ServiceProvider
             // COLLATE is applied — some MySQL/PDO configurations otherwise infer the bound
             // parameter's charset as 'binary', which is incompatible with utf8mb4_unicode_ci.
             return $this->whereRaw(
+                // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
                 "{$column} COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci",
                 ['%' . $value . '%']
             );
@@ -150,7 +157,7 @@ class ModelBrowserServiceProvider extends ServiceProvider
      */
     protected function registerSqliteUnaccent(): void
     {
-        $this->app['events']->listen('Illuminate\Database\Events\ConnectionEstablished', function ($event) {
+        $this->app->make('events')->listen('Illuminate\Database\Events\ConnectionEstablished', function ($event) {
             if ($event->connection->getDriverName() !== 'sqlite') {
                 return;
             }
@@ -168,7 +175,7 @@ class ModelBrowserServiceProvider extends ServiceProvider
                 }
 
                 if ($transliterator) {
-                    return $transliterator->transliterate($string);
+                    return (string) $transliterator->transliterate($string);
                 }
 
                 // Fallback: manual Czech/Central European diacritics mapping
