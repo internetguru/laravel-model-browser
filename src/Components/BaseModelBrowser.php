@@ -1330,7 +1330,11 @@ class BaseModelBrowser extends Component
      */
     protected function streamRows(Builder $query): LazyCollection
     {
-        return empty($query->getEagerLoads()) ? $query->cursor() : $query->lazy(500);
+        $limit = $query->getQuery()->limit;
+        $rows = empty($query->getEagerLoads()) ? $query->cursor() : $query->lazy(500);
+
+        // Laravel before 13.40 lets `lazy()` replace the query's limit with its chunk size
+        return $limit === null ? $rows : $rows->take($limit);
     }
 
     /**

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [9.1.1] - 2026-11-19
+
+### Fixed
+
+- A CSV export over the export limit stops at the limit also on Laravel before 13.40, where a list that eager loads relations used to export every row.
+
 ## [9.1.0] - 2026-11-14
 
 _Stable release based on [9.1.0-rc.1]._
@@ -1135,6 +1141,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[9.1.1]: https://github.com/internetguru/laravel-model-browser/compare/v9.1.0...v9.1.1
 [9.1.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.0.0...v9.1.0
 [9.1.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.0.0
 [9.0.0]: https://github.com/internetguru/laravel-model-browser/compare/v8.4.0...v9.0.0

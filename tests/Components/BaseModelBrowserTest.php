@@ -148,6 +148,23 @@ class BaseModelBrowserTest extends TestCase
             ->assertStatus(413);
     }
 
+    public function test_truncated_download_csv_of_an_eager_loading_list_stops_at_the_export_limit()
+    {
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class . '@withPosts',
+            'viewAttributes' => ['email' => 'Email'],
+            'exportLimit' => 3,
+        ]);
+
+        $content = $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->post(route('model-browser.download-csv'), [
+                'snapshot' => json_encode($component->snapshot),
+                'truncate' => '1',
+            ])->streamedContent();
+
+        $this->assertCount(1 + 3, array_filter(explode("\n", $content)));
+    }
+
     public function test_download_csv_allowed_with_export_limit_disabled()
     {
         config(['model-browser.export_limit' => 0]);
