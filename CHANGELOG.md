@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A CSV export over the export limit stops at the limit also on Laravel before 13.40, where a list that eager loads relations used to export every row.
+
 ## [8.4.1] - 2026-11-17
 
 ### Fixed
