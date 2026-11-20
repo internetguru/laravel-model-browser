@@ -32,6 +32,7 @@ return [
     ],
     'no-results' => 'Ingen resultater',
     'no-results-filtered' => 'Ingen resultater matcher dine filtre.',
+    'query-timeout' => 'Søgningen tog for lang tid. Indsnævr den med mere præcise ord eller filtre.',
     'reset-filters' => 'Nulstil filtre',
     'fullscreen' => 'Fuldskærm',
     'fullscreen-exit' => 'Forlad fuldskærm',

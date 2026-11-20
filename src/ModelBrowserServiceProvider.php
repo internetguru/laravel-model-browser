@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser;
 
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Route;
@@ -9,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
 use Internetguru\ModelBrowser\Components\TableModelBrowser;
 use Internetguru\ModelBrowser\Http\Controllers\CsvDownloadController;
+use Internetguru\ModelBrowser\Support\QueryDeadline;
 use Livewire\Livewire;
 
 class ModelBrowserServiceProvider extends ServiceProvider
@@ -18,6 +20,9 @@ class ModelBrowserServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../config/model-browser.php', 'model-browser');
     }
 
+    /**
+     * @return void
+     */
     public function boot()
     {
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'model-browser');
@@ -68,14 +73,13 @@ class ModelBrowserServiceProvider extends ServiceProvider
      */
     protected function registerSanitizeTypes(): void
     {
-        $config = $this->app['config'];
-        $types = $config->get('ig-common.sanitize.types');
+        $types = config('ig-common.sanitize.types');
 
         if (! is_array($types)) {
             return;
         }
 
-        $config->set('ig-common.sanitize.types', [
+        config()->set('ig-common.sanitize.types', [
             'filter_values' => 'search',
             'sort_column' => 'code',
             'sort_direction' => 'code',
@@ -97,29 +101,43 @@ class ModelBrowserServiceProvider extends ServiceProvider
          * (e-mail, login, slug, …). On SQLite this skips the unaccent() PHP UDF
          * — which is invoked per row scanned and is the main filter-cost driver.
          */
-        Builder::macro('whereLikeUnaccented', function (string $column, string $value, bool $asciiFast = false): Builder {
+        Builder::macro('whereLikeUnaccented', function (string|Expression $column, string $value, bool $asciiFast = false): Builder {
             /** @var Builder $this */
+            // A name is quoted; an expression passed as DB::raw() goes in as it is
+            $sql = $this->getQuery()->getGrammar()->wrap($column);
 
             // If the search value contains accented characters, do an exact (accent-sensitive) match
             $hasAccents = $value !== \Normalizer::normalize($value, \Normalizer::FORM_D)
                 || (bool) preg_match('/[^\x00-\x7F]/', $value);
 
+            // @phpstan-ignore method.notFound (an Eloquent connection is always an Illuminate\Database\Connection)
+            $driver = $this->getConnection()->getDriverName();
+
             if ($hasAccents) {
+                // SQLite's LIKE ignores the case of ASCII letters only, so `Š` would not match `š`
+                if ($driver === 'sqlite' && ! $asciiFast) {
+                    return $this->whereRaw(
+                        // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                        "unicode_lower({$sql}) LIKE ?",
+                        ['%' . \Normalizer::normalize(mb_strtolower($value), \Normalizer::FORM_C) . '%']
+                    );
+                }
+
                 return $this->where($column, 'LIKE', '%' . $value . '%');
             }
-
-            $driver = $this->getConnection()->getDriverName();
 
             if ($driver === 'sqlite') {
                 if ($asciiFast) {
                     return $this->whereRaw(
-                        "LOWER({$column}) LIKE LOWER(?)",
+                        // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                        "LOWER({$sql}) LIKE LOWER(?)",
                         ['%' . $value . '%']
                     );
                 }
 
                 return $this->whereRaw(
-                    "unaccent({$column}) LIKE ?",
+                    // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                    "unaccent({$sql}) LIKE ?",
                     ['%' . $value . '%']
                 );
             }
@@ -129,39 +147,38 @@ class ModelBrowserServiceProvider extends ServiceProvider
             // COLLATE is applied — some MySQL/PDO configurations otherwise infer the bound
             // parameter's charset as 'binary', which is incompatible with utf8mb4_unicode_ci.
             return $this->whereRaw(
-                "{$column} COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci",
+                // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                "{$sql} COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci",
                 ['%' . $value . '%']
             );
         });
     }
 
     /**
-     * Register a custom `unaccent` function for SQLite connections.
+     * Register custom `unaccent`, `unicode_lower` and `query_deadline` functions for SQLite connections.
      * Deferred until the connection is actually used.
      */
     protected function registerSqliteUnaccent(): void
     {
-        $driver = config('database.connections.' . config('database.default') . '.driver');
-
-        if ($driver !== 'sqlite') {
-            return;
-        }
-
-        $this->app['events']->listen('Illuminate\Database\Events\ConnectionEstablished', function ($event) {
+        $this->app->make('events')->listen('Illuminate\Database\Events\ConnectionEstablished', function ($event) {
             if ($event->connection->getDriverName() !== 'sqlite') {
                 return;
             }
 
             $pdo = $event->connection->getPdo();
-            $pdo->sqliteCreateFunction('unaccent', function (?string $string): string {
+            // Created once: the function runs for every row scanned, and creating it costs far more than using it
+            $transliterator = class_exists(\Transliterator::class)
+                ? \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower')
+                : null;
+            $pdo->sqliteCreateFunction('unaccent', function (?string $string) use ($transliterator): string {
+                QueryDeadline::check();
+
                 if ($string === null) {
                     return '';
                 }
 
-                if (class_exists(\Transliterator::class)) {
-                    $transliterator = \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower');
-
-                    return $transliterator ? $transliterator->transliterate($string) : mb_strtolower($string);
+                if ($transliterator) {
+                    return (string) $transliterator->transliterate($string);
                 }
 
                 // Fallback: manual Czech/Central European diacritics mapping
@@ -175,6 +192,17 @@ class ModelBrowserServiceProvider extends ServiceProvider
                     'ñ' => 'n', 'ç' => 'c', 'ł' => 'l', 'ő' => 'o', 'ű' => 'u',
                     'ø' => 'o', 'å' => 'a', 'æ' => 'ae',
                 ]);
+            }, 1);
+            $pdo->sqliteCreateFunction('unicode_lower', function (?string $string): string {
+                QueryDeadline::check();
+
+                return $string === null ? '' : (string) \Normalizer::normalize(mb_strtolower($string), \Normalizer::FORM_C);
+            }, 1);
+            // Takes a value that changes per row, so SQLite calls it for every row instead of once as a constant
+            $pdo->sqliteCreateFunction('query_deadline', function (mixed $value): int {
+                QueryDeadline::check();
+
+                return 1;
             }, 1);
         });
     }

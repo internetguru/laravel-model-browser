@@ -111,8 +111,8 @@ trait HasSearchFilters
      */
     protected function sanitizeSearchQuery(string $query): string
     {
-        $query = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $query);
-        $query = preg_replace('/\s+/', ' ', trim($query));
+        $query = (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $query);
+        $query = (string) preg_replace('/\s+/', ' ', trim($query));
 
         return mb_substr($query, 0, self::SEARCH_MAX_LENGTH);
     }
@@ -120,6 +120,8 @@ trait HasSearchFilters
     /**
      * Parse search query into structured terms.
      * Returns array of ['key' => string|null, 'value' => string, 'exact' => bool]
+     *
+     * @return list<array{key: string|null, value: string, exact: bool}>
      */
     protected function parseSearchTerms(string $query): array
     {
@@ -162,9 +164,9 @@ trait HasSearchFilters
             }
 
             return '';
-        }, $remaining);
+        }, (string) $remaining);
 
-        foreach (preg_split('/\s+/', trim($remaining), -1, PREG_SPLIT_NO_EMPTY) as $word) {
+        foreach (preg_split('/\s+/', trim((string) $remaining), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
             $word = mb_substr(trim($word), 0, 255);
             if ($word !== '') {
                 $terms[] = ['key' => null, 'value' => $word, 'exact' => false];
@@ -205,6 +207,8 @@ trait HasSearchFilters
 
     /**
      * Build search query string from structured terms array.
+     *
+     * @param  array<int, array{key: string|null, value: string, exact?: bool}>  $terms
      */
     protected function buildSearchQueryFromTerms(array $terms): string
     {

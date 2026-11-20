@@ -1,0 +1,7 @@
+# Testbench loads the dependencies' providers but not this package's own, so PHPStan would not know its views
+providers:
+  - Internetguru\ModelBrowser\ModelBrowserServiceProvider
+
+# laravel-common refuses the sync queue outside tests
+env:
+  - APP_ENV=testing

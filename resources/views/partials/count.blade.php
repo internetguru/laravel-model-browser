@@ -13,7 +13,9 @@
     again, even when the placeholder was already there.
 --}}
 <span class="model-browser__count">
-    @if ($totalCount === null)
+    @if ($countTimedOut)
+        ?
+    @elseif ($totalCount === null)
         <span
             wire:key="model-browser-count-pending-{{ Str::random(8) }}"
             x-init="$wire.$island('count').loadTotalCount()"

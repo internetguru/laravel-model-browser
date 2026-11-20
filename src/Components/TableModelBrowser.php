@@ -2,6 +2,8 @@
 
 namespace Internetguru\ModelBrowser\Components;
 
+use Closure;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 
 class TableModelBrowser extends BaseModelBrowser
@@ -9,9 +11,23 @@ class TableModelBrowser extends BaseModelBrowser
     #[Locked]
     public int $lightDarkStep;
 
+    /** @var array<string, string> */
     #[Locked]
     public array $columnWidths;
 
+    /**
+     * @param  array<string, string>  $viewAttributes
+     * @param  array<string, string>  $exportAttributes
+     * @param  array<string, callable>  $formats
+     * @param  array<string, callable>  $rawFormats
+     * @param  array<string, string>  $alignments
+     * @param  array<string, array<string, mixed>>  $filters
+     * @param  array<int|string, string|Closure>  $with
+     * @param  list<string>|null  $statsAttributes
+     * @param  list<string>  $statsTextAttributes
+     * @param  array<string, string>  $columnWidths
+     * @return void
+     */
     public function mount(
         string $model,
         array $viewAttributes = [],
@@ -57,6 +73,9 @@ class TableModelBrowser extends BaseModelBrowser
         return implode(' ', $columns);
     }
 
+    /**
+     * @return View
+     */
     public function render()
     {
         return view('model-browser::livewire.table');

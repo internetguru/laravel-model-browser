@@ -2,6 +2,7 @@
 
 namespace Tests\Components;
 
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -900,6 +901,162 @@ class BaseModelBrowserTest extends TestCase
         // An open range is met by any row
         $component->set('searchQuery', 'published:2026-03-01..')->call('applySearch');
         $component->call('loadTotalCount')->assertSet('totalCount', 2);
+    }
+
+    public function test_search_over_relations_finds_the_rows_whose_related_rows_match()
+    {
+        User::query()->delete();
+        $jiri = User::factory()->create(['name' => 'Jiří Nováček', 'email' => 'jiri@example.com']);
+        $alice = User::factory()->create(['name' => 'Alice Smith', 'email' => 'alice@example.com']);
+        $jiri->posts()->create(['title' => 'O kočkách']);
+        $jiri->posts()->create(['title' => 'Garden Notes']);
+        $alice->posts()->create(['title' => 'Cooking Basics']);
+        $alice->posts()->create(['title' => null]);
+
+        $posts = Livewire::test(BaseModelBrowser::class, [
+            'model' => Post::class,
+            'viewAttributes' => ['title' => 'Title'],
+            'filters' => [
+                'title' => ['type' => 'string', 'label' => 'Title', 'column' => 'title'],
+                'author' => ['type' => 'string', 'label' => 'Author', 'relation' => 'user', 'columns' => ['name', ['column' => 'email', 'ascii_fast' => true]]],
+                'sibling' => ['type' => 'string', 'label' => 'Sibling post', 'column' => 'title', 'relation' => 'user.posts'],
+            ],
+            'filterSessionKey' => 'test-mb-search-relations',
+        ]);
+
+        // Belongs-to, matched without accents and case
+        $posts->set('searchQuery', 'author:novacek')->call('applySearch');
+        $posts->call('loadTotalCount')->assertSet('totalCount', 2);
+        $posts->assertSee('O kočkách')->assertSee('Garden Notes')->assertDontSee('Cooking Basics');
+
+        // Free text across the post's own column and both relations
+        $posts->set('searchQuery', 'alice@')->call('applySearch');
+        $posts->call('loadTotalCount')->assertSet('totalCount', 2);
+
+        // Nested belongs-to then has-many: every post of the author who wrote about cats
+        $posts->set('searchQuery', 'sibling:kockach')->call('applySearch');
+        $posts->call('loadTotalCount')->assertSet('totalCount', 2);
+        $posts->assertSee('Garden Notes')->assertDontSee('Cooking Basics');
+
+        $users = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'post' => ['type' => 'string', 'label' => 'Post', 'column' => 'title', 'relation' => 'posts'],
+                'recent' => ['type' => 'string', 'label' => 'Recent post', 'column' => 'title', 'relation' => 'recentPosts'],
+            ],
+            'filterSessionKey' => 'test-mb-search-has-many',
+        ]);
+
+        // Has-many: a user with two matching posts is listed once
+        $users->set('searchQuery', 'o')->call('applySearch');
+        $users->call('loadTotalCount')->assertSet('totalCount', 2);
+        $users->set('searchQuery', 'KOCKACH')->call('applySearch');
+        DB::enableQueryLog();
+        $users->call('loadTotalCount')->assertSet('totalCount', 1);
+        $users->assertSee('Jiří Nováček')->assertDontSee('Alice Smith');
+
+        // The related table is filtered once, not once per user
+        $sql = implode("\n", array_column(DB::getQueryLog(), 'query'));
+        DB::disableQueryLog();
+        $this->assertStringContainsString('"users"."id" in (select "posts"."user_id" from "posts"', $sql);
+        $this->assertStringNotContainsString('exists', $sql);
+
+        // Like `whereHas`, a relation's limit does not narrow the match
+        $users->set('searchQuery', 'recent:garden')->call('applySearch');
+        $users->call('loadTotalCount')->assertSet('totalCount', 1);
+    }
+
+    public function test_a_query_running_out_of_time_asks_for_a_narrower_search()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Alice Smith']);
+        // The deadline is checked on about one row in 64, so enough rows that a check surely runs
+        foreach (array_chunk(range(1, 3000), 500) as $chunk) {
+            DB::table('users')->insert(array_map(fn (int $i) => ['name' => "Other {$i}", 'email' => "other{$i}@example.com", 'password' => 'secret'], $chunk));
+        }
+        // Every check is past a deadline this short
+        config(['model-browser.query_timeout' => 1e-9]);
+        Log::spy();
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-query-timeout',
+        ]);
+
+        // Without a search, the sampled per-row condition alone checks the deadline while counting every row
+        $component->call('loadTotalCount')
+            ->assertSet('totalCount', null)
+            ->assertSet('countTimedOut', true);
+        $component->call('loadTotalStats')
+            ->assertSet('stats', null)
+            ->assertSet('statsOverLimit', false)
+            ->assertSet('statsTimedOut', true);
+
+        // A search checks it on every row it matches against
+        $component->set('searchQuery', 'name:alice')->call('applySearch')
+            ->assertSee(__('model-browser::global.query-timeout'))
+            ->assertDontSee('Alice Smith')
+            ->assertSet('countTimedOut', false);
+        $component->call('loadTotalCount')->assertSet('countTimedOut', true);
+        Log::shouldHaveReceived('warning')->with('Model browser query ran out of time.', \Mockery::type('array'));
+
+        config(['model-browser.query_timeout' => 0]);
+        $component->set('searchQuery', 'name:alice')->call('applySearch')
+            ->assertSee('Alice Smith')
+            ->assertDontSee(__('model-browser::global.query-timeout'));
+        $component->call('loadTotalCount')
+            ->assertSet('totalCount', 1)
+            ->assertSet('countTimedOut', false);
+        $component->call('loadTotalStats')
+            ->assertSet('statsTimedOut', false)
+            ->assertNotSet('stats', null);
+    }
+
+    public function test_a_refresh_counts_again_after_the_count_ran_out_of_time()
+    {
+        User::query()->delete();
+        foreach (array_chunk(range(1, 3000), 500) as $chunk) {
+            DB::table('users')->insert(array_map(fn (int $i) => ['name' => "Other {$i}", 'email' => "other{$i}@example.com", 'password' => 'secret'], $chunk));
+        }
+        config(['model-browser.query_timeout' => 1e-9]);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'refreshInterval' => 5,
+        ]);
+        $component->call('loadTotalCount')->assertSet('countTimedOut', true);
+
+        config(['model-browser.query_timeout' => 0]);
+        $component->call('watchRefresh')
+            ->assertSet('countTimedOut', false)
+            ->assertSet('totalCount', 3000);
+    }
+
+    public function test_search_with_accents_matches_them_exactly_in_any_case()
+    {
+        User::query()->delete();
+        User::factory()->create(['name' => 'Žofie Šťastná']);
+        User::factory()->create(['name' => 'Zofie Stastna']);
+
+        $component = Livewire::test(BaseModelBrowser::class, [
+            'model' => User::class,
+            'viewAttributes' => ['name' => 'Name'],
+            'filters' => [
+                'name' => ['type' => 'string', 'label' => 'Name', 'column' => 'name'],
+            ],
+            'filterSessionKey' => 'test-mb-accent-case',
+        ]);
+
+        foreach (['šťast' => 1, 'ŠŤASTNÁ' => 1, 'žofie š' => 1, 'stastna' => 2, 'STASTNA' => 2] as $search => $count) {
+            $component->set('searchQuery', "name:\"{$search}\"")->call('applySearch');
+            $component->call('loadTotalCount')->assertSet('totalCount', $count);
+        }
     }
 
     public function test_date_range_over_an_or_group_needs_both_bounds_on_the_same_column()
