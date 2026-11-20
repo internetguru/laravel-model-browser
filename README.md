@@ -574,7 +574,7 @@ Below is a complete example of an order browser with auto-applied and manual fil
 In this example:
 - `created`, `symbol`, `voucher`, `name`, `email` have `column` set → **auto-applied** to the query
 - `price` has no `column` → a **manual filter** handled in `Order::summary()` via `HasModelBrowserFilters`
-- `voucher` uses `relation` with dot-notation (`charges.voucher`) for nested `whereHas()` and `url` for URL initialization
+- `voucher` uses `relation` with dot-notation (`charges.voucher`) for a nested relation filter and `url` for URL initialization
 
 ## Features
 
@@ -585,6 +585,7 @@ In this example:
 - **Column statistics** — Every column carries a statistics menu in its header, loaded inside its own Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands) so the data query is never re-run for it. See [Column Statistics](#column-statistics).
 - **Fullscreen** — Toggle fullscreen mode for the table view.
 - **Copy page** — Copy the rows of the *current page only* to the clipboard, as plain text (TSV) and as an HTML table, ready to paste into a spreadsheet. Cells are copied as they are shown, `formats` applied and markup left out; the CSV export holds the plain `rawFormats` values.
+- **Query timeout** — On SQLite, the rows, the count and the statistics stop querying after the `model-browser.query_timeout` config value (10 seconds; `0` turns it off). The list then reads *"The search took too long. Narrow it down with more specific words or filters."*, the count shows `?`, the statistics menu says the same and loads again when reopened, and the CSV button offers the export of the first `exportLimit` rows, instead of the request ending in PHP's fatal time limit. Each timeout is logged as a warning. Keep the value below `max_execution_time`; the CSV export is not limited.
 - **Deferred count** — The total result count is the `of 176` half of the pagination line and is loaded inside a dedicated Livewire 4 [island](https://livewire.laravel.com/docs/4.x/islands), passed into the pagination component as its `count` slot. The table renders immediately from the `rows()` computed property; the count fills in (and refreshes on filter changes) without ever re-running the data query.
 
 ## Column Statistics

@@ -1,0 +1,11 @@
+name: PHPStan
+
+on:
+  push:
+    branches: [dev, staging, main, master]
+  pull_request:
+    branches: [dev, staging, main, master]
+
+jobs:
+  phpstan:
+    uses: internetguru/laravel-scripts/.github/workflows/phpstan.yml@main

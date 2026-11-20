@@ -31,6 +31,12 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
+    // A limited relation, which a relation filter must not turn into a limited match
+    public function recentPosts()
+    {
+        return $this->hasMany(Post::class)->latest('id')->limit(1);
+    }
+
     public function getPostCountAttribute(): int
     {
         return $this->posts->count();

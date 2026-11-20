@@ -21,7 +21,7 @@
     and the scroller around the table both clip their overflow, and a menu laid
     out inside them would be cut off.
 --}}
-@props(['label' => '', 'listTitle' => '', 'rows' => [], 'values' => ['message' => null, 'rows' => [], 'align' => 'start'], 'loaded' => false, 'overLimit' => false, 'limit' => 0])
+@props(['label' => '', 'listTitle' => '', 'rows' => [], 'values' => ['message' => null, 'rows' => [], 'align' => 'start'], 'loaded' => false, 'overLimit' => false, 'timedOut' => false, 'limit' => 0])
 
 <span
     class="model-browser__stats"
@@ -162,7 +162,7 @@
         @class([
             'model-browser__stats-toggle',
             'model-browser__stats-toggle--ready' => $loaded && ! $overLimit,
-            'model-browser__stats-toggle--unavailable' => $overLimit,
+            'model-browser__stats-toggle--unavailable' => $overLimit || $timedOut,
         ])
         x-bind:class="{ 'active': open }"
         x-ref="toggle"
@@ -193,6 +193,8 @@
         </p>
         @if ($overLimit)
             <p class="model-browser__stats-note">@lang('model-browser::global.stats.limit-exceeded', ['limit' => Illuminate\Support\Number::format($limit)])</p>
+        @elseif ($timedOut)
+            <p class="model-browser__stats-note">@lang('model-browser::global.query-timeout')</p>
         @elseif ($loaded)
             <dl class="model-browser__stats-list">
                 @foreach ($rows as $row)

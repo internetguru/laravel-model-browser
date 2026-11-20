@@ -46,4 +46,21 @@ return [
 
     'stats_auto_limit' => 500,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Query Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Seconds the list's rows, total count or column statistics may take to
+    | query on SQLite. A query running longer is stopped and the list asks
+    | for a narrower search, instead of the request hitting PHP's time limit.
+    | Keep it below `max_execution_time`, and below half of it for a list
+    | with `refreshInterval`, whose refresh may count and read the rows in
+    | one request. Joins and `whereHas` over a short outer table are checked
+    | less often. Set to 0 to disable the limit.
+    |
+    */
+
+    'query_timeout' => 10,
+
 ];

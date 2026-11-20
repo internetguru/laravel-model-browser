@@ -41,7 +41,7 @@ use Internetguru\ModelBrowser\Components\BaseModelBrowser;
  * }
  * ```
  */
-trait HasModelBrowserFilters
+trait HasModelBrowserFilters // @phpstan-ignore trait.unused (used by the application's models)
 {
     /**
      * Get the session key for model browser filters.

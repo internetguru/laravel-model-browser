@@ -20,14 +20,13 @@
         --}}
         get overLimit() {
             return this.exportLimit > 0
-                && $wire.totalCount !== null
-                && $wire.totalCount > this.exportLimit;
+                && ($wire.countTimedOut || ($wire.totalCount !== null && $wire.totalCount > this.exportLimit));
         },
         download() {
             if (this.downloading) return;
             if (this.overLimit) {
                 {{-- The total is only known here, so the server fills in a token for it. --}}
-                const total = new Intl.NumberFormat(document.documentElement.lang || undefined).format($wire.totalCount);
+                const total = $wire.countTimedOut ? '?' : new Intl.NumberFormat(document.documentElement.lang || undefined).format($wire.totalCount);
                 if (!confirm(@js(trans('model-browser::global.download-csv.confirm-limit', ['limit' => Illuminate\Support\Number::format($exportLimit), 'total' => '__TOTAL__'])).replace('__TOTAL__', total))) {
                     return;
                 }

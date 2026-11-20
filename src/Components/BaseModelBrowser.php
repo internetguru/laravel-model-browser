@@ -7,8 +7,14 @@ use Closure;
 use DateTimeInterface;
 use Exception;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+use Illuminate\Database\Eloquent\Relations\MorphOneOrMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -23,6 +29,8 @@ use Illuminate\Support\Str;
 use InternetGuru\LaravelCommon\Contracts\HasLabel;
 use InternetGuru\LaravelCommon\Support\Sanitizer;
 use InternetGuru\LaravelCommon\Traits\WatchesForChanges;
+use Internetguru\ModelBrowser\Exceptions\QueryTimeoutException;
+use Internetguru\ModelBrowser\Support\QueryDeadline;
 use Internetguru\ModelBrowser\Traits\HasSearchFilters;
 use JsonSerializable;
 use Livewire\Attributes\Computed;
@@ -36,6 +44,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 use UnitEnum;
 
+/**
+ * @property-read Paginator<int, mixed> $rows
+ *
+ * @phpstan-type FilterColumn array{column: string, relation: ?string, preprocessor: callable-string|null, ascii_fast: bool, type: string, timezone: ?string}
+ */
 class BaseModelBrowser extends Component
 {
     use HasSearchFilters;
@@ -180,18 +193,22 @@ class BaseModelBrowser extends Component
      */
     public const STATS_HASHED_TEXT = 64;
 
+    /** @var class-string<Model> */
     #[Locked]
     public string $model;
 
     #[Locked]
     public string $modelMethod = '';
 
+    /** @var array<string, string> */
     #[Locked]
     public array $viewAttributes;
 
+    /** @var array<string, string> */
     #[Locked]
     public array $alignments;
 
+    /** @var array<string, callable> */
     #[Locked]
     public array $formats;
 
@@ -205,6 +222,8 @@ class BaseModelBrowser extends Component
      * By default (no entry needed here), the `data-raw` attribute and CSV
      * export cell use the underlying attribute value; empty only when that
      * value itself is empty/null.
+     *
+     * @var array<string, callable>
      */
     #[Locked]
     public array $rawFormats = [];
@@ -222,6 +241,8 @@ class BaseModelBrowser extends Component
      * Only attributes with a single value per row belong here: own columns,
      * or dot paths over to-one relations (`customer.email`). A to-many
      * relation has no single value to put in a cell.
+     *
+     * @var array<string, string>
      */
     #[Locked]
     public array $exportAttributes = [];
@@ -253,6 +274,8 @@ class BaseModelBrowser extends Component
      * Relations to eager-load on every query (table render + CSV export).
      * Accepts the same shape as Eloquent's `with()` — strings or
      * ['relation' => fn(Builder $q) => ...].
+     *
+     * @var array<int|string, string|Closure>
      */
     #[Locked]
     public array $with = [];
@@ -279,10 +302,13 @@ class BaseModelBrowser extends Component
      *
      * When 'column' or 'columns' is set, filters are auto-applied to the query.
      * When both are omitted, the filter is NOT auto-applied (use HasModelBrowserFilters trait for manual access).
+     *
+     * @var array<string, array<string, mixed>>
      */
     #[Locked]
     public array $filterConfig = [];
 
+    /** @var list<int> */
     #[Locked]
     public array $perPageOptions = self::PER_PAGE_OPTIONS;
 
@@ -303,6 +329,8 @@ class BaseModelBrowser extends Component
      * Attributes that are summarized: their header offers the statistics menu.
      * Every view attribute unless the `statsAttributes` prop names some, and
      * none when it is an empty array.
+     *
+     * @var list<string>
      */
     #[Locked]
     public array $statsAttributes = [];
@@ -310,6 +338,8 @@ class BaseModelBrowser extends Component
     /**
      * Summarized attributes whose values are texts even when they look like
      * numbers, such as order numbers: they get no numeric statistics.
+     *
+     * @var list<string>
      */
     #[Locked]
     public array $statsTextAttributes = [];
@@ -338,6 +368,12 @@ class BaseModelBrowser extends Component
      * were computed for it.
      */
     public bool $statsOverLimit = false;
+
+    /**
+     * Whether summarizing ran past the `model-browser.query_timeout` deadline;
+     * not kept across requests' caches, so opening a menu again retries it.
+     */
+    public bool $statsTimedOut = false;
 
     /**
      * Rows per page — also the step the previous/next buttons move by.
@@ -379,8 +415,20 @@ class BaseModelBrowser extends Component
     public ?int $totalCount = null;
 
     /**
+     * Whether counting ran past the `model-browser.query_timeout` deadline.
+     */
+    public bool $countTimedOut = false;
+
+    /**
+     * Whether reading the rows ran past the `model-browser.query_timeout` deadline.
+     */
+    protected bool $rowsTimedOut = false;
+
+    /**
      * Current filter values.
      * Format: ['attribute' => 'value']
+     *
+     * @var array<string, string|null>
      */
     public array $filterValues = [];
 
@@ -396,6 +444,18 @@ class BaseModelBrowser extends Component
      */
     protected bool $summaryRefreshRequested = false;
 
+    /**
+     * @param  array<string, string>  $viewAttributes
+     * @param  array<string, string>  $exportAttributes
+     * @param  array<string, callable>  $formats
+     * @param  array<string, callable>  $rawFormats
+     * @param  array<string, string>  $alignments
+     * @param  array<string, array<string, mixed>>  $filters
+     * @param  array<int|string, string|Closure>  $with
+     * @param  list<string>|null  $statsAttributes
+     * @param  list<string>  $statsTextAttributes
+     * @return void
+     */
     public function mount(
         string $model,
         array $viewAttributes = [],
@@ -421,11 +481,13 @@ class BaseModelBrowser extends Component
         if (str_contains($model, '@')) {
             [$model, $modelMethod] = explode('@', $model);
             $this->modelMethod = $modelMethod;
+            /** @var class-string<Model> $model */
             $this->model = $model;
         }
         // Defaults to the first model's fillable attributes
         $this->viewAttributes = $viewAttributes;
         if (! $viewAttributes) {
+            /** @var class-string<Model> $model */
             $defaultFillables = (new $model)->getFillable();
             $this->viewAttributes = array_combine($defaultFillables, $defaultFillables);
         }
@@ -543,6 +605,8 @@ class BaseModelBrowser extends Component
     /**
      * Validate filter value using Laravel validation.
      * Returns array with 'value' and optionally 'error' keys.
+     *
+     * @return array{value: string, error: string|null}
      */
     protected function validateFilterValue(string $attribute, mixed $value): array
     {
@@ -632,6 +696,9 @@ class BaseModelBrowser extends Component
     /**
      * Get validation rules for a filter.
      * Uses custom rules from config if provided, otherwise generates default rules based on type.
+     *
+     * @param  array<string, mixed>  $config
+     * @return string|array<int, mixed>
      */
     protected function getFilterRules(string $attribute, array $config): string|array
     {
@@ -668,6 +735,8 @@ class BaseModelBrowser extends Component
 
     /**
      * Generate validation rule for options filter.
+     *
+     * @param  array<int|string, mixed>  $options
      */
     protected function getOptionsRule(array $options): string
     {
@@ -708,6 +777,8 @@ class BaseModelBrowser extends Component
 
     /**
      * Get active (non-empty, valid) filters.
+     *
+     * @return array<string, string>
      */
     public function getActiveFilters(): array
     {
@@ -761,8 +832,10 @@ class BaseModelBrowser extends Component
     protected function requestSummaryRefresh(): void
     {
         $this->totalCount = null;
+        $this->countTimedOut = false;
         $this->stats = null;
         $this->statsOverLimit = false;
+        $this->statsTimedOut = false;
 
         if ($this->summaryRefreshRequested) {
             return;
@@ -874,7 +947,8 @@ class BaseModelBrowser extends Component
     // The total loads in its own island, which stores no fingerprint, so it is compared on its own
     public function watchRefresh(): void
     {
-        if ($this->totalCount !== null) {
+        // A count that ran out of time is tried again, so a list that got faster shows its total
+        if ($this->totalCount !== null || $this->countTimedOut) {
             $count = $this->countTotal();
             if ($count !== $this->totalCount) {
                 $this->storeTotalCount($count);
@@ -898,22 +972,84 @@ class BaseModelBrowser extends Component
         return md5(json_encode([$cells, $rows->hasMorePages()], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
     }
 
-    protected function countTotal(): int
+    /**
+     * The number of rows the search finds, null when counting them ran out of time.
+     */
+    protected function countTotal(): ?int
     {
         $query = $this->getQuery();
         $this->applyFiltersToQuery($query, $this->effectiveSearchQuery());
 
-        return $query->toBase()->getCountForPagination();
+        try {
+            return $this->runWithinTimeout($query, fn (Builder $query) => $query->toBase()->getCountForPagination());
+        } catch (QueryTimeoutException) {
+            return null;
+        }
     }
 
-    protected function storeTotalCount(int $count): void
+    protected function storeTotalCount(?int $count): void
     {
         $this->totalCount = $count;
+        $this->countTimedOut = $count === null;
 
         Cache::put($this->totalCountCacheKey(), [
             'query' => $this->effectiveSearchQuery(),
             'count' => $count,
+            'timedOut' => $this->countTimedOut,
         ], self::TOTAL_COUNT_TTL);
+    }
+
+    public function rowsTimedOut(): bool
+    {
+        return $this->rowsTimedOut;
+    }
+
+    /**
+     * Run the list's query, stopped once it runs `model-browser.query_timeout` seconds.
+     *
+     * The deadline is checked from inside SQLite for every row it scans, so a slow
+     * search ends in an exception the component handles instead of in PHP's fatal
+     * time limit. On other databases the query runs without it.
+     *
+     * @template T
+     *
+     * @param  Closure(Builder): T  $run
+     * @return T
+     *
+     * @throws QueryTimeoutException
+     */
+    protected function runWithinTimeout(Builder $query, Closure $run): mixed
+    {
+        $seconds = (float) config('model-browser.query_timeout');
+
+        // @phpstan-ignore method.notFound (an Eloquent connection is always an Illuminate\Database\Connection)
+        if ($seconds <= 0 || $query->getConnection()->getDriverName() !== 'sqlite') {
+            return $run($query);
+        }
+
+        // First, so it runs for every row before a cheaper condition can rule the row out. Calling
+        // PHP costs about as much as reading a row, so about one row in 64 checks the deadline.
+        array_unshift($query->getQuery()->wheres, [
+            'type' => 'raw',
+            'sql' => '((random() & 63) <> 0 OR query_deadline(random()))',
+            'boolean' => 'and',
+        ]);
+
+        try {
+            return QueryDeadline::within($seconds, fn () => $run($query));
+        } catch (Throwable $e) {
+            if (! QueryDeadline::caused($e)) {
+                throw $e;
+            }
+
+            Log::warning('Model browser query ran out of time.', [
+                'model' => $this->model,
+                'query' => $this->effectiveSearchQuery(),
+                'timeout' => $seconds,
+            ]);
+
+            throw new QueryTimeoutException($e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -925,6 +1061,7 @@ class BaseModelBrowser extends Component
         $limit = (int) config('model-browser.stats_auto_limit');
 
         return $limit > 0
+            && $this->totalCount !== null
             && $this->statsAttributes
             && $this->stats === null
             && ! $this->statsOverLimit
@@ -948,6 +1085,7 @@ class BaseModelBrowser extends Component
 
             if (is_array($cached) && $cached['query'] === $searchQuery) {
                 $this->totalCount = $cached['count'];
+                $this->countTimedOut = $cached['timedOut'] ?? false;
             }
         }
 
@@ -986,6 +1124,7 @@ class BaseModelBrowser extends Component
     {
         $this->stats = null;
         $this->statsOverLimit = false;
+        $this->statsTimedOut = false;
 
         if (empty($this->statsAttributes)) {
             return;
@@ -996,10 +1135,19 @@ class BaseModelBrowser extends Component
         // column it actually selects.
         $query = $this->buildFilteredSortedQuery();
 
-        if ($this->statsLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->statsLimit) {
-            $this->statsOverLimit = true;
-        } else {
-            $this->stats = $this->summarize($query);
+        try {
+            $this->runWithinTimeout($query, function (Builder $query) {
+                if ($this->statsLimit > 0 && $query->clone()->toBase()->getCountForPagination() > $this->statsLimit) {
+                    $this->statsOverLimit = true;
+                } else {
+                    $this->stats = $this->summarize($query);
+                }
+            });
+        } catch (QueryTimeoutException) {
+            $this->stats = null;
+            $this->statsTimedOut = true;
+
+            return;
         }
 
         Cache::put($this->statsCacheKey(), [
@@ -1270,7 +1418,7 @@ class BaseModelBrowser extends Component
             return collect();
         }
 
-        return $this->getQuery()->whereKey($keys)->get()->keyBy(fn (Model $row) => $row->getKey());
+        return $this->getQuery()->whereKey($keys)->get()->keyBy(fn (Model $row): int|string => $row->getKey());
     }
 
     /**
@@ -1391,9 +1539,9 @@ class BaseModelBrowser extends Component
             if ($paired) {
                 $rows[] = [
                     'key' => 'header',
-                    'label' => $noZeros ? __('model-browser::global.stats.no-zeros') : '',
-                    'display' => $noZeros ? '' : __('model-browser::global.stats.all'),
-                    'second' => $noZeros ? null : __('model-browser::global.stats.nonzero'),
+                    'label' => $noZeros ? $this->translation('model-browser::global.stats.no-zeros') : '',
+                    'display' => $noZeros ? '' : $this->translation('model-browser::global.stats.all'),
+                    'second' => $noZeros ? null : $this->translation('model-browser::global.stats.nonzero'),
                     'wide' => false,
                     'full' => $noZeros,
                     'header' => true,
@@ -1405,14 +1553,15 @@ class BaseModelBrowser extends Component
                 if ($value === null) {
                     continue;
                 }
+                $nonzero = self::STATS_NONZERO[$key] ?? null;
                 $second = match (true) {
-                    $paired && ! $noZeros => $this->statDisplay($attribute, self::STATS_NONZERO[$key], $stats[self::STATS_NONZERO[$key]]),
+                    $paired && ! $noZeros && $nonzero !== null => $this->statDisplay($attribute, $nonzero, $stats[$nonzero]),
                     in_array($key, self::STATS_SHARES, true) => $this->share($value, $stats['rows']),
                     default => null,
                 };
                 $rows[] = [
                     'key' => $key,
-                    'label' => __('model-browser::global.stats.labels.' . $key),
+                    'label' => $this->translation('model-browser::global.stats.labels.' . $key),
                     'display' => $this->statDisplay($attribute, $key, $value),
                     'second' => $second,
                     'wide' => in_array($key, self::STATS_WIDE, true) || ($paired && $noZeros),
@@ -1442,15 +1591,16 @@ class BaseModelBrowser extends Component
         }
 
         if ($stats['listing'] !== 'values') {
-            return ['message' => __('model-browser::global.stats.' . $stats['listing']), 'rows' => [], 'align' => 'start'];
+            return ['message' => $this->translation('model-browser::global.stats.' . $stats['listing']), 'rows' => [], 'align' => 'start'];
         }
 
         $rows = [];
+        /** @var array{display: string, title: string, count: int} $value */
         foreach ($stats['values'] as $value) {
             $rows[] = [
                 'label' => $value['display'],
                 'title' => $value['title'],
-                'count' => Number::format($value['count']),
+                'count' => (string) Number::format($value['count']),
                 'share' => $this->share($value['count'], $stats['rows']),
             ];
         }
@@ -1462,7 +1612,7 @@ class BaseModelBrowser extends Component
             $rows[] = [
                 'label' => e($label),
                 'title' => $label,
-                'count' => Number::format($stats['other']['count']),
+                'count' => (string) Number::format($stats['other']['count']),
                 'share' => $this->share($stats['other']['count'], $stats['rows']),
             ];
         }
@@ -1502,7 +1652,7 @@ class BaseModelBrowser extends Component
         }
 
         if (in_array($stat, self::STATS_COUNTS, true)) {
-            return Number::format($value);
+            return (string) Number::format($value);
         }
 
         if (in_array($stat, self::STATS_DATES, true)) {
@@ -1527,6 +1677,7 @@ class BaseModelBrowser extends Component
             return $formatted;
         }
 
+        // @phpstan-ignore function.alreadyNarrowedType (laravel-common 9 does not declare it on HasLabel)
         if ($value instanceof HasLabel && method_exists($value, 'toLabelHtml')) {
             return (string) $value->toLabelHtml();
         }
@@ -1535,7 +1686,7 @@ class BaseModelBrowser extends Component
             $value instanceof BackedEnum => $value->value,
             $value instanceof UnitEnum => $value->name,
             $value instanceof DateTimeInterface => Carbon::instance($value)->isoFormat('L'),
-            is_bool($value) => __('model-browser::global.stats.' . ($value ? 'true' : 'false')),
+            is_bool($value) => $this->translation('model-browser::global.stats.' . ($value ? 'true' : 'false')),
             is_int($value), is_float($value) => Number::format($value, maxPrecision: 2) ?: (string) $value,
             default => (string) $value,
         });
@@ -1565,7 +1716,14 @@ class BaseModelBrowser extends Component
      */
     protected function plainText(string $html): string
     {
-        return trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($html))));
+        return trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($html))));
+    }
+
+    private function translation(string $key): string
+    {
+        $text = __($key);
+
+        return is_string($text) ? $text : $key;
     }
 
     /**
@@ -1604,6 +1762,9 @@ class BaseModelBrowser extends Component
         $this->extraRows = 0;
     }
 
+    /**
+     * @return void
+     */
     public function updatedSortColumn()
     {
         $validAttributes = array_keys($this->viewAttributes);
@@ -1613,6 +1774,9 @@ class BaseModelBrowser extends Component
         $this->resetPage();
     }
 
+    /**
+     * @return void
+     */
     public function updatedSortDirection()
     {
         if (! in_array($this->sortDirection, ['asc', 'desc'])) {
@@ -1621,6 +1785,9 @@ class BaseModelBrowser extends Component
         $this->resetPage();
     }
 
+    /**
+     * @return void
+     */
     public function updatedPerPage()
     {
         $this->perPage = max(self::PER_PAGE_MIN, min(self::PER_PAGE_MAX, $this->perPage));
@@ -1677,6 +1844,9 @@ class BaseModelBrowser extends Component
         return $this->getData();
     }
 
+    /**
+     * @return View
+     */
     public function render()
     {
         return view('model-browser::livewire.base');
@@ -1746,6 +1916,9 @@ class BaseModelBrowser extends Component
             @set_time_limit(0);
 
             $out = fopen('php://output', 'w');
+            if ($out === false) {
+                throw new RuntimeException('Cannot open the output stream for the CSV export.');
+            }
             // Excel reads a CSV without a BOM in the system's legacy encoding.
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, $headers);
@@ -1878,6 +2051,7 @@ class BaseModelBrowser extends Component
                     continue;
                 }
                 $applyColumn = function (Builder $q, array $col) use ($config, $term) {
+                    /** @var FilterColumn $col */
                     $type = $col['type'];
                     if ($type === self::FILTER_OPTIONS && empty($config['restrict'])) {
                         $type = self::FILTER_STRING;
@@ -1905,7 +2079,7 @@ class BaseModelBrowser extends Component
     /**
      * Run the column's preprocessor on a filter value, on each bound of a range separately.
      *
-     * @param  array{preprocessor: ?string, type: string}  $col
+     * @param  array{preprocessor: callable-string|null, type: string}  $col
      */
     protected function preprocessFilterValue(array $col, string $value): string
     {
@@ -1932,14 +2106,16 @@ class BaseModelBrowser extends Component
      * column/relation/preprocessor/ascii_fast/type/timezone for that column
      * only — anything not overridden falls back to the filter's own config.
      *
-     * @return array<int, array{column: string, relation: ?string, preprocessor: ?string, ascii_fast: bool, type: string, timezone: ?string}>
+     * @param  array<string, mixed>  $config
+     * @return array<int, FilterColumn>
      */
     protected function getFilterColumns(array $config): array
     {
         $normalize = function (array $spec) use ($config): array {
             $preprocessor = $spec['preprocessor'] ?? $config['preprocessor'] ?? null;
 
-            return [
+            /** @var FilterColumn $column */
+            $column = [
                 'column' => $spec['column'],
                 'relation' => $spec['relation'] ?? $config['relation'] ?? null,
                 'preprocessor' => ($preprocessor && \function_exists($preprocessor)) ? $preprocessor : null,
@@ -1947,6 +2123,8 @@ class BaseModelBrowser extends Component
                 'type' => $spec['type'] ?? $config['type'] ?? self::FILTER_STRING,
                 'timezone' => $spec['timezone'] ?? $config['timezone'] ?? null,
             ];
+
+            return $column;
         };
 
         if (! empty($config['columns'])) {
@@ -2001,7 +2179,11 @@ class BaseModelBrowser extends Component
     }
 
     /**
-     * Apply the callback to the query, nested in `whereHas` along the relation's dot path.
+     * Apply the callback to the query, along the relation's dot path.
+     *
+     * A belongs-to, has-one or has-many step becomes `key IN (subquery)`: the
+     * related table is filtered once, where `whereHas` would filter it again for
+     * every row of the outer table. Any other relation keeps `whereHas`.
      */
     protected function whereInRelation(Builder $query, ?string $relation, Closure $apply): void
     {
@@ -2011,12 +2193,49 @@ class BaseModelBrowser extends Component
             return;
         }
 
-        $nested = $apply;
-        foreach (array_reverse(explode('.', $relation)) as $part) {
-            $inner = $nested;
-            $nested = fn (Builder $q) => $q->whereHas($part, $inner);
+        $parts = explode('.', $relation, 2);
+        $name = $parts[0];
+        $rest = $parts[1] ?? null;
+        $model = $query->getModel();
+        $related = Relation::noConstraints(fn () => $model->{$name}());
+
+        if (! $this->filtersRelationByKey($related)) {
+            $query->whereHas($name, fn (Builder $q) => $this->whereInRelation($q, $rest, $apply));
+
+            return;
         }
-        $nested($query);
+
+        // Like `whereHas`, only the relation's wheres apply, not its limit, order or grouping
+        $subquery = $related->getRelated()->newQueryWithoutRelationships()->mergeConstraintsFrom($related->getQuery());
+        $this->whereInRelation($subquery, $rest, $apply);
+
+        if ($related instanceof BelongsTo) {
+            $query->whereIn($related->getQualifiedForeignKeyName(), $subquery->toBase()->select($related->getQualifiedOwnerKeyName()));
+
+            return;
+        }
+
+        /** @var HasOneOrMany<Model, Model, mixed> $related */
+        $query->whereIn($related->getQualifiedParentKeyName(), $subquery->toBase()->select($related->getQualifiedForeignKeyName()));
+    }
+
+    /**
+     * Whether the relation is matched by its keys alone: the morph type and the
+     * one-of-many join are constraints a subquery on the keys would lose.
+     *
+     * @param  Relation<Model, Model, mixed>  $relation
+     */
+    protected function filtersRelationByKey(Relation $relation): bool
+    {
+        if ($relation instanceof BelongsTo) {
+            return ! $relation instanceof MorphTo;
+        }
+
+        if (! $relation instanceof HasOneOrMany || $relation instanceof MorphOneOrMany) {
+            return false;
+        }
+
+        return ! method_exists($relation, 'isOneOfMany') || ! $relation->isOneOfMany();
     }
 
     /**
@@ -2082,13 +2301,13 @@ class BaseModelBrowser extends Component
         $value = trim($value);
 
         if (preg_match('/^\d{4}$/', $value)) {
-            [$date, $unit] = [Carbon::create((int) $value, 1, 1, 0, 0, 0, $timezone), 'year'];
+            [$date, $unit] = [Carbon::create((int) $value, 1, 1, 0, 0, 0, $timezone) ?? throw new Exception("Invalid year in '{$value}'."), 'year'];
         } elseif (preg_match('/^(\d{4})-(\d{1,2})$/', $value, $match) || preg_match('/^(\d{1,2})[.\/](\d{4})$/', $value, $match)) {
             [$year, $month] = str_contains($match[0], '-') ? [$match[1], $match[2]] : [$match[2], $match[1]];
             if ((int) $month < 1 || (int) $month > 12) {
                 throw new Exception("Invalid month in '{$value}'.");
             }
-            [$date, $unit] = [Carbon::create((int) $year, (int) $month, 1, 0, 0, 0, $timezone), 'month'];
+            [$date, $unit] = [Carbon::create((int) $year, (int) $month, 1, 0, 0, 0, $timezone) ?? throw new Exception("Invalid month in '{$value}'."), 'month'];
         } else {
             $date = Carbon::parse($value, $timezone);
             $unit = self::relativeDateUnit($value) ?? ($date->format('H:i:s') === '00:00:00' ? 'day' : null);
@@ -2148,6 +2367,7 @@ class BaseModelBrowser extends Component
         $sortColumn = $this->enableSort ? $this->getActiveSortColumn() : $this->defaultSortColumn;
         $sortDirection = $this->enableSort ? $this->getActiveSortDirection() : $this->defaultSortDirection;
         if ($sortColumn) {
+            // @phpstan-ignore argument.type (orderBy() rejects a direction other than asc or desc itself)
             $query->orderBy($sortColumn, $sortDirection);
         }
 
@@ -2173,8 +2393,15 @@ class BaseModelBrowser extends Component
 
         Paginator::defaultSimpleView($this->paginationSimpleView());
 
+        try {
+            $rows = $this->runWithinTimeout($query->skip($this->skip)->take($window + 1), fn (Builder $query) => $query->get());
+        } catch (QueryTimeoutException) {
+            $this->rowsTimedOut = true;
+            $rows = new Collection;
+        }
+
         $data = new Paginator(
-            $query->skip($this->skip)->take($window + 1)->get(),
+            $rows,
             $window,
             $page,
             ['path' => Paginator::resolveCurrentPath()],
@@ -2184,6 +2411,11 @@ class BaseModelBrowser extends Component
         return $data;
     }
 
+    /**
+     * @param  Model  $item
+     * @param  string  $attribute
+     * @return mixed
+     */
     public function itemValue($item, $attribute)
     {
         $formattedAttribute = "{$attribute}Formatted";
@@ -2199,6 +2431,9 @@ class BaseModelBrowser extends Component
      * callback when one is configured for it, otherwise falls back to the
      * underlying attribute value. Also the value used for a CSV export cell.
      * Empty/null only when the underlying value itself is empty/null.
+     *
+     * @param  Model  $item
+     * @param  string  $attribute
      */
     public function itemValueRaw($item, $attribute): string|int|float|null
     {
@@ -2267,11 +2502,19 @@ class BaseModelBrowser extends Component
         Log::warning($message, $previous ? ['exception' => $previous] : []);
     }
 
+    /**
+     * @param  Collection<int, Model>  $data
+     * @return Collection<int, Model>
+     */
     protected function format(Collection $data): Collection
     {
         return $data->transform(fn ($item) => $this->formatItem($item));
     }
 
+    /**
+     * @param  Model  $item
+     * @return Model
+     */
     protected function formatItem($item)
     {
         $this->applyFormats($item);
@@ -2280,6 +2523,9 @@ class BaseModelBrowser extends Component
         return $item;
     }
 
+    /**
+     * @param  Model  $item
+     */
     protected function applyFormats($item): void
     {
         foreach ($this->formats as $attribute => $format) {
@@ -2291,6 +2537,9 @@ class BaseModelBrowser extends Component
         }
     }
 
+    /**
+     * @param  Model  $item
+     */
     protected function applyRawFormats($item): void
     {
         foreach ($this->rawFormats as $attribute => $format) {
