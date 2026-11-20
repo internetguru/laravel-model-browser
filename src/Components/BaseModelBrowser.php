@@ -1677,6 +1677,7 @@ class BaseModelBrowser extends Component
             return $formatted;
         }
 
+        // @phpstan-ignore function.alreadyNarrowedType (laravel-common 9 does not declare it on HasLabel)
         if ($value instanceof HasLabel && method_exists($value, 'toLabelHtml')) {
             return (string) $value->toLabelHtml();
         }

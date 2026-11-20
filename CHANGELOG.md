@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - `whereLikeUnaccented()` quotes the column name; pass an SQL expression as `DB::raw()`.
+- Works with laravel-common 10.
 
 ## [9.1.1] - 2026-11-19
 
