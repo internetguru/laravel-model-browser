@@ -2,6 +2,7 @@
 
 namespace Internetguru\ModelBrowser;
 
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Route;
@@ -100,8 +101,10 @@ class ModelBrowserServiceProvider extends ServiceProvider
          * (e-mail, login, slug, …). On SQLite this skips the unaccent() PHP UDF
          * — which is invoked per row scanned and is the main filter-cost driver.
          */
-        Builder::macro('whereLikeUnaccented', function (string $column, string $value, bool $asciiFast = false): Builder {
+        Builder::macro('whereLikeUnaccented', function (string|Expression $column, string $value, bool $asciiFast = false): Builder {
             /** @var Builder $this */
+            // A name is quoted; an expression passed as DB::raw() goes in as it is
+            $sql = $this->getQuery()->getGrammar()->wrap($column);
 
             // If the search value contains accented characters, do an exact (accent-sensitive) match
             $hasAccents = $value !== \Normalizer::normalize($value, \Normalizer::FORM_D)
@@ -114,8 +117,8 @@ class ModelBrowserServiceProvider extends ServiceProvider
                 // SQLite's LIKE ignores the case of ASCII letters only, so `Š` would not match `š`
                 if ($driver === 'sqlite' && ! $asciiFast) {
                     return $this->whereRaw(
-                        // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
-                        "unicode_lower({$column}) LIKE ?",
+                        // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                        "unicode_lower({$sql}) LIKE ?",
                         ['%' . \Normalizer::normalize(mb_strtolower($value), \Normalizer::FORM_C) . '%']
                     );
                 }
@@ -126,15 +129,15 @@ class ModelBrowserServiceProvider extends ServiceProvider
             if ($driver === 'sqlite') {
                 if ($asciiFast) {
                     return $this->whereRaw(
-                        // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
-                        "LOWER({$column}) LIKE LOWER(?)",
+                        // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                        "LOWER({$sql}) LIKE LOWER(?)",
                         ['%' . $value . '%']
                     );
                 }
 
                 return $this->whereRaw(
-                    // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
-                    "unaccent({$column}) LIKE ?",
+                    // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                    "unaccent({$sql}) LIKE ?",
                     ['%' . $value . '%']
                 );
             }
@@ -144,8 +147,8 @@ class ModelBrowserServiceProvider extends ServiceProvider
             // COLLATE is applied — some MySQL/PDO configurations otherwise infer the bound
             // parameter's charset as 'binary', which is incompatible with utf8mb4_unicode_ci.
             return $this->whereRaw(
-                // @phpstan-ignore argument.type (the column comes from the application's filter config, not user input)
-                "{$column} COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci",
+                // @phpstan-ignore argument.type (the column is quoted by the grammar above)
+                "{$sql} COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci",
                 ['%' . $value . '%']
             );
         });
