@@ -359,6 +359,8 @@ A date bound stands for the whole period it names. The lower bound is the period
 ```
 created:2026                    # the whole year
 created:2026-10                 # the whole month, also written 10.2026
+created:october                 # the whole of October this year, also written oct
+created:"october 2025"          # the whole of October 2025, also written "oct 2025"
 created:2026-09..2026-10        # September and October
 created:2026-10-15              # the whole day, also written 15.10.2026
 created:"3 days ago"            # that whole day

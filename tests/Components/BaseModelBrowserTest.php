@@ -845,6 +845,13 @@ class BaseModelBrowserTest extends TestCase
             'created:2026-10' => 3,
             'created:2026-10..2026-10' => 3,
             'created:10.2026' => 3,
+            'created:october' => 3,
+            'created:Oct' => 3,
+            'created:"october 2026"' => 3,
+            'created:"2026 oct"' => 3,
+            'created:"october 2025"' => 0,
+            'created:"dec 2025..jan 2026"' => 2,
+            'created:"sep..oct"' => 4,
             'created:2026-09..2026-10' => 4,
             'created:2026-10-01' => 1,
             'created:2026-10-12..' => 3,
@@ -869,7 +876,7 @@ class BaseModelBrowserTest extends TestCase
             'filterSessionKey' => 'test-mb-date-invalid',
         ]);
 
-        foreach (['2026-13', '13.2026', 'soon', '2026-10..later'] as $value) {
+        foreach (['2026-13', '13.2026', 'soon', '2026-10..later', 'octobe'] as $value) {
             $component->set('filterValues.created', $value)->call('applyFilters')
                 ->assertHasErrors('filter-created');
         }

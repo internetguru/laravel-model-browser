@@ -160,6 +160,12 @@
                                             if ((match = text.match(/^(\d{1,2})[.\/](\d{4})$/))) return month(+match[2], match[1] - 1);
                                             if ((match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return iso(new Date(+match[1], match[2] - 1, +match[3]));
                                             if ((match = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return iso(new Date(+match[3], match[2] - 1, +match[1]));
+                                            if ((match = text.match(/^(?:(\d{4})\s+)?([a-z]+)\.?(?:\s+(\d{4}))?$/)) && !(match[1] && match[3])) {
+                                                const name = match[2] === 'sept' ? 'sep' : match[2];
+                                                const index = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+                                                    .findIndex(month => name === month || name === month.slice(0, 3));
+                                                if (index >= 0) return month(+(match[1] || match[3] || today.getFullYear()), index);
+                                            }
                                             const days = { today: 0, yesterday: -1, tomorrow: 1 }[text];
                                             if (days !== undefined) return iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() + days));
                                             if (!(match = text.match(/^(\d+) (day|week|month|year)s? ago$/))) return '';

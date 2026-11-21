@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A date filter takes a month by its English name: `october` is the whole of October this year, `october 2025` that month in 2025.
+
 ## [9.2.0] - 2026-11-20
 
 _Stable release based on [9.2.0-rc.1]._
