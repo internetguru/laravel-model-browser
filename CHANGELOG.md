@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Show the column statistics in a modal that scrolls on its own, while the page behind it is dimmed and still, so the statistics stay readable on small screens.
+
 ## [9.3.0] - 2026-11-23
 
 _Stable release based on [9.3.0-rc.1]._

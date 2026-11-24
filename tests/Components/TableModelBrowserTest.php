@@ -375,13 +375,13 @@ class TableModelBrowserTest extends TestCase
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
             'title' => 'Users',
-        ])->assertSeeHtmlInOrder(['model-browser__stats-heading', 'Users /', '<strong>Name</strong>']);
+        ])->assertSeeHtmlInOrder(['modal-title', 'Users / Name']);
 
         Livewire::test(TableModelBrowser::class, [
             'model' => User::class,
             'viewAttributes' => ['name' => 'Name'],
         ])->assertDontSee('/ Name')
-            ->assertSeeHtml('<strong>Name</strong>');
+            ->assertSeeHtmlInOrder(['modal-title', 'Name']);
     }
 
     public function test_stats_menu_gives_the_dates_the_share_column_too()
