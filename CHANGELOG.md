@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [9.3.0] - 2026-11-23
+
+_Stable release based on [9.3.0-rc.1]._
+
 ## [9.3.0-rc.1] - 2026-11-23
 
 ### Added
@@ -1158,6 +1162,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[9.3.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.2.0...v9.3.0
 [9.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.2.0
 [9.2.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.1.1...v9.2.0
 [9.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.1.1
