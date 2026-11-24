@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A date filter takes a month by its English name: `october` is the whole of October this year, `october 2025` that month in 2025.
+
 ## [9.2.0] - 2026-11-20
 
 _Stable release based on [9.2.0-rc.1]._
@@ -1152,6 +1158,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [9.2.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.1.1...v9.2.0
 [9.2.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.1.1
 [9.1.1]: https://github.com/internetguru/laravel-model-browser/compare/v9.1.0...v9.1.1
