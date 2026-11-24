@@ -106,6 +106,8 @@ class BaseModelBrowser extends Component
 
     public const RANGE_SEPARATOR = '..';
 
+    protected const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
     /**
      * The statistics a column's menu offers, in the groups and order they are
      * listed: the ones every column has, the dates' span, SUM, which zeros
@@ -2308,6 +2310,8 @@ class BaseModelBrowser extends Component
                 throw new Exception("Invalid month in '{$value}'.");
             }
             [$date, $unit] = [Carbon::create((int) $year, (int) $month, 1, 0, 0, 0, $timezone) ?? throw new Exception("Invalid month in '{$value}'."), 'month'];
+        } elseif (($month = self::namedMonth($value, $timezone)) !== null) {
+            [$date, $unit] = [$month, 'month'];
         } else {
             $date = Carbon::parse($value, $timezone);
             $unit = self::relativeDateUnit($value) ?? ($date->format('H:i:s') === '00:00:00' ? 'day' : null);
@@ -2321,6 +2325,27 @@ class BaseModelBrowser extends Component
             $date->copy()->startOf($unit)->timezone($appTimezone),
             $date->copy()->endOf($unit)->timezone($appTimezone),
         ];
+    }
+
+    /**
+     * The first day of a month named in English, e.g. `october` or `oct` this year, `october 2025` or `2025 oct`.
+     */
+    protected static function namedMonth(string $value, string $timezone): ?Carbon
+    {
+        if (! preg_match('/^(?:(\d{4})\s+)?([a-z]+)\.?(?:\s+(\d{4}))?$/i', $value, $match) || ($match[1] !== '' && isset($match[3]))) {
+            return null;
+        }
+        $name = mb_strtolower($match[2]);
+        $name = $name === 'sept' ? 'sep' : $name;
+        foreach (self::MONTH_NAMES as $index => $month) {
+            if ($name === $month || $name === substr($month, 0, 3)) {
+                $year = $match[1] . ($match[3] ?? '');
+
+                return Carbon::create($year === '' ? Carbon::now($timezone)->year : (int) $year, $index + 1, 1, 0, 0, 0, $timezone);
+            }
+        }
+
+        return null;
     }
 
     /**
