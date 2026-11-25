@@ -44,4 +44,11 @@ class WhereLikeUnaccentedTest extends TestCase
         $this->assertStringContainsString("unaccent(title || ' extra')", $query->toSql());
         $this->assertSame(['Plain title'], $query->pluck('title')->all());
     }
+
+    public function test_a_sqlite_connection_is_not_opened_until_it_is_used()
+    {
+        config(['database.connections.missing' => ['driver' => 'sqlite', 'database' => '/nonexistent/database.sqlite', 'prefix' => '']]);
+
+        $this->assertInstanceOf(\Closure::class, DB::connection('missing')->getRawPdo());
+    }
 }

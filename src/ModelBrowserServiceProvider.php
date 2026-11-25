@@ -2,9 +2,11 @@
 
 namespace Internetguru\ModelBrowser;
 
+use Closure;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Internetguru\ModelBrowser\Components\BaseModelBrowser;
@@ -12,6 +14,7 @@ use Internetguru\ModelBrowser\Components\TableModelBrowser;
 use Internetguru\ModelBrowser\Http\Controllers\CsvDownloadController;
 use Internetguru\ModelBrowser\Support\QueryDeadline;
 use Livewire\Livewire;
+use PDO;
 
 class ModelBrowserServiceProvider extends ServiceProvider
 {
@@ -160,50 +163,74 @@ class ModelBrowserServiceProvider extends ServiceProvider
      */
     protected function registerSqliteUnaccent(): void
     {
-        $this->app->make('events')->listen('Illuminate\Database\Events\ConnectionEstablished', function ($event) {
-            if ($event->connection->getDriverName() !== 'sqlite') {
+        $this->app->make('events')->listen(ConnectionEstablished::class, function (ConnectionEstablished $event) {
+            $connection = $event->connection;
+            if ($connection->getDriverName() !== 'sqlite') {
                 return;
             }
 
-            $pdo = $event->connection->getPdo();
-            // Created once: the function runs for every row scanned, and creating it costs far more than using it
-            $transliterator = class_exists(\Transliterator::class)
-                ? \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower')
-                : null;
-            $pdo->sqliteCreateFunction('unaccent', function (?string $string) use ($transliterator): string {
-                QueryDeadline::check();
-
-                if ($string === null) {
-                    return '';
-                }
-
-                if ($transliterator) {
-                    return (string) $transliterator->transliterate($string);
-                }
-
-                // Fallback: manual Czech/Central European diacritics mapping
-                return strtr(mb_strtolower($string), [
-                    'á' => 'a', 'č' => 'c', 'ď' => 'd', 'é' => 'e', 'ě' => 'e',
-                    'í' => 'i', 'ň' => 'n', 'ó' => 'o', 'ř' => 'r', 'š' => 's',
-                    'ť' => 't', 'ú' => 'u', 'ů' => 'u', 'ý' => 'y', 'ž' => 'z',
-                    'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
-                    'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
-                    'â' => 'a', 'ê' => 'e', 'î' => 'i', 'ô' => 'o', 'û' => 'u',
-                    'ñ' => 'n', 'ç' => 'c', 'ł' => 'l', 'ő' => 'o', 'ű' => 'u',
-                    'ø' => 'o', 'å' => 'a', 'æ' => 'ae',
-                ]);
-            }, 1);
-            $pdo->sqliteCreateFunction('unicode_lower', function (?string $string): string {
-                QueryDeadline::check();
-
-                return $string === null ? '' : (string) \Normalizer::normalize(mb_strtolower($string), \Normalizer::FORM_C);
-            }, 1);
-            // Takes a value that changes per row, so SQLite calls it for every row instead of once as a constant
-            $pdo->sqliteCreateFunction('query_deadline', function (mixed $value): int {
-                QueryDeadline::check();
-
-                return 1;
-            }, 1);
+            // The PDO is still a resolver here; asking for it would open the database, which may not even exist yet
+            $connection->setPdo($this->withSqliteFunctions($connection->getRawPdo()));
+            $connection->setReadPdo($this->withSqliteFunctions($connection->getRawReadPdo()));
         });
+    }
+
+    /**
+     * Add the custom SQLite functions to a PDO, or to the one a resolver returns once it is called.
+     */
+    protected function withSqliteFunctions(Closure|PDO|null $pdo): Closure|PDO|null
+    {
+        if ($pdo instanceof Closure) {
+            return fn (): PDO => $this->addSqliteFunctions($pdo());
+        }
+        if ($pdo instanceof PDO) {
+            $this->addSqliteFunctions($pdo);
+        }
+
+        return $pdo;
+    }
+
+    protected function addSqliteFunctions(PDO $pdo): PDO
+    {
+        // Created once: the function runs for every row scanned, and creating it costs far more than using it
+        $transliterator = class_exists(\Transliterator::class)
+            ? \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC; Lower')
+            : null;
+        $pdo->sqliteCreateFunction('unaccent', function (?string $string) use ($transliterator): string {
+            QueryDeadline::check();
+
+            if ($string === null) {
+                return '';
+            }
+
+            if ($transliterator) {
+                return (string) $transliterator->transliterate($string);
+            }
+
+            // Fallback: manual Czech/Central European diacritics mapping
+            return strtr(mb_strtolower($string), [
+                'á' => 'a', 'č' => 'c', 'ď' => 'd', 'é' => 'e', 'ě' => 'e',
+                'í' => 'i', 'ň' => 'n', 'ó' => 'o', 'ř' => 'r', 'š' => 's',
+                'ť' => 't', 'ú' => 'u', 'ů' => 'u', 'ý' => 'y', 'ž' => 'z',
+                'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+                'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+                'â' => 'a', 'ê' => 'e', 'î' => 'i', 'ô' => 'o', 'û' => 'u',
+                'ñ' => 'n', 'ç' => 'c', 'ł' => 'l', 'ő' => 'o', 'ű' => 'u',
+                'ø' => 'o', 'å' => 'a', 'æ' => 'ae',
+            ]);
+        }, 1);
+        $pdo->sqliteCreateFunction('unicode_lower', function (?string $string): string {
+            QueryDeadline::check();
+
+            return $string === null ? '' : (string) \Normalizer::normalize(mb_strtolower($string), \Normalizer::FORM_C);
+        }, 1);
+        // Takes a value that changes per row, so SQLite calls it for every row instead of once as a constant
+        $pdo->sqliteCreateFunction('query_deadline', function (mixed $value): int {
+            QueryDeadline::check();
+
+            return 1;
+        }, 1);
+
+        return $pdo;
     }
 }

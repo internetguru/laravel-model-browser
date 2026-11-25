@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [9.3.1] - 2026-11-25
+
+### Fixed
+
+- Resolving a SQLite connection no longer opens it: the `unaccent`, `unicode_lower` and `query_deadline` functions are added once the connection is used, so commands can be listed without the database file, as in the shared PHPStan workflow.
+
 ## [9.3.0] - 2026-11-23
 
 _Stable release based on [9.3.0-rc.1]._
@@ -1162,6 +1168,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[9.3.1]: https://github.com/internetguru/laravel-model-browser/compare/v9.3.0...v9.3.1
 [9.3.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.2.0...v9.3.0
 [9.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.2.0
 [9.2.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.1.1...v9.2.0
