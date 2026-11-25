@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Resolving a SQLite connection no longer opens it: the `unaccent`, `unicode_lower` and `query_deadline` functions are added once the connection is used, so commands can be listed without the database file, as in the shared PHPStan workflow.
+
 ## [9.3.0] - 2026-11-23
 
 _Stable release based on [9.3.0-rc.1]._
