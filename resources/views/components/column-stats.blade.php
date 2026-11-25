@@ -2,8 +2,8 @@
     The statistics menu of one column: an info icon in the header that opens
     the statistics in the groups of BaseModelBrowser::STATS_GROUPS, divided by
     a line, then the column's most frequent values (or why they are not
-    listed), with a button copying the lot to the clipboard. A heading names
-    the list and the column, so a copy says what it is about.
+    listed), with a button copying the lot to the clipboard. The modal's title
+    names the list and the column, so a copy says what it is about.
 
     Each row is a term, a value and a second value: a share of the rows, or
     the value without zeros under the header row of the numeric group. A wide
@@ -15,78 +15,20 @@
     and columnValueRows) inside the header's "stats" island, so they arrive
     with the statistics and without re-running the data query. Opening a menu
     before they have asks for them, and the menu shows a spinner meanwhile;
-    the island morph then fills it in, leaving its own attributes (the place
-    and visibility set by the script) alone.
-    The panel itself is `position: fixed` and placed on open: the header cell
-    and the scroller around the table both clip their overflow, and a menu laid
-    out inside them would be cut off.
+    the island morph then fills it in, leaving the modal's own attributes
+    (whether it is open) alone, so its id must not change between renders.
 --}}
-@props(['label' => '', 'listTitle' => '', 'rows' => [], 'values' => ['message' => null, 'rows' => [], 'align' => 'start'], 'loaded' => false, 'overLimit' => false, 'timedOut' => false, 'limit' => 0])
+@props(['modalId', 'label' => '', 'listTitle' => '', 'rows' => [], 'values' => ['message' => null, 'rows' => [], 'align' => 'start'], 'loaded' => false, 'overLimit' => false, 'timedOut' => false, 'limit' => 0])
 
 <span
     class="model-browser__stats"
     x-data="{
         open: false,
-        placed: false,
         copied: false,
-        {{--
-            Placed again whenever the open menu changes size: the statistics and
-            their icons may arrive after it has opened, and a menu placed at the
-            spinner's size would then grow off the screen.
-        --}}
-        init() {
-            this.resizeObserver = new ResizeObserver(() => {
-                if (this.open && this.placed) this.place();
-            });
-            this.resizeObserver.observe($refs.menu);
-        },
-        destroy() {
-            this.resizeObserver.disconnect();
-        },
-        {{--
-            Kept within the visual viewport: on a phone, a page wider than the
-            screen widens the layout viewport (and innerWidth) beyond what is seen.
-            The menu is moved to the visible left edge before it is measured, so
-            its width is not squeezed by the space right of the toggle.
-        --}}
-        place() {
-            const gap = 8;
-            const viewport = window.visualViewport;
-            const left = viewport ? viewport.offsetLeft : 0;
-            const top = viewport ? viewport.offsetTop : 0;
-            const width = viewport ? viewport.width : document.documentElement.clientWidth;
-            const height = viewport ? viewport.height : document.documentElement.clientHeight;
-            const button = $refs.toggle.getBoundingClientRect();
-            const menu = $refs.menu;
-
-            menu.style.maxWidth = `${width - 2 * gap}px`;
-            menu.style.maxHeight = `${height - 2 * gap}px`;
-            menu.style.left = `${left + gap}px`;
-            menu.style.top = `${top + gap}px`;
-
-            let y = button.bottom + 4;
-            if (y + menu.offsetHeight > top + height - gap) {
-                y = button.top - 4 - menu.offsetHeight;
-            }
-            menu.style.top = `${Math.max(top + gap, Math.min(y, top + height - gap - menu.offsetHeight))}px`;
-            menu.style.left = `${Math.max(left + gap, Math.min(button.left, left + width - menu.offsetWidth - gap))}px`;
-        },
-        toggle() {
-            this.open = !this.open;
-
-            if (this.open) {
-                this.placed = false;
-
-                $nextTick(() => {
-                    this.place();
-                    this.placed = true;
-                });
-            }
-        },
         {{--
             Copied as shown. Tabs and newlines are the row/column structure of
             the copied text, and non-breaking spaces become plain ones. A row is
-            a term and every description up to the next one, under the heading.
+            a term and every description up to the next one, under the title.
         --}}
         text() {
             const plain = (element) => element.textContent.replace(/\s+/g, ' ').trim();
@@ -99,7 +41,7 @@
             };
 
             return [
-                plain($refs.menu.querySelector('.model-browser__stats-heading')),
+                plain($refs.menu.querySelector('.modal-title')),
                 ...[...$refs.menu.querySelectorAll('dt')].map(cells),
             ].join('\n');
         },
@@ -149,13 +91,9 @@
             setTimeout(() => this.copied = false, 2000);
         },
     }"
-    x-on:click.outside="open = false"
-    x-on:keydown.escape.window="open = false"
-    x-on:stats-opened.window="if ($event.detail !== $refs.toggle) open = false"
-    {{-- Capture, so the table's own horizontal scroller closes it too. --}}
-    x-on:scroll.window.capture="open = false"
-    x-on:resize.window="open = false"
-    x-on:mb-refresh-stats.window="open = false"
+    x-on:ig-modal-opened="open = true"
+    x-on:ig-modal-closed="open = false"
+    x-on:mb-refresh-stats.window="window.igModal.close(@js($modalId))"
 >
     <button
         type="button"
@@ -166,31 +104,20 @@
         ])
         x-bind:class="{ 'active': open }"
         x-ref="toggle"
-        x-on:click.stop="
-            if (!open) $dispatch('stats-opened', $el);
-            toggle();
-            if (open) $dispatch('mb-load-stats');
-        "
+        x-on:click.stop="window.igModal.open(@js($modalId)); $dispatch('mb-load-stats')"
         title="{{ trim(__('model-browser::global.stats.title') . ' — ' . strip_tags((string) $label), ' —') }}"
     >
         <i class="fa-solid fa-chart-simple"></i>
     </button>
 
-    <div
+    <x-ig::modal
+        :id="$modalId"
+        :title="trim(($listTitle ? $listTitle . ' / ' : '') . strip_tags((string) $label))"
+        centered
         class="model-browser__stats-menu"
         x-ref="menu"
         wire:ignore.self
-        x-show="open"
-        x-on:click.stop
-        x-bind:style="{ visibility: placed ? 'visible' : 'hidden' }"
-        style="display: none;"
     >
-        <p class="model-browser__stats-heading">
-            @if ($listTitle)
-                {{ $listTitle }} /
-            @endif
-            <strong>{{ strip_tags((string) $label) }}</strong>
-        </p>
         @if ($overLimit)
             <p class="model-browser__stats-note">@lang('model-browser::global.stats.limit-exceeded', ['limit' => Illuminate\Support\Number::format($limit)])</p>
         @elseif ($timedOut)
@@ -235,5 +162,5 @@
                 </span>
             </div>
         @endif
-    </div>
+    </x-ig::modal>
 </span>

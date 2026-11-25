@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Show the column statistics in a modal that scrolls on its own, while the page behind it is dimmed and still, so the statistics stay readable on small screens.
+
 ## [9.3.1] - 2026-11-25
 
 ### Fixed
@@ -1168,6 +1174,7 @@ _Stable release based on [0.1.0-rc.1]._
 
 - New changelog file.
 
+[Unreleased]: https://github.com/internetguru/laravel-model-browser/compare/staging...dev
 [9.3.1]: https://github.com/internetguru/laravel-model-browser/compare/v9.3.0...v9.3.1
 [9.3.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.2.0...v9.3.0
 [9.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.2.0

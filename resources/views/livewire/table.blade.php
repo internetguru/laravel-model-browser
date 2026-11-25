@@ -105,6 +105,7 @@
                                     <span class="grid-header-label">{{ $trans }}</span>
                                     @if ($hasStats)
                                         <x-model-browser::column-stats
+                                            :modal-id="'model-browser-stats-' . $this->getId() . '-' . \Illuminate\Support\Str::slug($column)"
                                             :label="$trans"
                                             :list-title="$title"
                                             :rows="$this->columnStatsRows($column)"
