@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Show the column statistics in a modal that scrolls on its own, while the page behind it is dimmed and still, so the statistics stay readable on small screens.
 
+## [9.3.1] - 2026-11-25
+
+### Fixed
+
+- Resolving a SQLite connection no longer opens it: the `unaccent`, `unicode_lower` and `query_deadline` functions are added once the connection is used, so commands can be listed without the database file, as in the shared PHPStan workflow.
+
 ## [9.3.0] - 2026-11-23
 
 _Stable release based on [9.3.0-rc.1]._
@@ -1169,6 +1175,7 @@ _Stable release based on [0.1.0-rc.1]._
 - New changelog file.
 
 [Unreleased]: https://github.com/internetguru/laravel-model-browser/compare/staging...dev
+[9.3.1]: https://github.com/internetguru/laravel-model-browser/compare/v9.3.0...v9.3.1
 [9.3.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.2.0...v9.3.0
 [9.3.0-rc.1]: https://github.com/internetguru/laravel-model-browser/releases/tag/v9.2.0
 [9.2.0]: https://github.com/internetguru/laravel-model-browser/compare/v9.1.1...v9.2.0
