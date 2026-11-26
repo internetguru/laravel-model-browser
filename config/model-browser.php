@@ -63,4 +63,17 @@ return [
 
     'query_timeout' => 10,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fullscreen Switch
+    |--------------------------------------------------------------------------
+    |
+    | Whether a table offers the switch that spreads it over the whole window.
+    | Can be overridden per component instance via the `fullscreen` parameter.
+    | Turn it off in an application whose tables are short.
+    |
+    */
+
+    'fullscreen' => true,
+
 ];

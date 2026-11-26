@@ -15,6 +15,10 @@ class TableModelBrowser extends BaseModelBrowser
     #[Locked]
     public array $columnWidths;
 
+    /** Offers the switch that spreads the table over the whole window. */
+    #[Locked]
+    public bool $fullscreen = true;
+
     /**
      * @param  array<string, string>  $viewAttributes
      * @param  array<string, string>  $exportAttributes
@@ -50,10 +54,12 @@ class TableModelBrowser extends BaseModelBrowser
         string $title = '',
         int $lightDarkStep = 1,
         array $columnWidths = [],
+        ?bool $fullscreen = null,
     ) {
         parent::mount($model, $viewAttributes, $exportAttributes, $formats, $rawFormats, $alignments, $defaultSortColumn, $defaultSortDirection, $enableSort, $filters, $filterSessionKey, $refreshInterval, $with, $exportLimit, $statsAttributes, $statsLimit, $exportName, $statsTextAttributes, $title);
         $this->lightDarkStep = $lightDarkStep;
         $this->columnWidths = $columnWidths;
+        $this->fullscreen = $fullscreen ?? (bool) config('model-browser.fullscreen');
     }
 
     /**
