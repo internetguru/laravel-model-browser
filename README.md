@@ -208,6 +208,14 @@ Maximum number of rows a CSV export may contain. When the current (filtered) res
 :exportLimit="2000"
 ```
 
+### `fullscreen`
+
+Whether the table offers the switch that spreads it over the whole window. Defaults to the `model-browser.fullscreen` config value (`true`); an application whose tables are short sets that to `false`, or one table passes:
+
+```php
+:fullscreen="false"
+```
+
 ### `statsAttributes` / `statsTextAttributes` / `title` / `statsLimit`
 
 Columns that are summarized, in the table only: their header offers the statistics menu. Every view attribute by default; name some to summarize only those, or pass `[]` to turn the statistics off. See [Column Statistics](#column-statistics):
