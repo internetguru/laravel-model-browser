@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A table can leave out its fullscreen switch: the `fullscreen` parameter, or the `model-browser.fullscreen` config for every table.
+
 ## [9.4.0] - 2026-11-25
 
 _Stable release based on [9.4.0-rc.1]._

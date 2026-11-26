@@ -26,9 +26,11 @@
         }"
     >
 
-        <div class="d-flex justify-content-end align-items-center gap-3 mx-3 mt-3 mb-2">
-            <x-model-browser::fullscreen-button />
-        </div>
+        @if ($fullscreen)
+            <div class="d-flex justify-content-end align-items-center gap-3 mx-3 mt-3 mb-2">
+                <x-model-browser::fullscreen-button />
+            </div>
+        @endif
 
         <x-model-browser::filters :$filterConfig :$filterValues :$searchQuery :search-name="$this->searchInputName()" />
 

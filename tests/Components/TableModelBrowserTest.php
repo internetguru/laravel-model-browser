@@ -20,6 +20,18 @@ class TableModelBrowserTest extends TestCase
             ->assertSet('lightDarkStep', 1);
     }
 
+    public function test_offers_the_fullscreen_switch_unless_turned_off()
+    {
+        Livewire::test(TableModelBrowser::class, ['model' => User::class])
+            ->assertSeeHtml('fullscreen btn');
+        Livewire::test(TableModelBrowser::class, ['model' => User::class, 'fullscreen' => false])
+            ->assertDontSeeHtml('fullscreen btn');
+
+        config(['model-browser.fullscreen' => false]);
+        Livewire::test(TableModelBrowser::class, ['model' => User::class])
+            ->assertDontSeeHtml('fullscreen btn');
+    }
+
     public function test_renders_correct_view()
     {
         Livewire::test(TableModelBrowser::class, [

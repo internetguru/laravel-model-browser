@@ -14,7 +14,7 @@ Livewire lists of Eloquent models as a table or cards, with Gmail-style search, 
   - `statsAttributes` (every column by default, `[]` for none) / `statsLimit`, `exportLimit`, `refreshInterval`
   - `title`: the list's translated name, heading each statistics menu
   - `statsTextAttributes`: columns of numeric-looking texts, such as order numbers, that get no numeric statistics
-  - table only: `columnWidths`, `lightDarkStep`
+  - table only: `columnWidths`, `lightDarkStep`, `fullscreen` (the fullscreen switch; `model-browser.fullscreen` config for every table)
 - Labels are translation calls in the view, such as `__('summary.created_at')`.
 
 ## Formatters
